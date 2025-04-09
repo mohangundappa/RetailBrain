@@ -511,7 +511,7 @@ function saveAgent() {
   }
   
   // Send to server
-  fetch('/api/agents', {
+  fetch('/api/builder/agents', {
     method: currentAgent.id ? 'PUT' : 'POST',
     headers: {
       'Content-Type': 'application/json'
@@ -544,7 +544,7 @@ function saveAgent() {
  * Load an existing agent
  */
 function loadAgent(agentId) {
-  fetch(`/api/agents/${agentId}`)
+  fetch(`/api/builder/agents/${agentId}`)
     .then(response => {
       if (!response.ok) {
         throw new Error('Agent not found');
@@ -698,7 +698,7 @@ function testAgent() {
   testOutput.textContent = 'Processing...';
   
   // Send test request
-  fetch(`/api/agents/${currentAgent.id}/test`, {
+  fetch(`/api/builder/agents/${currentAgent.id}/test`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json'
