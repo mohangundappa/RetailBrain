@@ -19,8 +19,8 @@ def create_app(config_override=None):
     app = Flask(__name__)
     
     # Load configuration based on environment
-    config = config_override or get_config()
-    app.config.from_object(config)
+    config_class = config_override or get_config()
+    app.config.from_object(config_class)
     
     # Configure logging
     log_level = getattr(logging, app.config.get('LOG_LEVEL', 'INFO'))

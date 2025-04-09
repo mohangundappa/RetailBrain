@@ -25,4 +25,5 @@ dependencies = [
     "langsmith>=0.3.27",
     "trafilatura>=2.0.0",
     "twilio>=9.5.2",
+    "werkzeug>=3.1.3",
 ]
