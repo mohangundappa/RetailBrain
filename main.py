@@ -1633,6 +1633,11 @@ def documentation():
     """Render the comprehensive user documentation."""
     return render_template('documentation.html')
 
+@app.route('/setup-guide', methods=["GET"])
+def setup_guide():
+    """Render the local setup guide."""
+    return render_template('setup_guide.html')
+
 @app.route('/dashboard', methods=["GET"])
 def dashboard():
     """Render the observability dashboard."""
@@ -1673,6 +1678,23 @@ def dashboard_metrics():
         })
     except Exception as e:
         logger.error(f"Error getting dashboard metrics: {str(e)}")
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
+# File download endpoint for setup guide
+@app.route('/api/download/requirements-local.txt', methods=["GET"])
+def download_requirements():
+    """Provide the requirements file for download."""
+    try:
+        return Response(
+            open('requirements-local.txt', 'r').read(),
+            mimetype='text/plain',
+            headers={"Content-Disposition": "attachment;filename=requirements-local.txt"}
+        )
+    except Exception as e:
+        logger.error(f"Error downloading requirements file: {str(e)}")
         return jsonify({
             "success": False,
             "error": str(e)

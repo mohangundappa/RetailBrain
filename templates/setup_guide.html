@@ -1,0 +1,437 @@
+{% extends "base.html" %}
+
+{% block title %}Staples Brain Setup Guide{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+  <div class="row mb-5">
+    <div class="col-lg-8 offset-lg-2">
+      <h1 class="mb-4">Staples Brain: Local Setup Guide</h1>
+      <p class="lead text-muted">Complete instructions for setting up Staples Brain on your local environment</p>
+    </div>
+  </div>
+
+  <!-- Table of Contents -->
+  <div class="row mb-5">
+    <div class="col-lg-8 offset-lg-2">
+      <div class="card bg-light">
+        <div class="card-body">
+          <h5 class="card-title">Setup Guide Contents</h5>
+          <ul class="list-unstyled">
+            <li><a href="#prerequisites" class="text-decoration-none">1. Prerequisites</a></li>
+            <li><a href="#code-download" class="text-decoration-none">2. Code Download</a></li>
+            <li><a href="#environment-setup" class="text-decoration-none">3. Environment Setup</a></li>
+            <li><a href="#database-configuration" class="text-decoration-none">4. Database Configuration</a></li>
+            <li><a href="#api-keys" class="text-decoration-none">5. API Keys Configuration</a></li>
+            <li><a href="#running-app" class="text-decoration-none">6. Running the Application</a></li>
+            <li><a href="#troubleshooting" class="text-decoration-none">7. Troubleshooting</a></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Prerequisites Section -->
+  <div class="row mb-5" id="prerequisites">
+    <div class="col-lg-8 offset-lg-2">
+      <h2 class="border-bottom pb-2">1. Prerequisites</h2>
+      
+      <div class="mt-4">
+        <p>Before setting up Staples Brain locally, ensure you have the following installed:</p>
+        
+        <div class="card mb-4 border-0 bg-light">
+          <div class="card-body">
+            <h5 class="text-primary"><i class="bi bi-check-circle"></i> Required Software</h5>
+            <ul>
+              <li><strong>Python 3.9+</strong> - The application is built with Python</li>
+              <li><strong>PostgreSQL 13+</strong> - For database storage</li>
+              <li><strong>Git</strong> - For cloning the repository</li>
+              <li><strong>pip</strong> - Python package manager</li>
+            </ul>
+          </div>
+        </div>
+        
+        <div class="alert alert-info">
+          <i class="bi bi-info-circle"></i> If you don't have PostgreSQL installed, you can download it from <a href="https://www.postgresql.org/download/" target="_blank">postgresql.org</a> or use a Docker container.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Code Download Section -->
+  <div class="row mb-5" id="code-download">
+    <div class="col-lg-8 offset-lg-2">
+      <h2 class="border-bottom pb-2">2. Code Download</h2>
+      
+      <div class="mt-4">
+        <p>Clone the repository to your local machine using Git:</p>
+        
+        <div class="card mb-4">
+          <div class="card-header bg-dark text-white">
+            <h5 class="mb-0">Terminal</h5>
+          </div>
+          <div class="card-body bg-dark text-white">
+            <pre class="mb-0"><code>git clone https://github.com/your-username/staples-brain.git
+cd staples-brain</code></pre>
+          </div>
+        </div>
+        
+        <p>Alternatively, if you've downloaded the code as a ZIP file from the Replit environment:</p>
+        <ol>
+          <li>Extract the ZIP file to your preferred location</li>
+          <li>Open a terminal/command prompt</li>
+          <li>Navigate to the extracted directory using <code>cd path/to/extracted/staples-brain</code></li>
+        </ol>
+      </div>
+    </div>
+  </div>
+
+  <!-- Environment Setup Section -->
+  <div class="row mb-5" id="environment-setup">
+    <div class="col-lg-8 offset-lg-2">
+      <h2 class="border-bottom pb-2">3. Environment Setup</h2>
+      
+      <div class="mt-4">
+        <p>Set up a Python virtual environment and install the required dependencies:</p>
+        
+        <div class="card mb-4">
+          <div class="card-header bg-dark text-white">
+            <h5 class="mb-0">Terminal</h5>
+          </div>
+          <div class="card-body bg-dark text-white">
+            <pre class="mb-0"><code># Create a virtual environment
+python -m venv venv
+
+# Activate the virtual environment
+# On Windows:
+venv\Scripts\activate
+# On macOS/Linux:
+source venv/bin/activate
+
+# Install dependencies
+pip install -r requirements-local.txt</code></pre>
+          </div>
+        </div>
+        
+        <div class="alert alert-info">
+          <i class="bi bi-info-circle"></i> We've provided a <code>requirements-local.txt</code> file in the repository that contains all the necessary dependencies with specific versions. If you don't have this file, you can <a href="/api/download/requirements-local.txt" download="requirements-local.txt" class="alert-link">download it here</a>.
+        </div>
+        
+        <div class="card mb-4">
+          <div class="card-header bg-dark text-white">
+            <h5 class="mb-0">requirements-local.txt</h5>
+          </div>
+          <div class="card-body bg-dark text-white">
+            <pre class="mb-0"><code># Core dependencies
+flask==2.3.3
+flask-cors==4.0.0
+flask-sqlalchemy==3.1.1
+flask-login==0.6.2
+sqlalchemy==2.0.23
+psycopg2-binary==2.9.9
+gunicorn==21.2.0
+email-validator==2.1.0.post1
+
+# LangChain and AI dependencies
+langchain==0.0.335
+langchain-core==0.1.8
+langchain-community==0.0.16
+langchain-openai==0.0.5
+langsmith==0.0.78
+openai==1.3.7
+
+# And other dependencies... (download the complete file)</code></pre>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Database Configuration Section -->
+  <div class="row mb-5" id="database-configuration">
+    <div class="col-lg-8 offset-lg-2">
+      <h2 class="border-bottom pb-2">4. Database Configuration</h2>
+      
+      <div class="mt-4">
+        <p>Configure your PostgreSQL database for Staples Brain:</p>
+        
+        <div class="card mb-4 border-0 bg-light">
+          <div class="card-body">
+            <h5 class="text-primary"><i class="bi bi-database"></i> Database Setup Steps</h5>
+            <ol>
+              <li><strong>Create a PostgreSQL database:</strong>
+                <div class="card mb-3 mt-2">
+                  <div class="card-header bg-dark text-white">
+                    <h6 class="mb-0">PostgreSQL Command Line</h6>
+                  </div>
+                  <div class="card-body bg-dark text-white">
+                    <pre class="mb-0"><code># Login to PostgreSQL
+psql -U postgres
+
+# Create a database
+CREATE DATABASE staples_brain;
+
+# Create a user (optional, you can use the postgres user)
+CREATE USER staples_user WITH PASSWORD 'your_secure_password';
+
+# Grant privileges
+GRANT ALL PRIVILEGES ON DATABASE staples_brain TO staples_user;
+
+# Exit PostgreSQL
+\q</code></pre>
+                  </div>
+                </div>
+              </li>
+              <li><strong>Create a .env file:</strong> In the root directory of the project, create a <code>.env</code> file with your database connection information:
+                <div class="card mb-3 mt-2">
+                  <div class="card-header bg-dark text-white">
+                    <h6 class="mb-0">.env</h6>
+                  </div>
+                  <div class="card-body bg-dark text-white">
+                    <pre class="mb-0"><code>DATABASE_URL=postgresql://staples_user:your_secure_password@localhost/staples_brain
+PGUSER=staples_user
+PGPASSWORD=your_secure_password
+PGHOST=localhost
+PGDATABASE=staples_brain
+PGPORT=5432
+SESSION_SECRET=your_secret_key_for_flask_sessions</code></pre>
+                  </div>
+                </div>
+              </li>
+            </ol>
+          </div>
+        </div>
+        
+        <div class="alert alert-success">
+          <i class="bi bi-lightbulb"></i> <strong>Tip:</strong> For the SESSION_SECRET, use a strong random string. You can generate one with Python:
+          <pre><code>python -c "import secrets; print(secrets.token_hex(16))"</code></pre>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- API Keys Configuration Section -->
+  <div class="row mb-5" id="api-keys">
+    <div class="col-lg-8 offset-lg-2">
+      <h2 class="border-bottom pb-2">5. API Keys Configuration</h2>
+      
+      <div class="mt-4">
+        <p>Staples Brain requires several API keys to function properly. Add these to your <code>.env</code> file:</p>
+        
+        <div class="card mb-4">
+          <div class="card-header bg-dark text-white">
+            <h5 class="mb-0">.env (additional entries)</h5>
+          </div>
+          <div class="card-body bg-dark text-white">
+            <pre class="mb-0"><code># Required API keys
+OPENAI_API_KEY=your_openai_api_key
+LANGSMITH_API_KEY=your_langsmith_api_key
+
+# Optional API keys (add if needed)
+DATABRICKS_HOST=your_databricks_host
+DATABRICKS_TOKEN=your_databricks_token
+TWILIO_ACCOUNT_SID=your_twilio_account_sid
+TWILIO_AUTH_TOKEN=your_twilio_auth_token
+TWILIO_PHONE_NUMBER=your_twilio_phone_number</code></pre>
+          </div>
+        </div>
+        
+        <div class="alert alert-info">
+          <i class="bi bi-info-circle"></i> <strong>How to get API keys:</strong>
+          <ul>
+            <li><a href="https://platform.openai.com/api-keys" target="_blank">OpenAI API Key</a> - Required for the LLM functionality</li>
+            <li><a href="https://smith.langchain.com/" target="_blank">LangSmith API Key</a> - For observability and tracing</li>
+            <li><a href="https://www.twilio.com/console" target="_blank">Twilio Credentials</a> - Optional, for SMS notifications</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Running the Application Section -->
+  <div class="row mb-5" id="running-app">
+    <div class="col-lg-8 offset-lg-2">
+      <h2 class="border-bottom pb-2">6. Running the Application</h2>
+      
+      <div class="mt-4">
+        <p>Once everything is set up, you can run the application:</p>
+        
+        <div class="card mb-4">
+          <div class="card-header bg-dark text-white">
+            <h5 class="mb-0">Terminal</h5>
+          </div>
+          <div class="card-body bg-dark text-white">
+            <pre class="mb-0"><code># Make sure your virtual environment is activated
+# Load environment variables (use a tool like python-dotenv or source the .env file)
+
+# For development:
+flask run --host=0.0.0.0 --port=5000
+
+# For production (using gunicorn):
+gunicorn --bind 0.0.0.0:5000 --reuse-port --reload main:app</code></pre>
+          </div>
+        </div>
+        
+        <div class="alert alert-success">
+          <i class="bi bi-check-circle"></i> Once running, access the application by opening <a href="http://localhost:5000" target="_blank">http://localhost:5000</a> in your web browser.
+        </div>
+        
+        <div class="card mb-4 border-info">
+          <div class="card-header bg-info text-white">
+            <h5 class="mb-0">First-Time Setup</h5>
+          </div>
+          <div class="card-body">
+            <p>The first time you run the application, the database tables will be automatically created. You can then:</p>
+            <ol>
+              <li>Access the dashboard to verify everything is working correctly</li>
+              <li>Try out the built-in agents like Order Tracking or Store Locator</li>
+              <li>Create your own custom agents using the Agent Builder</li>
+            </ol>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Troubleshooting Section -->
+  <div class="row mb-5" id="troubleshooting">
+    <div class="col-lg-8 offset-lg-2">
+      <h2 class="border-bottom pb-2">7. Troubleshooting</h2>
+      
+      <div class="mt-4">
+        <div class="accordion" id="troubleshootingAccordion">
+          <div class="accordion-item">
+            <h2 class="accordion-header" id="headingOne">
+              <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne" aria-expanded="false" aria-controls="collapseOne">
+                <strong>Database Connection Issues</strong>
+              </button>
+            </h2>
+            <div id="collapseOne" class="accordion-collapse collapse" aria-labelledby="headingOne" data-bs-parent="#troubleshootingAccordion">
+              <div class="accordion-body">
+                <ol>
+                  <li>Verify PostgreSQL is running with <code>pg_isready</code> or the equivalent service check for your OS</li>
+                  <li>Double-check your database credentials in the <code>.env</code> file</li>
+                  <li>Ensure the database and user exist with proper permissions</li>
+                  <li>Check if you're able to connect to the database manually with <code>psql</code></li>
+                  <li>Inspect the application logs for specific error messages</li>
+                </ol>
+              </div>
+            </div>
+          </div>
+          
+          <div class="accordion-item">
+            <h2 class="accordion-header" id="headingTwo">
+              <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTwo" aria-expanded="false" aria-controls="collapseTwo">
+                <strong>API Key Errors</strong>
+              </button>
+            </h2>
+            <div id="collapseTwo" class="accordion-collapse collapse" aria-labelledby="headingTwo" data-bs-parent="#troubleshootingAccordion">
+              <div class="accordion-body">
+                <ol>
+                  <li>Ensure you've added all required API keys to your <code>.env</code> file</li>
+                  <li>Verify your OpenAI API key has sufficient credits and is active</li>
+                  <li>For error messages like "API key not found," check that your environment variables are being loaded correctly</li>
+                  <li>If using Langsmith, verify your account is active and the API key is correct</li>
+                </ol>
+              </div>
+            </div>
+          </div>
+          
+          <div class="accordion-item">
+            <h2 class="accordion-header" id="headingThree">
+              <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseThree" aria-expanded="false" aria-controls="collapseThree">
+                <strong>Dependency Issues</strong>
+              </button>
+            </h2>
+            <div id="collapseThree" class="accordion-collapse collapse" aria-labelledby="headingThree" data-bs-parent="#troubleshootingAccordion">
+              <div class="accordion-body">
+                <ol>
+                  <li>Try reinstalling dependencies: <code>pip install -r requirements.txt --force-reinstall</code></li>
+                  <li>Check for version conflicts with <code>pip check</code></li>
+                  <li>Ensure you're using a compatible Python version (3.9+ recommended)</li>
+                  <li>If specific packages are causing issues, try installing them individually with explicit versions</li>
+                </ol>
+              </div>
+            </div>
+          </div>
+          
+          <div class="accordion-item">
+            <h2 class="accordion-header" id="headingFour">
+              <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseFour" aria-expanded="false" aria-controls="collapseFour">
+                <strong>Common Error Messages</strong>
+              </button>
+            </h2>
+            <div id="collapseFour" class="accordion-collapse collapse" aria-labelledby="headingFour" data-bs-parent="#troubleshootingAccordion">
+              <div class="accordion-body">
+                <table class="table table-striped">
+                  <thead>
+                    <tr>
+                      <th>Error</th>
+                      <th>Solution</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td><code>ModuleNotFoundError: No module named 'x'</code></td>
+                      <td>Install the missing package: <code>pip install x</code></td>
+                    </tr>
+                    <tr>
+                      <td><code>OperationalError: could not connect to server</code></td>
+                      <td>Check your database connection settings and ensure PostgreSQL is running</td>
+                    </tr>
+                    <tr>
+                      <td><code>AuthenticationError: Incorrect API key provided</code></td>
+                      <td>Update your OpenAI API key in the <code>.env</code> file</td>
+                    </tr>
+                    <tr>
+                      <td><code>RuntimeError: Working outside of application context</code></td>
+                      <td>Ensure you're running the application properly with Flask's application context</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="alert alert-info mt-4">
+          <p><i class="bi bi-lightbulb"></i> <strong>Need more help?</strong></p>
+          <p>If you encounter issues not covered here, check the application logs for detailed error messages and consult the official documentation for the relevant components (Flask, SQLAlchemy, LangChain, etc.).</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div class="row mt-5">
+    <div class="col-lg-8 offset-lg-2">
+      <div class="border-top pt-4 text-muted">
+        <p class="small">© 2025 Staples Brain Setup Guide</p>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  // Initialize tooltips
+  document.addEventListener('DOMContentLoaded', function() {
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+      return new bootstrap.Tooltip(tooltipTriggerEl)
+    });
+    
+    // Smooth scrolling for anchor links
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+      anchor.addEventListener('click', function (e) {
+        e.preventDefault();
+        
+        document.querySelector(this.getAttribute('href')).scrollIntoView({
+          behavior: 'smooth'
+        });
+      });
+    });
+  });
+</script>
+{% endblock %}
