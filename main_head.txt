@@ -1,0 +1,100 @@
+import os
+import logging
+import asyncio
+import uuid
+import time
+import random
+import json
+from datetime import datetime
+from flask import Flask, render_template, jsonify, request, session, Response, g, redirect, url_for
+from flask_cors import CORS
+from prometheus_client import CONTENT_TYPE_LATEST
+from brain.intent_handler import IntentHandler
+from brain.planner import ExecutionPlanner
+from models import db, Conversation, Message, PackageTracking, PasswordReset, StoreLocator, ProductInfo, AgentConfig, AnalyticsData, CustomAgent, AgentTemplate
+from utils.memory import ConversationMemory
+from utils.observability import (
+    get_prometheus_metrics, 
+    record_intent_classification, 
+    record_agent_selection,
+    record_llm_request,
+    record_error,
+    update_active_conversations,
+    get_metrics_summary,
+    TimingContext,
+    logger
+)
+from utils.middleware import MetricsMiddleware
+
+# Configure logging to file and console
+logging.basicConfig(
+    level=logging.DEBUG,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(),
+        logging.FileHandler("staples_brain.log")
+    ]
+)
+logger = logging.getLogger(__name__)
+
+app = Flask(__name__)
+app.secret_key = os.environ.get("SESSION_SECRET", "staples-brain-secret-key")
+
+# Enable CORS for API endpoints
+CORS(app, resources={r"/api/*": {"origins": "*"}})
+
+# Configure database
+app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("DATABASE_URL")
+app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
+    "pool_recycle": 300,
+    "pool_pre_ping": True,
+}
+db.init_app(app)
+
+# Apply metrics middleware
+MetricsMiddleware(app)
+
+# Import API routes
+from api.routes import api_bp
+app.register_blueprint(api_bp)
+
+# Create database tables
+with app.app_context():
+    db.create_all()
+    logger.info("Database tables created")
+
+# Initialize components
+intent_handler = IntentHandler()
+planner = ExecutionPlanner(intent_handler)
+
+# Sample data for simulating agent responses
+PACKAGE_TRACKING_SAMPLE = {
+    "tracking_number": "TRACK123456",
+    "shipping_carrier": "UPS",
+    "order_number": None,
+    "time_frame": "3 days",
+    "status": "in_transit",
+    "estimated_delivery": "2023-10-15",
+    "current_location": "Chicago, IL",
+    "last_updated": "2023-10-12 08:30:45",
+    "message": "Package is currently in transit",
+    "is_simulated": True
+}
+
+PASSWORD_RESET_SAMPLE = {
+    "email": "user@example.com",
+    "username": None,
+    "account_type": "Staples.com",
+    "issue": "forgot password",
+    "status": "instructions_provided",
+    "message": "Password reset instructions for your account with email: user@example.com",
+    "instructions": [
+        "Go to Staples.com and click on 'Sign In' at the top of the page.",
+        "Click on 'Forgot Password' below the login form.",
+        "Enter your email address associated with your account.",
+        "Check your email inbox for a password reset link.",
+        "Click the link and follow the instructions to create a new password.",
+        "Use your new password to log in."
+    ],
+    "reset_link_sent": False,
+    "is_simulated": True

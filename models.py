@@ -1,13 +1,8 @@
 import os
 import json
 from datetime import datetime
-from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy.orm import DeclarativeBase
+from db import db
 
-class Base(DeclarativeBase):
-    pass
-
-db = SQLAlchemy(model_class=Base)
 
 class Conversation(db.Model):
     """Model to store user conversations with the brain"""
@@ -26,6 +21,7 @@ class Conversation(db.Model):
     store_locator_data = db.relationship('StoreLocator', back_populates='conversation', cascade='all, delete-orphan')
     product_info_data = db.relationship('ProductInfo', back_populates='conversation', cascade='all, delete-orphan')
 
+
 class Message(db.Model):
     """Model to store individual messages in a conversation"""
     id = db.Column(db.Integer, primary_key=True)
@@ -35,6 +31,7 @@ class Message(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
     conversation = db.relationship('Conversation', back_populates='messages')
+
 
 class PackageTracking(db.Model):
     """Model to store package tracking information"""
@@ -51,6 +48,7 @@ class PackageTracking(db.Model):
     
     conversation = db.relationship('Conversation', back_populates='tracking_data')
 
+
 class PasswordReset(db.Model):
     """Model to store password reset information"""
     id = db.Column(db.Integer, primary_key=True)
@@ -64,6 +62,7 @@ class PasswordReset(db.Model):
     
     conversation = db.relationship('Conversation', back_populates='password_reset_data')
 
+
 class AgentConfig(db.Model):
     """Model to store agent configuration settings"""
     id = db.Column(db.Integer, primary_key=True)
@@ -74,6 +73,7 @@ class AgentConfig(db.Model):
     prompt_template = db.Column(db.Text, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, onupdate=datetime.utcnow)
+
 
 class StoreLocator(db.Model):
     """Model to store store locator information"""
@@ -91,6 +91,7 @@ class StoreLocator(db.Model):
     
     conversation = db.relationship('Conversation', back_populates='store_locator_data')
 
+
 class ProductInfo(db.Model):
     """Model to store product information"""
     id = db.Column(db.Integer, primary_key=True)
@@ -107,6 +108,7 @@ class ProductInfo(db.Model):
     
     conversation = db.relationship('Conversation', back_populates='product_info_data')
 
+
 class AnalyticsData(db.Model):
     """Model to store analytics data about agent usage"""
     id = db.Column(db.Integer, primary_key=True)
@@ -118,6 +120,7 @@ class AnalyticsData(db.Model):
     date = db.Column(db.Date, nullable=False)
     
     __table_args__ = (db.UniqueConstraint('agent_name', 'date', name='unique_agent_day'),)
+
 
 class CustomAgent(db.Model):
     """Model to store custom agent configurations created through the UI"""
@@ -169,6 +172,7 @@ class CustomAgent(db.Model):
             return []
         return json.loads(self.business_rules)
 
+
 class AgentComponent(db.Model):
     """Model for individual components used in a custom agent"""
     id = db.Column(db.Integer, primary_key=True)
@@ -183,13 +187,14 @@ class AgentComponent(db.Model):
     # Relationships
     agent = db.relationship('CustomAgent', back_populates='components')
     outgoing_connections = db.relationship('ComponentConnection', 
-                                           foreign_keys='ComponentConnection.source_id',
-                                           back_populates='source',
-                                           cascade='all, delete-orphan')
+                                       foreign_keys='ComponentConnection.source_id',
+                                       back_populates='source',
+                                       cascade='all, delete-orphan')
     incoming_connections = db.relationship('ComponentConnection', 
-                                          foreign_keys='ComponentConnection.target_id',
-                                          back_populates='target',
-                                          cascade='all, delete-orphan')
+                                      foreign_keys='ComponentConnection.target_id',
+                                      back_populates='target',
+                                      cascade='all, delete-orphan')
+
 
 class ComponentConnection(db.Model):
     """Model for connections between components in a custom agent"""
@@ -205,6 +210,7 @@ class ComponentConnection(db.Model):
     source = db.relationship('AgentComponent', foreign_keys=[source_id], back_populates='outgoing_connections')
     target = db.relationship('AgentComponent', foreign_keys=[target_id], back_populates='incoming_connections')
 
+
 class ComponentTemplate(db.Model):
     """Model for predefined component templates that users can drag and drop"""
     id = db.Column(db.Integer, primary_key=True)
@@ -217,6 +223,7 @@ class ComponentTemplate(db.Model):
     is_system = db.Column(db.Boolean, default=False)  # If True, can't be deleted/modified by users
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
+
 class AgentTemplate(db.Model):
     """Model for complete agent templates that users can use as starting points"""
     id = db.Column(db.Integer, primary_key=True)

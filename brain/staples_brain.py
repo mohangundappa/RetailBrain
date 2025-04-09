@@ -10,7 +10,10 @@ from agents.reset_password import ResetPasswordAgent
 from agents.store_locator import StoreLocatorAgent
 from agents.product_info import ProductInfoAgent
 from brain.orchestrator import AgentOrchestrator
-from config import OPENAI_API_KEY, OPENAI_MODEL
+
+# Get OpenAI configuration from environment variables
+OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
+OPENAI_MODEL = os.environ.get("OPENAI_MODEL", "gpt-4o")
 
 logger = logging.getLogger(__name__)
 
