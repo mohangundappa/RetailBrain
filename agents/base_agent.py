@@ -497,22 +497,26 @@ class BaseAgent(ABC):
             self.memory.pop(0)
             
         # If we have a conversation memory, update the context
-        if self.conversation_memory and 'conversation_id' in message:
+        if self.conversation_memory:
             try:
                 # Add to persistent memory if role and content are provided
                 if 'role' in message and 'content' in message:
-                    self.conversation_memory.add_message(
-                        role=message['role'],
-                        content=message['content'],
-                        conversation_id=message['conversation_id']
-                    )
+                    # Only add to database if we have a valid conversation_id
+                    if 'conversation_id' in message and message['conversation_id'] is not None:
+                        self.conversation_memory.add_message(
+                            role=message['role'],
+                            content=message['content'],
+                            conversation_id=message['conversation_id']
+                        )
                 
                 # Update agent context with any extracted information
                 if 'extracted_info' in message:
-                    self.conversation_memory.update_context(
-                        agent_name=self.name,
-                        context_updates=message['extracted_info']
-                    )
+                    # Only update context if we have a valid conversation_id
+                    if 'conversation_id' in message and message['conversation_id'] is not None:
+                        self.conversation_memory.update_context(
+                            agent_name=self.name,
+                            context_updates=message['extracted_info']
+                        )
             except Exception as e:
                 logger.error(f"Error adding to conversation memory: {str(e)}")
             
