@@ -190,16 +190,17 @@ class AgentOrchestrator:
                     })
                 
                 # Build the response text including custom agents if available
-                response_text = "Hello! I'm Staples Brain, here to assist you with various Staples-related services. I can help you with:\n\n" + \
-                              "• Tracking your packages and orders\n" + \
-                              "• Resetting your password or account access\n" + \
-                              "• Finding Staples stores near you\n" + \
-                              "• Getting information about Staples products"
+                response_text = "Hello! I'm Staples Brain, here to assist you with various Staples-related services.\n\n"
+                response_text += "I can help you with:\n\n"
+                response_text += "• 📦 Tracking your packages and orders\n"
+                response_text += "• 🔑 Resetting your password or account access\n"
+                response_text += "• 🏬 Finding Staples stores near you\n"
+                response_text += "• 🔍 Getting information about Staples products"
                 
                 # Add custom agent capabilities if any exist
                 if custom_agents:
-                    response_text += "\n• Working with custom agents: "
-                    response_text += ", ".join([agent.name for agent in custom_agents])
+                    custom_agents_list = [f"{agent.name}" for agent in custom_agents]
+                    response_text += "\n• 🤖 Custom agents: " + ", ".join(custom_agents_list)
                 
                 response_text += "\n\nHow can I assist you today?"
                 
