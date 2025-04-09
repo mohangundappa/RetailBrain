@@ -1628,6 +1628,11 @@ def save_as_template():
             "error": str(e)
         }), 500
 
+@app.route('/documentation', methods=["GET"])
+def documentation():
+    """Render the comprehensive user documentation."""
+    return render_template('documentation.html')
+
 @app.route('/dashboard', methods=["GET"])
 def dashboard():
     """Render the observability dashboard."""

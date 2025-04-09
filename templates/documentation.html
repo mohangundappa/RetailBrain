@@ -1,0 +1,745 @@
+{% extends "base.html" %}
+
+{% block title %}Staples Brain Documentation{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+  <div class="row mb-5">
+    <div class="col-lg-8 offset-lg-2">
+      <h1 class="mb-4">Staples Brain: User Documentation</h1>
+      <p class="lead text-muted">Your cosmic guide to building intelligent AI agents with Staples Brain</p>
+    </div>
+  </div>
+
+  <!-- Table of Contents -->
+  <div class="row mb-5">
+    <div class="col-lg-8 offset-lg-2">
+      <div class="card bg-light">
+        <div class="card-body">
+          <h5 class="card-title">Table of Contents</h5>
+          <ul class="list-unstyled">
+            <li><a href="#intro" class="text-decoration-none">Introduction to Staples Brain</a></li>
+            <li><a href="#getting-started" class="text-decoration-none">Getting Started</a></li>
+            <li><a href="#cosmos-agents" class="text-decoration-none">The Cosmos of Agents</a></li>
+            <li><a href="#wizard" class="text-decoration-none">The Agent Wizard Journey</a></li>
+            <li><a href="#entity-collection" class="text-decoration-none">Entity Collection: Gathering Stardust</a></li>
+            <li><a href="#templates" class="text-decoration-none">Templates: Celestial Blueprints</a></li>
+            <li><a href="#advanced" class="text-decoration-none">Advanced Concepts</a></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Introduction Section -->
+  <div class="row mb-5" id="intro">
+    <div class="col-lg-8 offset-lg-2">
+      <h2 class="border-bottom pb-2">Introduction to Staples Brain</h2>
+      
+      <div class="mt-4">
+        <h4>What is Staples Brain?</h4>
+        <p>Imagine if you could create intelligent helpers that understand exactly what your customers need – that's Staples Brain. It's like having a universe of specialized assistants, each with their own expertise, working together under one cosmic intelligence.</p>
+        
+        <div class="card mb-4 border-0 bg-light">
+          <div class="card-body">
+            <h5 class="text-primary"><i class="bi bi-stars"></i> The Cosmic Perspective</h5>
+            <p>Think of Staples Brain as your personal AI solar system. Just as our solar system has planets with distinct characteristics, Staples Brain houses specialized agents with unique capabilities – from tracking packages to providing product information. And just as gravity connects celestial bodies, our orchestration layer connects these agents into one unified experience.</p>
+          </div>
+        </div>
+        
+        <h5>Double-Click: What makes it special?</h5>
+        <ul>
+          <li><strong>Intelligent Orchestration:</strong> Like a planetary alignment, our system determines exactly which specialized agent should handle a customer's question</li>
+          <li><strong>Entity Collection Framework:</strong> Just as astronomers gather data about distant stars, our agents collect specific pieces of information in a consistent, methodical way</li>
+          <li><strong>Agent Building:</strong> You can create new AI assistants as easily as scientists identify new celestial objects</li>
+        </ul>
+        
+        <h5>Triple-Click: The Technical Universe</h5>
+        <p>For those who want to peer through the most powerful telescope, Staples Brain is built on:</p>
+        <ul>
+          <li><strong>LangChain & LangGraph:</strong> Providing the gravitational framework for agent interactions</li>
+          <li><strong>OpenAI Integration:</strong> Powering our natural language understanding like dark energy powers universal expansion</li>
+          <li><strong>PostgreSQL:</strong> Storing conversations and configuration data in an organized constellation</li>
+          <li><strong>LangSmith Telemetry:</strong> Observing agent behaviors like astronomers monitor celestial movements</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- Getting Started Section -->
+  <div class="row mb-5" id="getting-started">
+    <div class="col-lg-8 offset-lg-2">
+      <h2 class="border-bottom pb-2">Getting Started: Your First Expedition</h2>
+      
+      <div class="mt-4">
+        <p>If you're new to Staples Brain, think of yourself as an astronaut about to embark on your first space mission. Here's your pre-flight checklist:</p>
+        
+        <div class="card mb-4 border-primary">
+          <div class="card-header bg-primary text-white">
+            <h5 class="mb-0">Step 1: Explore the Home Dashboard</h5>
+          </div>
+          <div class="card-body">
+            <p>Your mission control center is the home dashboard. From here, you can:</p>
+            <ul>
+              <li>Test out existing agents by asking questions</li>
+              <li>View recent conversations</li>
+              <li>Access the agent builder</li>
+              <li>Navigate to the template gallery</li>
+            </ul>
+            <img src="https://placeholder.pics/svg/800x400/DEDEDE/555555/Dashboard%20Preview" class="img-fluid rounded mb-3" alt="Dashboard Preview">
+            <p><strong>Try this:</strong> Ask "Can you track my package?" to see the Order Tracking agent in action.</p>
+          </div>
+        </div>
+        
+        <div class="card mb-4 border-success">
+          <div class="card-header bg-success text-white">
+            <h5 class="mb-0">Step 2: Launch the Agent Builder</h5>
+          </div>
+          <div class="card-body">
+            <p>Ready to create your first agent? Click the "Build New Agent" button to begin. This is like choosing which new planet you want to discover.</p>
+            <p>The Agent Builder will walk you through creating a custom agent step by step - we'll cover this journey in detail later.</p>
+          </div>
+        </div>
+        
+        <h5>Double-Click: Navigation Basics</h5>
+        <p>The Staples Brain navigation works like the instruments on a spacecraft:</p>
+        <ul>
+          <li><strong>Header Navigation:</strong> Contains links to the main sections: Home, Agent Builder, Templates, and Dashboard</li>
+          <li><strong>Breadcrumbs:</strong> Show your current location in the system, like cosmic coordinates</li>
+          <li><strong>Agent List:</strong> Available from the dashboard, shows all currently active agents</li>
+        </ul>
+        
+        <h5>Triple-Click: API Endpoints</h5>
+        <p>For engineers wanting to integrate with Staples Brain, we offer these API endpoints:</p>
+        <div class="table-responsive">
+          <table class="table table-sm">
+            <thead>
+              <tr>
+                <th>Endpoint</th>
+                <th>Description</th>
+                <th>Method</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>/api/process</code></td>
+                <td>Process a user request through the main brain</td>
+                <td>POST</td>
+              </tr>
+              <tr>
+                <td><code>/api/track-package</code></td>
+                <td>Directly access the package tracking agent</td>
+                <td>POST</td>
+              </tr>
+              <tr>
+                <td><code>/api/reset-password</code></td>
+                <td>Directly access the password reset agent</td>
+                <td>POST</td>
+              </tr>
+              <tr>
+                <td><code>/api/agents</code></td>
+                <td>List all available agents</td>
+                <td>GET</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- The Cosmos of Agents Section -->
+  <div class="row mb-5" id="cosmos-agents">
+    <div class="col-lg-8 offset-lg-2">
+      <h2 class="border-bottom pb-2">The Cosmos of Agents</h2>
+      
+      <div class="mt-4">
+        <p>Agents are like specialized planets in the Staples Brain solar system. Each has its own purpose, atmosphere, and characteristics.</p>
+        
+        <div class="row row-cols-1 row-cols-md-2 g-4 mb-4">
+          <div class="col">
+            <div class="card h-100 border-info">
+              <div class="card-header bg-info text-white">
+                <h5 class="mb-0">Order Tracking Agent</h5>
+              </div>
+              <div class="card-body">
+                <p>Helps customers track their packages and orders, providing status updates and estimated delivery dates.</p>
+                <p><strong>Key Entities:</strong> tracking_number, order_number, shipping_carrier</p>
+                <p><strong>Example:</strong> "Where is my order #ST12345?"</p>
+              </div>
+            </div>
+          </div>
+          
+          <div class="col">
+            <div class="card h-100 border-danger">
+              <div class="card-header bg-danger text-white">
+                <h5 class="mb-0">Reset Password Agent</h5>
+              </div>
+              <div class="card-body">
+                <p>Assists users with password reset processes, guiding them through verification and reset steps.</p>
+                <p><strong>Key Entities:</strong> email, username, account_type</p>
+                <p><strong>Example:</strong> "I need to reset my account password"</p>
+              </div>
+            </div>
+          </div>
+          
+          <div class="col">
+            <div class="card h-100 border-success">
+              <div class="card-header bg-success text-white">
+                <h5 class="mb-0">Store Locator Agent</h5>
+              </div>
+              <div class="card-body">
+                <p>Helps customers find nearby store locations, hours, and available services.</p>
+                <p><strong>Key Entities:</strong> location, radius, service</p>
+                <p><strong>Example:</strong> "Where's the closest Staples store to Brooklyn?"</p>
+              </div>
+            </div>
+          </div>
+          
+          <div class="col">
+            <div class="card h-100 border-warning">
+              <div class="card-header bg-warning text-white">
+                <h5 class="mb-0">Product Information Agent</h5>
+              </div>
+              <div class="card-body">
+                <p>Provides detailed information about products, specifications, pricing, and availability.</p>
+                <p><strong>Key Entities:</strong> product_name, product_id, category</p>
+                <p><strong>Example:</strong> "Tell me about the HP OfficeJet Pro 9015"</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <h5>Double-Click: How Agents Work</h5>
+        <p>Each agent in our cosmic system follows a similar lifecycle:</p>
+        <ol>
+          <li><strong>Intent Identification:</strong> Like determining which star system to explore, the brain first identifies what the user is trying to accomplish</li>
+          <li><strong>Entity Collection:</strong> The agent gathers required information, much like collecting star samples</li>
+          <li><strong>Processing:</strong> The agent uses the collected entities to perform its specialized function</li>
+          <li><strong>Response Generation:</strong> The agent crafts a helpful response based on its findings</li>
+          <li><strong>Storage:</strong> The conversation is saved for future reference</li>
+        </ol>
+        
+        <h5>Triple-Click: Agent Architecture</h5>
+        <p>For the technical astronomers among us, here's the detailed architecture:</p>
+        <div class="card bg-dark text-light mb-4">
+          <div class="card-body">
+            <pre class="mb-0"><code>class BaseAgent:
+    """Foundation for all specialized agents"""
+    
+    def extract_entities(self, user_input):
+        """Extract required information from user input"""
+        # Uses LLM-based entity extraction with validation
+        
+    def collect_entities(self, conversation):
+        """Interactive process to gather all required entities"""
+        # Asks follow-up questions until all requirements met
+        
+    def process(self, entities):
+        """Specialized processing based on agent type"""
+        # Each agent implements this differently
+        
+    def format_response(self, result):
+        """Format the response according to templates"""
+        # Uses Jinja-style response formatting</code></pre>
+          </div>
+        </div>
+        <p>All specialized agents inherit from the BaseAgent class, similar to how all planets share certain fundamental properties while maintaining their unique characteristics.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- The Agent Wizard Journey Section -->
+  <div class="row mb-5" id="wizard">
+    <div class="col-lg-8 offset-lg-2">
+      <h2 class="border-bottom pb-2">The Agent Wizard Journey</h2>
+      
+      <div class="mt-4">
+        <p>Creating a new agent is like charting a course to discover a new planet. The Agent Wizard guides you through this cosmic journey in five steps:</p>
+        
+        <div class="accordion mb-4" id="wizardAccordion">
+          <div class="accordion-item">
+            <h2 class="accordion-header" id="headingOne">
+              <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne" aria-expanded="true" aria-controls="collapseOne">
+                <strong>Step 1: Agent Basics</strong>
+              </button>
+            </h2>
+            <div id="collapseOne" class="accordion-collapse collapse show" aria-labelledby="headingOne" data-bs-parent="#wizardAccordion">
+              <div class="accordion-body">
+                <p>Like naming a new celestial discovery, start by giving your agent an identity:</p>
+                <ul>
+                  <li><strong>Name:</strong> Choose a descriptive name for your agent</li>
+                  <li><strong>Description:</strong> Explain what your agent does</li>
+                  <li><strong>Icon:</strong> Select a visual representation</li>
+                  <li><strong>Active Status:</strong> Decide if the agent should be immediately available</li>
+                </ul>
+                <div class="alert alert-info">
+                  <strong>Cosmic Tip:</strong> Choose a name that clearly indicates the agent's purpose, like "Order Return Agent" or "Product Recommendation Agent."
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="accordion-item">
+            <h2 class="accordion-header" id="headingTwo">
+              <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTwo" aria-expanded="false" aria-controls="collapseTwo">
+                <strong>Step 2: Entity Setup</strong>
+              </button>
+            </h2>
+            <div id="collapseTwo" class="accordion-collapse collapse" aria-labelledby="headingTwo" data-bs-parent="#wizardAccordion">
+              <div class="accordion-body">
+                <p>Like identifying which elements to study in a newly discovered planet, define what information your agent needs to collect:</p>
+                <ul>
+                  <li><strong>Entity Name:</strong> What piece of information to collect (e.g., "tracking_number")</li>
+                  <li><strong>Description:</strong> What this entity represents</li>
+                  <li><strong>Validation Pattern:</strong> Regular expression to validate input (e.g., <code>\d{10}</code> for a 10-digit number)</li>
+                  <li><strong>Error Message:</strong> What to tell users when validation fails</li>
+                  <li><strong>Examples:</strong> Sample values to help the AI understand what to look for</li>
+                </ul>
+                <div class="alert alert-info">
+                  <strong>Cosmic Tip:</strong> Use the "Add Entity" button to create multiple entities. For a return processing agent, you might need order_number, return_reason, and item_condition.
+                </div>
+                <p><strong>Save as Template:</strong> Starting from Step 2, you can save your work as a template for future use by clicking the "Save as Template" button in the navigation.</p>
+              </div>
+            </div>
+          </div>
+          
+          <div class="accordion-item">
+            <h2 class="accordion-header" id="headingThree">
+              <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseThree" aria-expanded="false" aria-controls="collapseThree">
+                <strong>Step 3: Prompts</strong>
+              </button>
+            </h2>
+            <div id="collapseThree" class="accordion-collapse collapse" aria-labelledby="headingThree" data-bs-parent="#wizardAccordion">
+              <div class="accordion-body">
+                <p>Like programming the AI for a space mission, configure how your agent thinks and communicates:</p>
+                <ul>
+                  <li><strong>System Prompt:</strong> The core instructions that define your agent's personality and capabilities</li>
+                  <li><strong>Entity Extraction Prompt:</strong> Instructions for finding entities in user messages</li>
+                  <li><strong>Response Generation Prompt:</strong> Guidelines for crafting helpful responses</li>
+                </ul>
+                <div class="alert alert-info">
+                  <strong>Cosmic Tip:</strong> Use the pre-built prompt templates as starting points. Click buttons like "Customer Service" or "Order Tracking" to load specialized templates.
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="accordion-item">
+            <h2 class="accordion-header" id="headingFour">
+              <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseFour" aria-expanded="false" aria-controls="collapseFour">
+                <strong>Step 4: Response Format</strong>
+              </button>
+            </h2>
+            <div id="collapseFour" class="accordion-collapse collapse" aria-labelledby="headingFour" data-bs-parent="#wizardAccordion">
+              <div class="accordion-body">
+                <p>Like designing the data transmission format for your space mission, specify how responses should be structured:</p>
+                <ul>
+                  <li><strong>Response Schema:</strong> The JSON structure with fields your agent should generate (e.g., tracking_status, estimated_delivery)</li>
+                  <li><strong>Output Format Template:</strong> How to present this information to users using Jinja-style templates</li>
+                </ul>
+                <div class="alert alert-info">
+                  <strong>Cosmic Tip:</strong> Click "Order Tracking" or other suggestion buttons to load pre-built schemas, then customize them for your needs.
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="accordion-item">
+            <h2 class="accordion-header" id="headingFive">
+              <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseFive" aria-expanded="false" aria-controls="collapseFive">
+                <strong>Step 5: Review & Complete</strong>
+              </button>
+            </h2>
+            <div id="collapseFive" class="accordion-collapse collapse" aria-labelledby="headingFive" data-bs-parent="#wizardAccordion">
+              <div class="accordion-body">
+                <p>Like the final checks before launching your space mission, review everything:</p>
+                <ul>
+                  <li>Confirm your agent configuration is correct</li>
+                  <li>Review entity definitions</li>
+                  <li>Check prompt templates</li>
+                  <li>Verify response formats</li>
+                </ul>
+                <p>Click "Complete Setup" to finalize your agent and make it available in the system.</p>
+                <div class="alert alert-info">
+                  <strong>Cosmic Tip:</strong> After completion, test your agent by asking relevant questions on the home page. If something doesn't work as expected, you can edit the agent configuration later.
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <h5>Double-Click: Navigation Controls</h5>
+        <p>The wizard provides these navigation options:</p>
+        <ul>
+          <li><strong>Previous/Next:</strong> Move between steps</li>
+          <li><strong>Save & Continue:</strong> Save your current progress and advance to the next step</li>
+          <li><strong>Save as Template:</strong> Available from Step 2 onward, allows you to save your current configuration as a template for future use</li>
+          <li><strong>Complete Setup:</strong> In the final step, finishes the agent configuration</li>
+        </ul>
+        
+        <h5>Triple-Click: Behind the Scenes</h5>
+        <p>When you complete the wizard, these technical processes occur:</p>
+        <ol>
+          <li>Your agent configuration is stored in the database as a <code>CustomAgent</code> record</li>
+          <li>Entity definitions are stored as JSON in the <code>entity_definitions</code> field</li>
+          <li>Prompt templates are saved in the <code>prompt_templates</code> field</li>
+          <li>Response formats are saved in the <code>response_formats</code> field</li>
+          <li>The agent is registered with the orchestrator for intent matching</li>
+        </ol>
+      </div>
+    </div>
+  </div>
+
+  <!-- Entity Collection Section -->
+  <div class="row mb-5" id="entity-collection">
+    <div class="col-lg-8 offset-lg-2">
+      <h2 class="border-bottom pb-2">Entity Collection: Gathering Stardust</h2>
+      
+      <div class="mt-4">
+        <p>Think of entities as the essential elements that make up celestial bodies. Just as astronomers need specific data about stars, planets, and moons, our agents need specific pieces of information to function properly.</p>
+        
+        <div class="card mb-4">
+          <div class="card-header bg-primary text-white">
+            <h5 class="mb-0">The Entity Collection Framework</h5>
+          </div>
+          <div class="card-body">
+            <p>Our system uses a sophisticated approach to gather information from users, just as astronomers use different instruments to collect data about celestial objects:</p>
+            <ol>
+              <li><strong>Initial Extraction:</strong> The system first tries to identify all required entities from the user's initial message</li>
+              <li><strong>Follow-up Questions:</strong> If any required entities are missing, the agent asks targeted questions to collect them</li>
+              <li><strong>Validation:</strong> Each entity is checked against its validation pattern to ensure accuracy</li>
+              <li><strong>Storage:</strong> Once collected, entities are stored for use in processing the request</li>
+            </ol>
+          </div>
+        </div>
+        
+        <h5>Double-Click: Entity Types and Validation</h5>
+        <p>Like different types of celestial objects, entities come in various forms:</p>
+        <div class="table-responsive">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Entity Type</th>
+                <th>Example</th>
+                <th>Validation Pattern</th>
+                <th>Purpose</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Tracking Numbers</td>
+                <td>1Z999AA10123456784</td>
+                <td><code>(1Z[0-9A-Z]{16})|(\d{12,14})</code></td>
+                <td>Package tracking</td>
+              </tr>
+              <tr>
+                <td>Email Addresses</td>
+                <td>user@example.com</td>
+                <td><code>[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}</code></td>
+                <td>User identification, reset password</td>
+              </tr>
+              <tr>
+                <td>ZIP Codes</td>
+                <td>10001</td>
+                <td><code>\d{5}(-\d{4})?</code></td>
+                <td>Store location</td>
+              </tr>
+              <tr>
+                <td>Order Numbers</td>
+                <td>ST-12345678</td>
+                <td><code>ST-\d{8}</code></td>
+                <td>Order tracking, returns</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        
+        <h5>Triple-Click: The Collection Algorithm</h5>
+        <p>For those who want to understand the gravitational equations of our system, here's the entity collection algorithm:</p>
+        <div class="card bg-dark text-light mb-4">
+          <div class="card-body">
+            <pre class="mb-0"><code>def collect_entities(self, conversation):
+    """
+    Interactive entity collection process.
+    
+    1. Extract entities from initial message
+    2. Identify missing required entities
+    3. For each missing entity:
+       a. Generate follow-up question
+       b. Process user response
+       c. Validate extracted entity
+       d. If valid, add to collected entities
+       e. If invalid, provide error and ask again
+    4. Continue until all required entities collected
+       or max attempts reached
+    5. Return collected entities
+    """</code></pre>
+          </div>
+        </div>
+        
+        <div class="alert alert-warning">
+          <h5 class="alert-heading">Common Problems & Solutions</h5>
+          <p>Even in the most well-planned space missions, issues can arise:</p>
+          <ul class="mb-0">
+            <li><strong>Entity Not Recognized:</strong> Improve your entity examples and description</li>
+            <li><strong>Invalid Format Responses:</strong> Refine your validation patterns and error messages</li>
+            <li><strong>Endless Follow-up Loops:</strong> Check if your validation pattern is too strict</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Templates Section -->
+  <div class="row mb-5" id="templates">
+    <div class="col-lg-8 offset-lg-2">
+      <h2 class="border-bottom pb-2">Templates: Celestial Blueprints</h2>
+      
+      <div class="mt-4">
+        <p>Just as astronomers use star charts to navigate the cosmos, you can use templates to quickly create new agents based on proven designs.</p>
+        
+        <div class="card mb-4 border-0 bg-light">
+          <div class="card-body">
+            <h5 class="text-primary"><i class="bi bi-stars"></i> The Template Gallery</h5>
+            <p>The Template Gallery is your catalog of cosmic blueprints – pre-configured agent designs that you can use as starting points for your own creations.</p>
+            <a href="/template-gallery" class="btn btn-primary">Visit Template Gallery</a>
+          </div>
+        </div>
+        
+        <div class="row mb-4">
+          <div class="col-md-6">
+            <div class="card h-100">
+              <div class="card-header">
+                <h5 class="mb-0">Using Templates</h5>
+              </div>
+              <div class="card-body">
+                <p>Templates are like pre-mapped star systems:</p>
+                <ol>
+                  <li>Browse the template gallery</li>
+                  <li>Select a template that matches your needs</li>
+                  <li>Click "Use Template" to create a new agent</li>
+                  <li>Customize the pre-filled configuration</li>
+                  <li>Complete the setup process</li>
+                </ol>
+              </div>
+            </div>
+          </div>
+          
+          <div class="col-md-6">
+            <div class="card h-100">
+              <div class="card-header">
+                <h5 class="mb-0">Creating Templates</h5>
+              </div>
+              <div class="card-body">
+                <p>Share your discoveries with others:</p>
+                <ol>
+                  <li>Build an agent using the wizard</li>
+                  <li>At any step after Step 1, click the "Save as Template" button</li>
+                  <li>Enter template details in the modal dialog</li>
+                  <li>Click "Save Template" to add it to the gallery</li>
+                </ol>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <h5>Double-Click: Template Categories</h5>
+        <p>Like different types of celestial phenomena, templates are organized into categories:</p>
+        <ul>
+          <li><strong>Customer Service:</strong> Templates for handling customer inquiries and support</li>
+          <li><strong>Sales:</strong> Templates focused on product recommendations and sales assistance</li>
+          <li><strong>Support:</strong> Templates for technical support and troubleshooting</li>
+          <li><strong>Order Tracking:</strong> Templates specialized for order and shipment tracking</li>
+          <li><strong>Product Information:</strong> Templates for providing detailed product data</li>
+          <li><strong>Custom:</strong> User-created templates that don't fit standard categories</li>
+        </ul>
+        
+        <h5>Triple-Click: Template Storage</h5>
+        <p>From a technical perspective, templates are stored in the <code>AgentTemplate</code> model with these key fields:</p>
+        <ul>
+          <li><code>name</code>: The template name</li>
+          <li><code>description</code>: Detailed description of the template's purpose</li>
+          <li><code>category</code>: Classification grouping (e.g., 'customer-service')</li>
+          <li><code>tags</code>: Comma-separated keywords for searching</li>
+          <li><code>configuration</code>: JSON blob with agent configuration</li>
+          <li><code>entity_definitions</code>: JSON blob with entity definitions</li>
+          <li><code>prompt_templates</code>: JSON blob with prompt templates</li>
+          <li><code>response_formats</code>: JSON blob with response format definitions</li>
+          <li><code>business_rules</code>: JSON blob with business logic rules</li>
+          <li><code>is_featured</code>: Boolean indicating if this is a featured template</li>
+          <li><code>is_system</code>: Boolean indicating if this is a system-provided template</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- Advanced Concepts Section -->
+  <div class="row mb-5" id="advanced">
+    <div class="col-lg-8 offset-lg-2">
+      <h2 class="border-bottom pb-2">Advanced Concepts: Venturing to the Edge of the Universe</h2>
+      
+      <div class="mt-4">
+        <p>For those ready to explore the furthest reaches of our AI cosmos, here are some advanced concepts:</p>
+        
+        <div class="accordion mb-4" id="advancedAccordion">
+          <div class="accordion-item">
+            <h2 class="accordion-header" id="headingIntent">
+              <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseIntent" aria-expanded="false" aria-controls="collapseIntent">
+                <strong>Intent Handling & Orchestration</strong>
+              </button>
+            </h2>
+            <div id="collapseIntent" class="accordion-collapse collapse" aria-labelledby="headingIntent" data-bs-parent="#advancedAccordion">
+              <div class="accordion-body">
+                <p>Like the cosmic forces that govern interactions between celestial bodies, our orchestration layer determines which agent should handle a user request:</p>
+                <ol>
+                  <li><strong>Intent Detection:</strong> Using advanced LLM techniques to understand user intent</li>
+                  <li><strong>Confidence Scoring:</strong> Each agent is assigned a confidence score for the current request</li>
+                  <li><strong>Agent Selection:</strong> The agent with the highest confidence above threshold is selected</li>
+                  <li><strong>Contextual Boosting:</strong> Previous conversation context can boost certain agents' scores</li>
+                  <li><strong>Fallback Mechanisms:</strong> When no agent meets the threshold, a general response is provided</li>
+                </ol>
+                <div class="alert alert-info">
+                  <p>The intent handler generates a detailed analysis of the user's request, extracting not just the primary intent but also secondary intents and sentiment.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="accordion-item">
+            <h2 class="accordion-header" id="headingTelemetry">
+              <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTelemetry" aria-expanded="false" aria-controls="collapseTelemetry">
+                <strong>Telemetry & Observability</strong>
+              </button>
+            </h2>
+            <div id="collapseTelemetry" class="accordion-collapse collapse" aria-labelledby="headingTelemetry" data-bs-parent="#advancedAccordion">
+              <div class="accordion-body">
+                <p>Just as astronomers monitor the cosmos for new phenomena, our system tracks agent performance:</p>
+                <ul>
+                  <li><strong>Request Logging:</strong> All requests and responses are logged for analysis</li>
+                  <li><strong>Performance Metrics:</strong> Response times, success rates, and confidence scores are tracked</li>
+                  <li><strong>LangSmith Integration:</strong> Detailed traces of LLM calls and agent execution</li>
+                  <li><strong>Prometheus Integration:</strong> Real-time metrics exposed for monitoring systems</li>
+                  <li><strong>Analytics Dashboard:</strong> Visual representation of agent performance</li>
+                </ul>
+                <p>Visit the Dashboard page to view comprehensive metrics about your agents' performance.</p>
+              </div>
+            </div>
+          </div>
+          
+          <div class="accordion-item">
+            <h2 class="accordion-header" id="headingLLM">
+              <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseLLM" aria-expanded="false" aria-controls="collapseLLM">
+                <strong>LLM Integration & Prompt Engineering</strong>
+              </button>
+            </h2>
+            <div id="collapseLLM" class="accordion-collapse collapse" aria-labelledby="headingLLM" data-bs-parent="#advancedAccordion">
+              <div class="accordion-body">
+                <p>Like the delicate calibration of a powerful telescope, prompt engineering is crucial for agent performance:</p>
+                <ul>
+                  <li><strong>System Prompts:</strong> Define the agent's personality and capabilities</li>
+                  <li><strong>Few-Shot Learning:</strong> Providing examples helps the LLM understand patterns</li>
+                  <li><strong>Chain-of-Thought:</strong> Guiding the LLM through logical reasoning steps</li>
+                  <li><strong>Output Formatting:</strong> Ensuring consistent, structured responses</li>
+                </ul>
+                <div class="card bg-light mb-3">
+                  <div class="card-body">
+                    <h6 class="card-title">Prompt Template Variables</h6>
+                    <p class="card-text">These variables are available in prompt templates:</p>
+                    <ul class="mb-0">
+                      <li><code>{user_input}</code>: The user's message</li>
+                      <li><code>{entity_list}</code>: List of entities to extract</li>
+                      <li><code>{conversation_history}</code>: Previous messages</li>
+                      <li><code>{extracted_entities}</code>: Entities already extracted</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="accordion-item">
+            <h2 class="accordion-header" id="headingIntegration">
+              <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseIntegration" aria-expanded="false" aria-controls="collapseIntegration">
+                <strong>External Integrations</strong>
+              </button>
+            </h2>
+            <div id="collapseIntegration" class="accordion-collapse collapse" aria-labelledby="headingIntegration" data-bs-parent="#advancedAccordion">
+              <div class="accordion-body">
+                <p>Like establishing communication with distant star systems, our platform connects with external services:</p>
+                <ul>
+                  <li><strong>Kore.ai:</strong> Integration with external conversational platforms</li>
+                  <li><strong>Salesforce:</strong> Connecting to customer data and service systems</li>
+                  <li><strong>Databricks:</strong> Advanced analytics and data processing</li>
+                  <li><strong>Twilio:</strong> SMS notification capabilities</li>
+                </ul>
+                <p>Integration points are available through our API endpoints, allowing external systems to invoke specific agents or the entire orchestration layer.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="card border-primary mb-4">
+          <div class="card-header bg-primary text-white">
+            <h5 class="mb-0">Future Horizons: What's Coming Next</h5>
+          </div>
+          <div class="card-body">
+            <p>Like astronomers looking deeper into space, we're exploring new frontiers:</p>
+            <div class="row">
+              <div class="col-md-6">
+                <ul>
+                  <li><strong>Visual Flow Designer:</strong> Graphical interface for complex agent workflows</li>
+                  <li><strong>Collaborative Features:</strong> Team-based agent development</li>
+                  <li><strong>Advanced Entity Validation:</strong> Context-aware validation rules</li>
+                  <li><strong>Integration Marketplace:</strong> Pre-built connections to external systems</li>
+                </ul>
+              </div>
+              <div class="col-md-6">
+                <ul>
+                  <li><strong>Hierarchical Entities:</strong> Complex nested entity structures</li>
+                  <li><strong>A/B Testing:</strong> Compare different agent configurations</li>
+                  <li><strong>Learning Improvements:</strong> Agents that improve from user interactions</li>
+                  <li><strong>Multi-modal Support:</strong> Handling images and other input types</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div class="row mt-5">
+    <div class="col-lg-8 offset-lg-2">
+      <div class="border-top pt-4 text-muted">
+        <p>"The universe is under no obligation to make sense to you. But with Staples Brain, we can at least make customer service more intelligible." - Inspired by Neil deGrasse Tyson</p>
+        <p class="small">© 2025 Staples Brain Documentation</p>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  // Initialize tooltips
+  document.addEventListener('DOMContentLoaded', function() {
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+      return new bootstrap.Tooltip(tooltipTriggerEl)
+    });
+    
+    // Smooth scrolling for anchor links
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+      anchor.addEventListener('click', function (e) {
+        e.preventDefault();
+        
+        document.querySelector(this.getAttribute('href')).scrollIntoView({
+          behavior: 'smooth'
+        });
+      });
+    });
+  });
+</script>
+{% endblock %}
