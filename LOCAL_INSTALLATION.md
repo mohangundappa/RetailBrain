@@ -112,8 +112,8 @@ If you still encounter dependency conflicts, try installing the packages one by 
 # Core packages first
 pip install flask flask-sqlalchemy flask-login psycopg2-binary
 
-# Then langchain
-pip install langchain langchain-core langchain-community langchain-openai
+# Then langchain - note the order is important to resolve dependencies correctly
+pip install langchain-core langchain-community langchain-openai langchain
 
 # Then other packages
 pip install openai flask-cors gunicorn prometheus-client
@@ -137,4 +137,14 @@ If you can't connect to the database, make sure:
 
 ### LangChain Warnings
 
-You may see warnings about deprecated LangChain methods. These are informational only and don't affect functionality.
+You may see warnings about deprecated LangChain methods, like warning about ChatOpenAI being imported from langchain_community rather than langchain_openai. This is due to LangChain's modular restructuring. Make sure to use the correct imports as follows:
+
+```python
+# Old/deprecated imports
+from langchain_community.chat_models import ChatOpenAI  # Will show deprecation warning
+
+# New/recommended imports
+from langchain_openai import ChatOpenAI  # Correct import
+```
+
+These warnings are informational and don't affect functionality, but it's best to use the latest import patterns to future-proof your code.

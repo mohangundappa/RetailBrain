@@ -43,8 +43,8 @@ def check_python_version():
         return False
     
     if version_info.major == 3 and version_info.minor >= 12:
-        print("WARNING: Python 3.12 is new and some packages may not be fully compatible.")
-        print("This script will use special compatibility measures for Python 3.12.")
+        print("INFO: Python 3.12 detected. Using special compatibility measures.")
+        print("This includes ordering package installations correctly to avoid dependency conflicts.")
         return "3.12+"
     
     return True
@@ -79,18 +79,18 @@ def install_dependencies_incrementally():
         "gunicorn==21.2.0",
     ]
     
-    # LangChain dependencies
+    # LangChain dependencies (order is important to resolve dependencies correctly)
     langchain_packages = [
-        "langchain-core==0.1.8",
-        "langchain==0.0.335",
-        "langchain-community==0.0.16",
+        "langchain-core==0.1.18",
+        "langchain-community==0.0.18",
         "langchain-openai==0.0.5",
+        "langchain==0.0.335",
     ]
     
     # AI and API dependencies
     ai_packages = [
-        "openai==1.3.7",
-        "langsmith==0.0.78",
+        "openai==1.6.1",
+        "langsmith==0.0.83",
     ]
     
     # Utility packages

@@ -99,7 +99,7 @@ for package in packages:
 # Step 5: Install OpenAI and LangSmith
 print_step("Installing OpenAI and LangSmith")
 packages = [
-    "openai==1.6.1",
+    "openai==1.6.1",  # Version 1.6.1 is compatible with current langchain versions
     "langsmith==0.0.83",
 ]
 

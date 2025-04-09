@@ -36,7 +36,7 @@ class StaplesBrain:
         try:
             if OPENAI_API_KEY:
                 # Use actual OpenAI if API key is available
-                from langchain_community.chat_models import ChatOpenAI
+                from langchain_openai import ChatOpenAI
                 self.llm = ChatOpenAI(
                     model_name=OPENAI_MODEL,
                     openai_api_key=OPENAI_API_KEY,
