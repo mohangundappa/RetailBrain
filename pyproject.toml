@@ -21,4 +21,6 @@ dependencies = [
     "flask-cors>=5.0.1",
     "logging>=0.4.9.6",
     "psutil>=7.0.0",
+    "databricks-sdk>=0.49.0",
+    "langsmith>=0.3.27",
 ]

@@ -325,6 +325,39 @@
 </div>
 
 <div class="row mt-4">
+    <!-- External Integrations -->
+    <div class="col-md-12">
+        <div class="card dashboard-card bg-dark">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Telemetry Integrations</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="system-info">
+                            <h6><span class="status-indicator" id="status-prometheus"></span> Prometheus</h6>
+                            <div id="prometheus-status-details">Active</div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="system-info">
+                            <h6><span class="status-indicator" id="status-databricks"></span> Databricks Integration</h6>
+                            <div id="databricks-status-details">Checking...</div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="system-info">
+                            <h6><span class="status-indicator" id="status-langsmith"></span> LangSmith Integration</h6>
+                            <div id="langsmith-status-details">Checking...</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
     <!-- Prometheus Metrics -->
     <div class="col-md-12">
         <div class="card dashboard-card bg-dark">
@@ -706,24 +739,56 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('llm-status-details').textContent = 'Connected (OpenAI)';
         } else {
             llmStatus.className = 'status-indicator status-warning';
-            document.getElementById('llm-status-details').textContent = 'Fallback Mode';
+            document.getElementById('llm-status-details').textContent = 'Not Connected';
         }
         
-        // Memory Status (example threshold: 500MB)
-        // In a real implementation, this would come from actual memory metrics
-        const memoryStatus = document.getElementById('status-memory');
-        const memoryUsage = data.memory_usage || Math.random() * 600; // Simulated for demo
-        const memoryMB = (memoryUsage / (1024 * 1024)).toFixed(2);
+        // Prometheus Status (always active in our setup)
+        const prometheusStatus = document.getElementById('status-prometheus');
+        prometheusStatus.className = 'status-indicator status-healthy';
         
-        if (memoryMB < 400) {
-            memoryStatus.className = 'status-indicator status-healthy';
-        } else if (memoryMB < 600) {
+        // Databricks Status
+        const databricksStatus = document.getElementById('status-databricks');
+        if (data.databricks_integration) {
+            databricksStatus.className = 'status-indicator status-healthy';
+            document.getElementById('databricks-status-details').textContent = 'Connected';
+        } else {
+            databricksStatus.className = 'status-indicator status-inactive';
+            document.getElementById('databricks-status-details').textContent = 'Not Configured';
+        }
+        
+        // LangSmith Status
+        const langsmithStatus = document.getElementById('status-langsmith');
+        if (data.langsmith_integration) {
+            langsmithStatus.className = 'status-indicator status-healthy';
+            document.getElementById('langsmith-status-details').textContent = 'Connected';
+        } else {
+            langsmithStatus.className = 'status-indicator status-inactive';
+            document.getElementById('langsmith-status-details').textContent = 'Not Configured';
+        }
+        
+        // Memory Status (based on memory usage percentage)
+        const memoryStatus = document.getElementById('status-memory');
+        const memoryPercent = data.memory_percent || 0;
+        if (memoryPercent > 85) {
+            memoryStatus.className = 'status-indicator status-critical';
+        } else if (memoryPercent > 70) {
             memoryStatus.className = 'status-indicator status-warning';
         } else {
-            memoryStatus.className = 'status-indicator status-error';
+            memoryStatus.className = 'status-indicator status-healthy';
         }
+        document.getElementById('memory-status-details').textContent = `${memoryPercent.toFixed(1)}% used`;
         
-        document.getElementById('memory-usage-details').textContent = `${memoryMB} MB`;
+        // CPU Status (based on CPU usage percentage)
+        const cpuStatus = document.getElementById('status-cpu');
+        const cpuPercent = data.cpu_percent || 0;
+        if (cpuPercent > 85) {
+            cpuStatus.className = 'status-indicator status-critical';
+        } else if (cpuPercent > 70) {
+            cpuStatus.className = 'status-indicator status-warning';
+        } else {
+            cpuStatus.className = 'status-indicator status-healthy';
+        }
+        document.getElementById('cpu-status-details').textContent = `${cpuPercent.toFixed(1)}% utilized`;
     }
     
     // Function to fetch and update Prometheus metrics

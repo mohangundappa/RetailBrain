@@ -356,6 +356,47 @@ def get_metrics_summary() -> Dict[str, Any]:
     return metrics_store.get_metrics_summary()
 
 
+# Function to initialize external telemetry services
+def initialize_external_telemetry():
+    """Initialize connections to external telemetry services."""
+    # Initialize Databricks telemetry
+    try:
+        from utils.databricks_utils import get_databricks_client, get_or_create_experiment
+        client = get_databricks_client()
+        if client:
+            experiment = get_or_create_experiment()
+            if experiment:
+                logger.info(f"Databricks telemetry initialized with experiment: {experiment.name}")
+            else:
+                logger.warning("Failed to create or retrieve Databricks experiment")
+    except Exception as e:
+        logger.warning(f"Failed to initialize Databricks telemetry: {str(e)}")
+    
+    # Initialize LangSmith telemetry
+    try:
+        from utils.langsmith_utils import get_langsmith_client, get_langchain_tracer
+        client = get_langsmith_client()
+        if client:
+            tracer = get_langchain_tracer()
+            if tracer:
+                logger.info("LangSmith telemetry initialized")
+            else:
+                logger.warning("Failed to create LangChain tracer")
+    except Exception as e:
+        logger.warning(f"Failed to initialize LangSmith telemetry: {str(e)}")
+
+
 # Initial setup
-start_memory_monitoring()
-logger.info("Observability module initialized")
+def initialize():
+    """Initialize all observability components."""
+    # Start resource monitoring
+    start_memory_monitoring()
+    
+    # Initialize external telemetry
+    initialize_external_telemetry()
+    
+    logger.info("Observability module initialized")
+
+
+# Auto-initialize on import
+initialize()

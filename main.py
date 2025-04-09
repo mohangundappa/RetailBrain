@@ -778,6 +778,15 @@ def dashboard_metrics():
         # Add LLM integration status
         metrics_data['llm_integration'] = os.environ.get("OPENAI_API_KEY") is not None
         
+        # Add Databricks integration status
+        metrics_data['databricks_integration'] = (
+            os.environ.get("DATABRICKS_HOST") is not None 
+            and os.environ.get("DATABRICKS_TOKEN") is not None
+        )
+        
+        # Add LangSmith integration status
+        metrics_data['langsmith_integration'] = os.environ.get("LANGSMITH_API_KEY") is not None
+        
         # Add current active conversations (simulate for now)
         active_count = Conversation.query.filter(Conversation.created_at >= datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)).count()
         update_active_conversations(active_count)
