@@ -60,12 +60,19 @@ class TestApiRoutes(unittest.TestCase):
         
     def tearDown(self):
         """Clean up after each test"""
-        # Remove test agent if it exists
+        # Remove all test agents created by tests
         with app.app_context():
+            # Delete original test agent
             test_agent = CustomAgent.query.filter_by(name='Test Agent').first()
             if test_agent:
                 db.session.delete(test_agent)
-                db.session.commit()
+            
+            # Delete updated test agent
+            updated_agent = CustomAgent.query.filter_by(name='Updated Test Agent').first()
+            if updated_agent:
+                db.session.delete(updated_agent)
+                
+            db.session.commit()
     
     def test_agent_creation(self):
         """Test creating a new agent"""
