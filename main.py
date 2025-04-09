@@ -2,19 +2,43 @@ import os
 import logging
 import asyncio
 import uuid
+import time
 from datetime import datetime
-from flask import Flask, render_template, jsonify, request, session
+from flask import Flask, render_template, jsonify, request, session, Response, g
+from flask_cors import CORS
+from prometheus_client import CONTENT_TYPE_LATEST
 from brain.intent_handler import IntentHandler
 from brain.planner import ExecutionPlanner
 from models import db, Conversation, Message, PackageTracking, PasswordReset, AgentConfig, AnalyticsData
+from utils.observability import (
+    get_prometheus_metrics, 
+    record_intent_classification, 
+    record_agent_selection,
+    record_llm_request,
+    record_error,
+    update_active_conversations,
+    get_metrics_summary,
+    TimingContext,
+    logger
+)
+from utils.middleware import MetricsMiddleware
 
-# Configure logging
-logging.basicConfig(level=logging.DEBUG, 
-                  format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+# Configure logging to file and console
+logging.basicConfig(
+    level=logging.DEBUG,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(),
+        logging.FileHandler("staples_brain.log")
+    ]
+)
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SESSION_SECRET", "staples-brain-secret-key")
+
+# Enable CORS for API endpoints
+CORS(app, resources={r"/api/*": {"origins": "*"}})
 
 # Configure database
 app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("DATABASE_URL")
@@ -23,6 +47,9 @@ app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
     "pool_pre_ping": True,
 }
 db.init_app(app)
+
+# Apply metrics middleware
+MetricsMiddleware(app)
 
 # Create database tables
 with app.app_context():
@@ -226,6 +253,7 @@ def get_conversation(conversation_id):
 @app.route('/api/process', methods=["POST"])
 def process_request():
     """Process a user request with LLM-based intent identification."""
+    start_time = time.time()
     data = request.json
     
     if not data or "input" not in data:
@@ -244,17 +272,22 @@ def process_request():
     
     # Run the async planning process in a new event loop
     try:
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        
-        # Create a plan using the intent handler and planner
-        plan_result = loop.run_until_complete(planner.create_plan(user_input))
-        loop.close()
-        
-        intent = plan_result.get("intent", "unknown")
-        confidence = plan_result.get("confidence", 0.0)
-        
-        logger.info(f"Identified intent: {intent} with confidence {confidence}")
+        # Track the process with metrics
+        with TimingContext('intent_classification', {'session_id': session_id}):
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            
+            # Create a plan using the intent handler and planner
+            plan_result = loop.run_until_complete(planner.create_plan(user_input))
+            loop.close()
+            
+            intent = plan_result.get("intent", "unknown")
+            confidence = plan_result.get("confidence", 0.0)
+            
+            # Record intent classification metrics
+            record_intent_classification(intent, confidence)
+            
+            logger.info(f"Identified intent: {intent} with confidence {confidence}")
         
         # If no suitable intent was found or confidence is too low
         if intent == "unknown" or confidence < 0.3:
@@ -327,10 +360,19 @@ def process_request():
                 llm = ChatOpenAI(model="gpt-4o", temperature=0.7)
                 chain = prompt | llm
                 
-                llm_response = loop.run_until_complete(chain.ainvoke({
-                    "query": user_input,
-                    "tracking_info": str(tracking_info)
-                }))
+                # Track LLM request metrics
+                with TimingContext('llm_request', {'model': 'gpt-4o', 'endpoint': 'completion'}):
+                    llm_response = loop.run_until_complete(chain.ainvoke({
+                        "query": user_input,
+                        "tracking_info": str(tracking_info)
+                    }))
+                    
+                    # Estimate token usage 
+                    prompt_tokens = len(template) // 4  # Rough estimate
+                    completion_tokens = len(llm_response.content) // 4  # Rough estimate
+                    
+                    # Record token usage
+                    record_llm_request('gpt-4o', 'completion', prompt_tokens, completion_tokens)
                 
                 response_text = llm_response.content
             else:
@@ -583,6 +625,9 @@ def track_package():
     """Track a package directly."""
     data = request.json
     
+    # Record agent selection metric
+    record_agent_selection("Package Tracking Agent")
+    
     # Extract tracking number if provided
     tracking_number = data.get("tracking_number", "TRACK123456") if data else "TRACK123456"
     query = data.get("query", f"Track my package {tracking_number}") if data else f"Track my package {tracking_number}"
@@ -650,6 +695,9 @@ def reset_password():
     """Reset password directly."""
     data = request.json
     
+    # Record agent selection metric
+    record_agent_selection("Reset Password Agent")
+    
     # Extract email if provided
     email = data.get("email", "user@example.com") if data else "user@example.com"
     query = data.get("query", f"Reset password for {email}") if data else f"Reset password for {email}"
@@ -707,6 +755,43 @@ def reset_password():
         },
         "success": True
     })
+
+# Dashboard route
+@app.route('/dashboard', methods=["GET"])
+def dashboard():
+    """Render the observability dashboard."""
+    return render_template('dashboard.html')
+
+# Prometheus metrics endpoint
+@app.route('/metrics', methods=["GET"])
+def metrics():
+    """Provide Prometheus metrics endpoint."""
+    return Response(get_prometheus_metrics()[0], mimetype=CONTENT_TYPE_LATEST)
+
+# Dashboard metrics API endpoint
+@app.route('/api/metrics/dashboard', methods=["GET"])
+def dashboard_metrics():
+    """Provide metrics for the dashboard."""
+    try:
+        metrics_data = get_metrics_summary()
+        
+        # Add LLM integration status
+        metrics_data['llm_integration'] = os.environ.get("OPENAI_API_KEY") is not None
+        
+        # Add current active conversations (simulate for now)
+        active_count = Conversation.query.filter(Conversation.created_at >= datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)).count()
+        update_active_conversations(active_count)
+        
+        return jsonify({
+            "success": True,
+            "metrics": metrics_data
+        })
+    except Exception as e:
+        logger.error(f"Error getting dashboard metrics: {str(e)}")
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)

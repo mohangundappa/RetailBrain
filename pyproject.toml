@@ -17,4 +17,8 @@ dependencies = [
     "psycopg2-binary>=2.9.10",
     "flask-login>=0.6.3",
     "sqlalchemy>=2.0.40",
+    "prometheus-client>=0.21.1",
+    "flask-cors>=5.0.1",
+    "logging>=0.4.9.6",
+    "psutil>=7.0.0",
 ]
