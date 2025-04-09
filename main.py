@@ -11,7 +11,7 @@ from flask_cors import CORS
 from prometheus_client import CONTENT_TYPE_LATEST
 from brain.intent_handler import IntentHandler
 from brain.planner import ExecutionPlanner
-from models import db, Conversation, Message, PackageTracking, PasswordReset, StoreLocator, ProductInfo, AgentConfig, AnalyticsData, CustomAgent
+from models import db, Conversation, Message, PackageTracking, PasswordReset, StoreLocator, ProductInfo, AgentConfig, AnalyticsData, CustomAgent, AgentTemplate
 from utils.memory import ConversationMemory
 from utils.observability import (
     get_prometheus_metrics, 
@@ -1254,26 +1254,47 @@ def agent_wizard(agent_id=None, step=1):
     if step < 1 or step > 5:
         step = 1
     
+    # Check if we're starting from a template
+    template_id = request.args.get('template_id')
+    template = None
+    if template_id:
+        template = AgentTemplate.query.get(template_id)
+        # Increment the download count
+        if template:
+            template.downloads += 1
+            db.session.commit()
+    
     # If no agent_id, we're creating a new agent
     if agent_id is None:
-        # Create a new agent with default values
+        # Set up default values
+        name = "New Agent"
+        description = ""
+        configuration = json.dumps({"agent_type": "custom"})
+        entity_definitions = json.dumps([])
+        prompt_templates = json.dumps({})
+        response_formats = json.dumps({})
+        business_rules = json.dumps([])
+        
+        # If we're using a template, copy its values
+        if template:
+            name = f"Copy of {template.name}"
+            description = template.description
+            configuration = template.configuration or configuration
+            entity_definitions = template.entity_definitions or entity_definitions
+            prompt_templates = template.prompt_templates or prompt_templates
+            response_formats = template.response_formats or response_formats
+            business_rules = template.business_rules or business_rules
+        
+        # Create a new agent with the values
         new_agent = CustomAgent(
-            name="New Agent",
-            description="",
+            name=name,
+            description=description,
             is_active=True,
-            configuration=json.dumps({"agent_type": "custom"}),
-            entity_definitions=json.dumps([]),
-            prompt_templates=json.dumps({
-                "system": "You are a helpful assistant.",
-                "entity_extraction": "Extract the following entities from the user query:",
-                "response_generation": "Generate a helpful response based on the extracted entities."
-            }),
-            response_formats=json.dumps({
-                "schema": '{\n  "response": "string",\n  "confidence": "number"\n}',
-                "enforce_schema": True,
-                "template": "{{ response }}"
-            }),
-            business_rules=json.dumps([])
+            configuration=configuration,
+            entity_definitions=entity_definitions,
+            prompt_templates=prompt_templates,
+            response_formats=response_formats,
+            business_rules=business_rules
         )
         
         # Save to get an ID
@@ -1419,6 +1440,193 @@ def agent_wizard_save(agent_id, step):
     
     # Redirect to the next step
     return redirect(url_for('agent_wizard', agent_id=agent_id, step=step+1))
+
+@app.route('/template-gallery', methods=["GET"])
+def template_gallery():
+    """Render the agent template gallery."""
+    # Get featured templates
+    featured_templates = AgentTemplate.query.filter_by(is_featured=True).all()
+    
+    # Get all templates
+    templates = AgentTemplate.query.filter_by(is_featured=False).all()
+    
+    return render_template('template_gallery.html', 
+                          featured_templates=featured_templates,
+                          templates=templates)
+
+@app.route('/api/templates', methods=["GET"])
+def list_templates():
+    """List all agent templates."""
+    try:
+        # Get filter parameters
+        category = request.args.get('category')
+        tags = request.args.get('tags')
+        sort_by = request.args.get('sort_by', 'featured')
+        
+        # Start with basic query
+        query = AgentTemplate.query
+        
+        # Apply filters
+        if category:
+            query = query.filter_by(category=category)
+            
+        if tags:
+            tag_list = [tag.strip() for tag in tags.split(',')]
+            for tag in tag_list:
+                query = query.filter(AgentTemplate.tags.like(f'%{tag}%'))
+                
+        # Apply sorting
+        if sort_by == 'featured':
+            query = query.order_by(AgentTemplate.is_featured.desc(), AgentTemplate.name)
+        elif sort_by == 'downloads':
+            query = query.order_by(AgentTemplate.downloads.desc())
+        elif sort_by == 'rating':
+            query = query.order_by(AgentTemplate.rating.desc())
+        elif sort_by == 'newest':
+            query = query.order_by(AgentTemplate.created_at.desc())
+        else:
+            query = query.order_by(AgentTemplate.name)
+            
+        # Get templates
+        templates = query.all()
+        
+        # Format the results
+        result = []
+        for template in templates:
+            result.append({
+                "id": template.id,
+                "name": template.name,
+                "description": template.description,
+                "category": template.category,
+                "icon": template.icon,
+                "screenshot": template.screenshot,
+                "is_featured": template.is_featured,
+                "tags": template.tags,
+                "downloads": template.downloads,
+                "rating": template.rating,
+                "rating_count": template.rating_count,
+                "author": template.author,
+                "created_at": template.created_at.isoformat()
+            })
+            
+        return jsonify({
+            "success": True,
+            "templates": result,
+            "count": len(result)
+        })
+    except Exception as e:
+        logger.error(f"Error listing templates: {str(e)}", exc_info=True)
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
+@app.route('/api/templates/<int:template_id>', methods=["GET"])
+def get_template(template_id):
+    """Get a specific agent template with all its configuration data."""
+    try:
+        # Get the template
+        template = AgentTemplate.query.get(template_id)
+        
+        if not template:
+            return jsonify({
+                "success": False,
+                "error": f"Template with ID {template_id} not found"
+            }), 404
+            
+        # Format template data
+        result = {
+            "id": template.id,
+            "name": template.name,
+            "description": template.description,
+            "category": template.category,
+            "icon": template.icon,
+            "screenshot": template.screenshot,
+            "is_featured": template.is_featured,
+            "tags": template.tags,
+            "downloads": template.downloads,
+            "rating": template.rating,
+            "rating_count": template.rating_count,
+            "author": template.author,
+            "created_at": template.created_at.isoformat(),
+            "entity_definitions": template.entity_definitions,
+            "prompt_templates": template.prompt_templates,
+            "response_formats": template.response_formats,
+            "business_rules": template.business_rules
+        }
+        
+        # Increment download count when explicitly requested
+        if request.args.get('track_view') == 'true':
+            template.downloads += 1
+            db.session.commit()
+            
+        return jsonify({
+            "success": True,
+            "template": result
+        })
+    except Exception as e:
+        logger.error(f"Error getting template: {str(e)}", exc_info=True)
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+        
+@app.route('/api/save-as-template', methods=["POST"])
+def save_as_template():
+    """Save a custom agent as a reusable template."""
+    try:
+        data = request.json
+        
+        if not data or "agent_id" not in data:
+            return jsonify({
+                "success": False,
+                "error": "Missing required field: agent_id"
+            }), 400
+            
+        agent_id = data.get("agent_id")
+        agent = CustomAgent.query.get(agent_id)
+        
+        if not agent:
+            return jsonify({
+                "success": False,
+                "error": f"Agent with ID {agent_id} not found"
+            }), 404
+            
+        # Create a new template from the agent
+        template = AgentTemplate(
+            name=data.get("name") or f"Template: {agent.name}",
+            description=data.get("description") or agent.description,
+            category=data.get("category", "custom"),
+            icon=data.get("icon", "fas fa-robot"),
+            tags=data.get("tags", "custom"),
+            is_featured=False,
+            is_system=False,
+            configuration=agent.configuration,
+            entity_definitions=agent.entity_definitions,
+            prompt_templates=agent.prompt_templates,
+            response_formats=agent.response_formats,
+            business_rules=agent.business_rules,
+            author=data.get("author", "User"),
+            downloads=0,
+            rating=0,
+            rating_count=0
+        )
+        
+        db.session.add(template)
+        db.session.commit()
+        
+        # Return the new template ID
+        return jsonify({
+            "success": True,
+            "template_id": template.id,
+            "message": f"Successfully saved agent '{agent.name}' as template '{template.name}'"
+        })
+    except Exception as e:
+        logger.error(f"Error saving template: {str(e)}", exc_info=True)
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
 
 @app.route('/dashboard', methods=["GET"])
 def dashboard():

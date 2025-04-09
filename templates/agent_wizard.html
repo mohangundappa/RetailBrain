@@ -390,7 +390,13 @@
               <div></div>
               {% endif %}
               
-              <div>
+              <div class="d-flex">
+                {% if current_step > 1 %}
+                <button type="button" id="save-as-template-btn" class="btn btn-outline-info me-2">
+                  <i class="bi bi-save"></i> Save as Template
+                </button>
+                {% endif %}
+                
                 {% if current_step < 5 %}
                 <button type="submit" class="btn btn-primary">
                   Save & Continue <i class="bi bi-arrow-right"></i>
@@ -413,6 +419,124 @@
 {% block scripts %}
 <script>
   document.addEventListener('DOMContentLoaded', function() {
+    // Save as Template functionality
+    const saveAsTemplateBtn = document.getElementById('save-as-template-btn');
+    if (saveAsTemplateBtn) {
+      saveAsTemplateBtn.addEventListener('click', function() {
+        // Create modal if it doesn't exist
+        if (!document.getElementById('save-template-modal')) {
+          const modalHtml = `
+            <div class="modal fade" id="save-template-modal" tabindex="-1" aria-labelledby="saveTemplateModalLabel" aria-hidden="true">
+              <div class="modal-dialog">
+                <div class="modal-content">
+                  <div class="modal-header">
+                    <h5 class="modal-title" id="saveTemplateModalLabel">Save Agent as Template</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                  </div>
+                  <div class="modal-body">
+                    <form id="save-template-form">
+                      <div class="mb-3">
+                        <label for="template-name" class="form-label">Template Name</label>
+                        <input type="text" class="form-control" id="template-name" value="Template: {{ agent.name }}" required>
+                      </div>
+                      <div class="mb-3">
+                        <label for="template-description" class="form-label">Description</label>
+                        <textarea class="form-control" id="template-description" rows="3">{{ agent.description }}</textarea>
+                      </div>
+                      <div class="mb-3">
+                        <label for="template-category" class="form-label">Category</label>
+                        <select class="form-select" id="template-category">
+                          <option value="custom" selected>Custom</option>
+                          <option value="customer-service">Customer Service</option>
+                          <option value="sales">Sales</option>
+                          <option value="support">Support</option>
+                          <option value="order-tracking">Order Tracking</option>
+                          <option value="product-info">Product Information</option>
+                        </select>
+                      </div>
+                      <div class="mb-3">
+                        <label for="template-tags" class="form-label">Tags</label>
+                        <input type="text" class="form-control" id="template-tags" placeholder="orders, tracking, customer">
+                        <div class="form-text">Separate multiple tags with commas</div>
+                      </div>
+                    </form>
+                  </div>
+                  <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="save-template-submit">Save Template</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          `;
+          
+          // Append modal to body
+          const modalContainer = document.createElement('div');
+          modalContainer.innerHTML = modalHtml;
+          document.body.appendChild(modalContainer.firstElementChild);
+          
+          // Add event listener to submit button
+          document.getElementById('save-template-submit').addEventListener('click', function() {
+            const templateName = document.getElementById('template-name').value;
+            if (!templateName) {
+              alert('Template name is required');
+              return;
+            }
+            
+            const templateDescription = document.getElementById('template-description').value;
+            const templateCategory = document.getElementById('template-category').value;
+            const templateTags = document.getElementById('template-tags').value;
+            
+            // Save the template via API
+            fetch('/api/save-as-template', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                agent_id: {{ agent_id }},
+                name: templateName,
+                description: templateDescription,
+                category: templateCategory,
+                tags: templateTags
+              })
+            })
+            .then(response => response.json())
+            .then(data => {
+              if (data.success) {
+                // Hide modal
+                const modal = bootstrap.Modal.getInstance(document.getElementById('save-template-modal'));
+                modal.hide();
+                
+                // Show success alert
+                const alertHtml = `
+                  <div class="alert alert-success alert-dismissible fade show" role="alert">
+                    Template saved successfully! ${data.message}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                  </div>
+                `;
+                document.querySelector('.container').insertAdjacentHTML('afterbegin', alertHtml);
+                
+                // Redirect to template gallery after 2 seconds
+                setTimeout(() => {
+                  window.location.href = '/template-gallery';
+                }, 2000);
+              } else {
+                alert('Error saving template: ' + data.error);
+              }
+            })
+            .catch(error => {
+              console.error('Error saving template:', error);
+              alert('Failed to save template. Please try again.');
+            });
+          });
+        }
+        
+        // Show modal
+        const modal = new bootstrap.Modal(document.getElementById('save-template-modal'));
+        modal.show();
+      });
+    }
     {% if current_step == 2 %}
     // Entity management for Step 2
     const entityContainer = document.getElementById('entity-container');

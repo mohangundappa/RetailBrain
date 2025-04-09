@@ -216,3 +216,63 @@ class ComponentTemplate(db.Model):
     category = db.Column(db.String(64), nullable=True)  # For grouping components
     is_system = db.Column(db.Boolean, default=False)  # If True, can't be deleted/modified by users
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+class AgentTemplate(db.Model):
+    """Model for complete agent templates that users can use as starting points"""
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(128), nullable=False)
+    description = db.Column(db.Text, nullable=True)
+    category = db.Column(db.String(64), nullable=True)  # e.g., 'customer-service', 'sales', 'support'
+    icon = db.Column(db.String(256), nullable=True)
+    screenshot = db.Column(db.String(256), nullable=True)  # URL/path to template screenshot
+    is_featured = db.Column(db.Boolean, default=False)  # Featured templates appear first
+    is_system = db.Column(db.Boolean, default=False)  # If True, can't be deleted/modified by users
+    
+    # Template configuration (stored as JSON)
+    configuration = db.Column(db.Text, nullable=True)  # JSON with agent configuration
+    entity_definitions = db.Column(db.Text, nullable=True)  # JSON with entity definitions and validation rules
+    prompt_templates = db.Column(db.Text, nullable=True)  # JSON with all prompt templates
+    response_formats = db.Column(db.Text, nullable=True)  # JSON with response format definitions
+    business_rules = db.Column(db.Text, nullable=True)  # JSON with business rules
+    
+    # Author information
+    author = db.Column(db.String(128), nullable=True)
+    author_email = db.Column(db.String(256), nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, onupdate=datetime.utcnow)
+    downloads = db.Column(db.Integer, default=0)  # Number of times this template has been used
+    rating = db.Column(db.Float, default=0)  # Average rating (0-5)
+    rating_count = db.Column(db.Integer, default=0)  # Number of ratings
+    
+    # Tags for template (comma-separated)
+    tags = db.Column(db.String(512), nullable=True)
+    
+    def get_entity_definitions(self):
+        """Get parsed entity definitions"""
+        if not self.entity_definitions:
+            return []
+        return json.loads(self.entity_definitions)
+        
+    def get_prompt_templates(self):
+        """Get parsed prompt templates"""
+        if not self.prompt_templates:
+            return {}
+        return json.loads(self.prompt_templates)
+        
+    def get_response_formats(self):
+        """Get parsed response formats"""
+        if not self.response_formats:
+            return {}
+        return json.loads(self.response_formats)
+        
+    def get_business_rules(self):
+        """Get parsed business rules"""
+        if not self.business_rules:
+            return []
+        return json.loads(self.business_rules)
+        
+    def get_tags_list(self):
+        """Get tags as a list"""
+        if not self.tags:
+            return []
+        return [tag.strip() for tag in self.tags.split(',') if tag.strip()]
