@@ -389,16 +389,35 @@ def process_request():
                     record_agent_selection(selected_agent)
                     response = process_with_agent(selected_agent, user_input, session_id, context)
                 else:
-                    # General fallback response
-                    response = {
-                        "response": "I'm sorry, I'm not sure how to help with that. Could you please rephrase your question or select a specific service from the options below?",
-                        "suggested_agents": [
-                            {"id": "package-tracking", "name": "Track a Package"},
-                            {"id": "reset-password", "name": "Reset Password"},
-                            {"id": "store-locator", "name": "Find a Store"},
-                            {"id": "product-info", "name": "Product Information"}
-                        ]
-                    }
+                    # Process with the orchestrator directly - it will handle welcome flows
+                    # and provide appropriate responses when no specific agent is found
+                    try:
+                        # Set up the necessary context for intent handling
+                        intent_context = {
+                            'session_id': session_id,
+                            'intent': intent,
+                            'intent_confidence': confidence
+                        }
+                        
+                        # Let the orchestrator handle the welcome flow or fallbacks
+                        response = asyncio.run(app.staples_brain.orchestrator.process_request(user_input, intent_context))
+                    except Exception as e:
+                        # Fallback if orchestrator fails
+                        logger.error(f"Error using orchestrator for fallback: {str(e)}")
+                        response = {
+                            "response": "Hello! I'm Staples Brain, here to assist you with various Staples-related services. I can help you with:\n\n" +
+                                  "• Tracking your packages and orders\n" +
+                                  "• Resetting your password or account access\n" +
+                                  "• Finding Staples stores near you\n" +
+                                  "• Getting information about Staples products\n\n" +
+                                  "How can I assist you today?",
+                            "suggested_actions": [
+                                {"id": "package-tracking", "name": "Track my package", "description": "Check the status of your order or package"},
+                                {"id": "reset-password", "name": "Reset my password", "description": "Get help with account access or password reset"},
+                                {"id": "store-locator", "name": "Find a store", "description": "Locate Staples stores near you"},
+                                {"id": "product-info", "name": "Product information", "description": "Get details about Staples products"}
+                            ]
+                        }
             
             # Store the conversation
             conv = Conversation(

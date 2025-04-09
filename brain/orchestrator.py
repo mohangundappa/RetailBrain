@@ -2,6 +2,7 @@ import logging
 from typing import Dict, Any, List, Optional, Tuple
 import asyncio
 import json
+import re
 from datetime import datetime, timedelta
 from agents.base_agent import BaseAgent
 from utils.memory import ConversationMemory
@@ -145,10 +146,23 @@ class AgentOrchestrator:
             
             if best_agent is None:
                 logger.warning("No suitable agent found to handle the request")
+                
+                # Create a more friendly response with suggestions
                 return {
-                    "success": False,
-                    "error": "No suitable agent found",
-                    "response": "I'm sorry, I don't have the capability to help with that request at the moment."
+                    "success": True,  # Not treating this as an error, just a redirection
+                    "intent": "welcome",  # Mark this as a welcome/introduction 
+                    "response": "Hello! I'm Staples Brain, here to assist you with various Staples-related services. I can help you with:\n\n" +
+                              "• Tracking your packages and orders\n" +
+                              "• Resetting your password or account access\n" +
+                              "• Finding Staples stores near you\n" +
+                              "• Getting information about Staples products\n\n" +
+                              "How can I assist you today?",
+                    "suggested_actions": [
+                        {"id": "package-tracking", "name": "Track my package", "description": "Check the status of your order or package"},
+                        {"id": "reset-password", "name": "Reset my password", "description": "Get help with account access or password reset"},
+                        {"id": "store-locator", "name": "Find a store", "description": "Locate Staples stores near you"},
+                        {"id": "product-info", "name": "Product information", "description": "Get details about Staples products"}
+                    ]
                 }
             
             logger.info(f"Selected agent '{best_agent.name}' with confidence {confidence:.2f}")
@@ -219,6 +233,44 @@ class AgentOrchestrator:
         best_agent = None
         best_confidence = 0.0
         context_used = False
+        
+        # 0. Check for generic greetings and welcome messages
+        greeting_patterns = [
+            r'^hi\b', r'^hello\b', r'^hey\b', r'^greetings\b', r'^howdy\b',
+            r'^good morning\b', r'^good afternoon\b', r'^good evening\b',
+            r'^how are you\b', r'^what\'s up\b', r'^welcome\b', r'^hola\b'
+        ]
+        
+        # Calculate the length of the user input (in terms of words)
+        # Short inputs are more likely to be greetings
+        word_count = len(user_input.split())
+        
+        # Check if the input appears to be a greeting
+        is_greeting = False
+        for pattern in greeting_patterns:
+            if re.search(pattern, user_input.lower()):
+                is_greeting = True
+                break
+                
+        # If it's a short greeting with no specific request, return our custom welcome agent
+        if is_greeting and word_count <= 5:
+            # Check if we have a previous agent in context - if so, continue that conversation
+            if (context and 'conversation_memory' in context):
+                memory = context['conversation_memory']
+                last_agent_name = memory.get_working_memory('last_selected_agent')
+                
+                if last_agent_name:
+                    for agent in self.agents:
+                        if agent.name == last_agent_name:
+                            logger.info(f"Responding to greeting for an ongoing conversation with agent: {agent.name}")
+                            return agent, 0.8, True
+            
+            # Return the most appropriate agent for handling generic welcome messages
+            # We'll choose the agent dynamically based on the client's role
+            for agent in self.agents:
+                if agent.name == "Store Locator Agent":  # This agent handles general inquiries best
+                    logger.info("Responding to welcome greeting with the Store Locator Agent")
+                    return agent, 0.9, False
         
         # 1. Check if a specific agent is explicitly requested
         if context and "agent_name" in context:
