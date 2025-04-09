@@ -3,8 +3,9 @@ import json
 import os
 from typing import Dict, Any, Optional, List
 import requests
-from langchain.chains import LLMChain
-from langchain.prompts import ChatPromptTemplate
+from langchain_core.prompts import ChatPromptTemplate, PromptTemplate
+from langchain_core.runnables import RunnableSequence
+from langchain_core.output_parsers import StrOutputParser
 from agents.base_agent import BaseAgent, EntityDefinition
 from config import PACKAGE_TRACKING_ENDPOINT
 
@@ -74,12 +75,12 @@ class PackageTrackingAgent(BaseAgent):
         # Set up entity collection for order tracking
         self.setup_entity_definitions()
     
-    def _create_classifier_chain(self) -> LLMChain:
+    def _create_classifier_chain(self) -> RunnableSequence:
         """
         Create a chain to classify if an input is related to order tracking.
         
         Returns:
-            An LLMChain that can classify inputs
+            A RunnableSequence that can classify inputs
         """
         template = """
         You are a Staples Customer Service Representative that determines if a customer query is related to order tracking or package status.
@@ -105,12 +106,12 @@ class PackageTrackingAgent(BaseAgent):
         
         return self._create_chain(template, ["user_input"])
     
-    def _create_tracking_chain(self) -> LLMChain:
+    def _create_tracking_chain(self) -> RunnableSequence:
         """
         Create a chain to extract order number and zip code from user input.
         
         Returns:
-            An LLMChain that can extract tracking details
+            A RunnableSequence that can extract tracking details
         """
         template = """
         You are a Staples Customer Service Representative that extracts package tracking information from customer queries.
@@ -175,13 +176,13 @@ class PackageTrackingAgent(BaseAgent):
         # Set up entity collection with these entities
         self.setup_entity_collection([order_number_entity, zip_code_entity])
     
-    def _create_formatting_chain(self) -> LLMChain:
+    def _create_formatting_chain(self) -> RunnableSequence:
         """
         Create a chain to format the tracking information into a user-friendly response
         in the style of a Staples Customer Service Representative.
         
         Returns:
-            An LLMChain that can format responses with appropriate customer service persona
+            A RunnableSequence that can format responses with appropriate customer service persona
         """
         template = """
         You are a Staples Customer Service Representative specializing in package tracking and order status inquiries.

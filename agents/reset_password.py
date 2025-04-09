@@ -3,8 +3,9 @@ import json
 import os
 from typing import Dict, Any, Optional, List
 import requests
-from langchain.chains import LLMChain
-from langchain.prompts import ChatPromptTemplate
+from langchain_core.prompts import ChatPromptTemplate, PromptTemplate
+from langchain_core.runnables import RunnableSequence
+from langchain_core.output_parsers import StrOutputParser
 from agents.base_agent import BaseAgent, EntityDefinition
 from config import PASSWORD_RESET_ENDPOINT
 
@@ -89,12 +90,12 @@ class ResetPasswordAgent(BaseAgent):
         # Set up entity collection with these entities
         self.setup_entity_collection([email_entity, account_type_entity])
     
-    def _create_classifier_chain(self) -> LLMChain:
+    def _create_classifier_chain(self) -> RunnableSequence:
         """
         Create a chain to classify if an input is related to password reset.
         
         Returns:
-            An LLMChain that can classify inputs
+            A RunnableSequence that can classify inputs
         """
         template = """
         You are an AI assistant that determines if a user's query is related to password reset or account recovery.
@@ -111,12 +112,12 @@ class ResetPasswordAgent(BaseAgent):
         
         return self._create_chain(template, ["user_input"])
     
-    def _create_extraction_chain(self) -> LLMChain:
+    def _create_extraction_chain(self) -> RunnableSequence:
         """
         Create a chain to extract account information from user input.
         
         Returns:
-            An LLMChain that can extract account details
+            A RunnableSequence that can extract account details
         """
         template = """
         You are an AI assistant that extracts account information from user queries about password reset.
@@ -134,13 +135,13 @@ class ResetPasswordAgent(BaseAgent):
         
         return self._create_chain(template, ["user_input"])
     
-    def _create_instruction_chain(self) -> LLMChain:
+    def _create_instruction_chain(self) -> RunnableSequence:
         """
         Create a chain to format password reset instructions into a user-friendly response
         in the style of a Staples Customer Service Representative.
         
         Returns:
-            An LLMChain that can format instructions
+            A RunnableSequence that can format instructions
         """
         template = """
         You are a Staples Customer Service Representative specializing in account recovery and password resets.
@@ -218,8 +219,8 @@ class ResetPasswordAgent(BaseAgent):
             collected_entities = self.get_collected_entity_values()
             
             # Extract account information from user input to get any entities we didn't collect
-            extraction_result = await self.extraction_chain.arun(user_input=user_input)
-            account_info = json.loads(extraction_result)
+            extraction_result = await self.extraction_chain.ainvoke({"user_input": user_input})
+            account_info = json.loads(extraction_result["text"])
             
             # Update account_info with collected entities if present
             if 'email' in collected_entities:
@@ -231,11 +232,12 @@ class ResetPasswordAgent(BaseAgent):
             reset_status = self._get_reset_status(account_info, context)
             
             # Format the response with customer service persona
-            formatted_response = await self.instruction_chain.arun(
-                account_info=json.dumps(account_info, indent=2),
-                reset_status=json.dumps(reset_status, indent=2),
-                user_input=user_input
-            )
+            formatted_result = await self.instruction_chain.ainvoke({
+                "account_info": json.dumps(account_info, indent=2),
+                "reset_status": json.dumps(reset_status, indent=2),
+                "user_input": user_input
+            })
+            formatted_response = formatted_result["text"]
             
             # Apply guardrails to ensure appropriate responses
             corrected_response, violations = self.apply_response_guardrails(formatted_response)
@@ -298,8 +300,8 @@ class ResetPasswordAgent(BaseAgent):
         """
         try:
             # Use the classifier chain to determine confidence
-            confidence_str = self.classifier_chain.run(user_input=user_input).strip()
-            confidence = float(confidence_str)
+            result = self.classifier_chain.invoke({"user_input": user_input})
+            confidence = float(result["text"].strip())
             logger.debug(f"Password reset confidence: {confidence} for input: {user_input}")
             return min(max(confidence, 0.0), 1.0)  # Ensure confidence is between 0 and 1
         except Exception as e:

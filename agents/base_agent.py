@@ -5,8 +5,9 @@ from datetime import datetime
 from typing import Dict, Any, List, Optional, Tuple, Set, Type, Union
 
 from langchain_core.messages import BaseMessage
-from langchain.chains import LLMChain
-from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.runnables import RunnableSequence, RunnableLambda
+from langchain_core.prompts import ChatPromptTemplate, PromptTemplate
+from langchain_core.output_parsers import StrOutputParser
 
 # Import constants for agent names
 from config.agent_constants import (
@@ -472,7 +473,7 @@ class BaseAgent(ABC):
         """
         pass
     
-    def _create_chain(self, template: str, input_variables: List[str]) -> LLMChain:
+    def _create_chain(self, template: str, input_variables: List[str]) -> RunnableSequence:
         """
         Create a simple LLM chain with the given template.
         
@@ -481,10 +482,11 @@ class BaseAgent(ABC):
             input_variables: The variables required by the template
             
         Returns:
-            An LLMChain that can be invoked
+            A RunnableSequence that can be invoked
         """
         prompt = ChatPromptTemplate.from_template(template)
-        return LLMChain(llm=self.llm, prompt=prompt)
+        chain = prompt | self.llm | StrOutputParser()
+        return chain
     
     def add_to_memory(self, message: Dict[str, Any]) -> None:
         """
@@ -897,17 +899,17 @@ Remember: Your goal is to provide excellent customer service while representing 
         else:
             collected_info = "- No information collected yet.\n"
         
-        # Create an LLM chain for generating the prompt
+        # Create a runnable sequence for generating the prompt
         prompt = ChatPromptTemplate.from_template(template)
-        prompt_chain = LLMChain(llm=self.llm, prompt=prompt)
+        prompt_chain = prompt | self.llm | StrOutputParser()
         
         # Generate the follow-up prompt
         try:
-            response = await prompt_chain.arun(
-                user_input=user_input,
-                entity_requirements=entity_reqs,
-                collected_info=collected_info
-            )
+            response = await prompt_chain.ainvoke({
+                "user_input": user_input,
+                "entity_requirements": entity_reqs,
+                "collected_info": collected_info
+            })
             
             # Clean up any excess whitespace or newlines
             follow_up = response.strip()

@@ -6,8 +6,9 @@ import re
 from datetime import datetime
 from typing import Dict, Any, Optional, List, Tuple
 import requests
-from langchain.chains import LLMChain
-from langchain.prompts import ChatPromptTemplate
+from langchain_core.prompts import ChatPromptTemplate, PromptTemplate
+from langchain_core.runnables import RunnableSequence
+from langchain_core.output_parsers import StrOutputParser
 from agents.base_agent import BaseAgent, EntityDefinition
 
 logger = logging.getLogger(__name__)
@@ -81,12 +82,12 @@ class StoreLocatorAgent(BaseAgent):
         # Set up entity collection with these entities
         self.setup_entity_collection([location_entity])
     
-    def _create_classifier_chain(self) -> LLMChain:
+    def _create_classifier_chain(self) -> RunnableSequence:
         """
         Create a chain to classify if an input is related to store locations.
         
         Returns:
-            An LLMChain that can classify inputs
+            A RunnableSequence that can classify inputs
         """
         template = """You are a classifier for Staples customer service. 
         Determine if the following query is related to finding Staples store locations,
@@ -101,12 +102,12 @@ class StoreLocatorAgent(BaseAgent):
         
         return self._create_chain(template, ["query"])
     
-    def _create_extraction_chain(self) -> LLMChain:
+    def _create_extraction_chain(self) -> RunnableSequence:
         """
         Create a chain to extract location information from user input.
         
         Returns:
-            An LLMChain that can extract location details
+            A RunnableSequence that can extract location details
         """
         template = """You are a Staples customer service agent. 
         Extract location information from the user's query.
@@ -124,12 +125,12 @@ class StoreLocatorAgent(BaseAgent):
         
         return self._create_chain(template, ["query"])
     
-    def _create_formatting_chain(self) -> LLMChain:
+    def _create_formatting_chain(self) -> RunnableSequence:
         """
         Create a chain to format the store information into a user-friendly response.
         
         Returns:
-            An LLMChain that can format responses
+            A RunnableSequence that can format responses
         """
         template = """You are a Staples Customer Service Representative helping a customer find a store location.
         
