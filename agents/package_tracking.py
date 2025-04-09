@@ -176,11 +176,11 @@ class PackageTrackingAgent(BaseAgent):
         {user_input}
         
         CONVERSATION FLOW RULES:
-        1. If human_agent_requested is true, respond by saying you'll transfer them to a human agent.
-        2. If both order_number and zip_code are missing, politely ask for both.
-        3. If order_number is missing but zip_code is provided, ask only for the order number.
-        4. If zip_code is missing but order_number is provided, ask only for the zip code.
-        5. If package_status indicates a transfer_to_human flag, inform the customer you're transferring them to a human agent.
+        1. If human_agent_requested is true OR package_status has transfer_to_human set to true, respond by saying you'll transfer them to a human agent who can help locate their order without an order number. DO NOT ask for more information in this case.
+        2. If package_status shows status as "transfer_to_human" or "missing_order_number", tell the customer you're connecting them with a human agent who can help them locate their order using alternative information such as their email address or phone number.
+        3. If both order_number and zip_code are missing (and no transfer is needed), politely ask for both.
+        4. If order_number is missing but zip_code is provided (and no transfer is needed), ask only for the order number.
+        5. If zip_code is missing but order_number is provided (and no transfer is needed), ask only for the zip code.
         6. If there's a delivery issue or the status is "not_found", express concern and offer to connect them with a human agent.
         7. If the status is available, provide a clear summary of the order status in a conversational format.
         
@@ -230,8 +230,28 @@ class PackageTrackingAgent(BaseAgent):
                         "human_agent_requested": False
                     }
                 
+                # Check if the user explicitly stated they don't have or can't find their order number
+                # This requires checking original input for statements about not having order information
+                dont_have_order_number = any(phrase in user_input.lower() for phrase in [
+                    "don't have order", "do not have order", "can't find order", 
+                    "don't have the order", "don't know order", "lost my order", 
+                    "don't have an order", "no order number", "lost order"
+                ])
+                
+                # Set human_agent_requested to True if user doesn't have order number
+                if dont_have_order_number:
+                    tracking_info["human_agent_requested"] = True
+                    package_status = {
+                        "status": "transfer_to_human",
+                        "message": "Customer doesn't have order number - transferring to agent",
+                        "estimated_delivery": None,
+                        "current_location": None,
+                        "last_updated": None,
+                        "transfer_to_human": True,
+                        "human_transfer_reason": "missing_order_number"
+                    }
                 # If no order number is provided, we'll need to handle this gracefully
-                if not tracking_info.get("order_number"):
+                elif not tracking_info.get("order_number"):
                     # Instead of failing, continue with a request for the order number
                     package_status = {
                         "status": "information_needed",
