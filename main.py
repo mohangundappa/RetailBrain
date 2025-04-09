@@ -14,7 +14,7 @@ import uuid
 import time
 import random
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
 from flask import render_template, jsonify, request, session, Response, g, redirect, url_for
 from prometheus_client import CONTENT_TYPE_LATEST
 from langchain_openai import ChatOpenAI
@@ -120,7 +120,10 @@ def index():
         }
         
         # Update metrics for active conversations
-        update_active_conversations()
+        active_count = Conversation.query.filter(
+            Conversation.created_at >= datetime.now() - timedelta(hours=1)
+        ).count()
+        update_active_conversations(active_count)
         
         return render_template('index.html', stats=stats)
     except Exception as e:
