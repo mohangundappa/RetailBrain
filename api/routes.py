@@ -70,7 +70,14 @@ def process_request():
             }), 400
         
         user_input = data["input"]
+        session_id = data.get("session_id")
         context = data.get("context", {})
+        
+        # Add session_id to context if provided
+        if session_id:
+            if not context:
+                context = {}
+            context["session_id"] = session_id
         
         # Get brain instance
         brain = get_brain()
