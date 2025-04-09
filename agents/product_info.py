@@ -59,6 +59,37 @@ class ProductInfoAgent(BaseAgent):
         self._extraction_chain = self._create_extraction_chain()
         self._formatting_chain = self._create_formatting_chain()
         
+        # Setup entity collection
+        from agents.base_agent import EntityDefinition
+        
+        # Set up entity definitions
+        product_name = EntityDefinition(
+            name="product_name",
+            required=True,
+            description="The name or type of product you're looking for",
+            examples=["HP printer", "office chair", "paper", "filing cabinet"],
+            alternate_names=["product", "item", "what product"]
+        )
+        
+        category = EntityDefinition(
+            name="category",
+            required=False,
+            description="Product category",
+            examples=["office supplies", "technology", "furniture"],
+            alternate_names=["type", "department"]
+        )
+        
+        price_range = EntityDefinition(
+            name="price_range",
+            required=False,
+            description="Your budget or price range",
+            examples=["under $100", "$50-$200"],
+            alternate_names=["budget", "cost", "price"]
+        )
+        
+        # Setup entity collection with these entities
+        self.setup_entity_collection([product_name, category, price_range])
+        
         logger.info("Product Information Agent initialized")
     
     def _create_classifier_chain(self) -> LLMChain:
@@ -274,6 +305,8 @@ class ProductInfoAgent(BaseAgent):
                 "error": f"Error getting product information: {str(e)}",
                 "products": []
             }
+    
+    # The entity definitions are now in the __init__ method
     
     def _simulate_product_info(self, product_name: str, product_query: Dict[str, Any]) -> Dict[str, Any]:
         """

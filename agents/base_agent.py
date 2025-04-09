@@ -789,14 +789,16 @@ Remember: Your goal is to provide excellent customer service while representing 
         This is the context of already collected information:
         {collected_info}
         
-        Generate a polite, conversational follow-up message asking for ONLY the missing information.
+        Generate a BRIEF, friendly follow-up message asking for ONLY the missing information.
         The message should:
-        1. Be friendly and conversational in tone, like a helpful human service representative
-        2. Ask for all missing information at once if appropriate
-        3. Include examples if available
-        4. If validation has failed for an entity, politely mention the error and ask again
-        5. Make the customer feel like they're talking to a helpful person, not a form-filling robot
-        6. Be concise and to the point
+        1. Be friendly, personable and extremely concise (2-3 sentences maximum)
+        2. Include one clear, helpful example if appropriate
+        3. If validation has failed, briefly mention what was wrong
+        4. Sound natural and conversational, like a real customer service representative
+        5. Avoid unnecessary explanations or verbose language
+        6. Start with a greeting and end with a simple "Thanks!"
+        
+        Your response should be in this style: "Hi there! I'd be happy to help track your package. Could you please provide me with the billing zip code associated with your order? For example, it might look something like 90210. Thanks!"
         
         Your response:
         """
@@ -839,10 +841,10 @@ Remember: Your goal is to provide excellent customer service while representing 
             logger.error(f"Error generating entity collection prompt: {str(e)}")
             
             # Fall back to a basic prompt if LLM fails
-            follow_up = f"Could you please provide your {current_entity.name.replace('_', ' ')}?"
+            follow_up = f"Please provide your {current_entity.name.replace('_', ' ')}"
             if current_entity.examples:
                 example = current_entity.examples[0]
-                follow_up += f" For example: {example}"
+                follow_up += f" (e.g., {example})"
                 
             return False, follow_up
         

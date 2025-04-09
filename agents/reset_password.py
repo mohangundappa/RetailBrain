@@ -5,7 +5,7 @@ from typing import Dict, Any, Optional, List
 import requests
 from langchain.chains import LLMChain
 from langchain.prompts import ChatPromptTemplate
-from agents.base_agent import BaseAgent
+from agents.base_agent import BaseAgent, EntityDefinition
 from config import PASSWORD_RESET_ENDPOINT
 
 logger = logging.getLogger(__name__)
@@ -56,6 +56,38 @@ class ResetPasswordAgent(BaseAgent):
         self.classifier_chain = self._create_classifier_chain()
         self.extraction_chain = self._create_extraction_chain()
         self.instruction_chain = self._create_instruction_chain()
+        
+        # Setup entity collection
+        self.setup_entity_definitions()
+        
+    def setup_entity_definitions(self) -> None:
+        """
+        Set up entity definitions for password reset with validation patterns and examples.
+        """
+        # Define email entity
+        email_entity = EntityDefinition(
+            name="email",
+            required=True,
+            validation_pattern=r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$',
+            error_message="Please provide a valid email address.",
+            description="Your email address associated with your Staples account",
+            examples=["johndoe@example.com", "jane.smith@company.com"],
+            alternate_names=["email address", "account email", "login email"]
+        )
+        
+        # Define account type entity (optional)
+        account_type_entity = EntityDefinition(
+            name="account_type",
+            required=False,
+            validation_pattern=r'^[a-zA-Z0-9\s]{3,50}$',
+            error_message="Please provide a valid account type (e.g., Staples.com, Rewards, Business).",
+            description="The type of Staples account you have",
+            examples=["Staples.com", "Rewards", "Business"],
+            alternate_names=["type of account", "account kind", "membership type"]
+        )
+        
+        # Set up entity collection with these entities
+        self.setup_entity_collection([email_entity, account_type_entity])
     
     def _create_classifier_chain(self) -> LLMChain:
         """
@@ -163,10 +195,37 @@ class ResetPasswordAgent(BaseAgent):
             if parent_response:
                 # If the parent class returned a response (e.g., for a greeting), use it
                 return parent_response
+                
+            # Process entity collection first
+            collection_complete, follow_up_prompt = await self.process_entity_collection(user_input, context)
             
-            # Extract account information from user input
+            # If we need to continue collecting entities, return a follow-up question
+            if not collection_complete and follow_up_prompt:
+                # Add agent_name to context to ensure we stay with this agent during entity collection
+                if context and 'conversation_memory' in context:
+                    memory = context['conversation_memory']
+                    memory.update_working_memory('continue_with_same_agent', True)
+                    memory.update_working_memory('last_selected_agent', self.name)
+                
+                return {
+                    "response": follow_up_prompt,
+                    "agent": self.name,
+                    "confidence": 1.0,
+                    "continue_with_same_agent": True
+                }
+            
+            # Get collected entity values
+            collected_entities = self.get_collected_entity_values()
+            
+            # Extract account information from user input to get any entities we didn't collect
             extraction_result = await self.extraction_chain.arun(user_input=user_input)
             account_info = json.loads(extraction_result)
+            
+            # Update account_info with collected entities if present
+            if 'email' in collected_entities:
+                account_info['email'] = collected_entities['email']
+            if 'account_type' in collected_entities:
+                account_info['account_type'] = collected_entities['account_type']
             
             # Get reset instructions or initiate reset process
             reset_status = self._get_reset_status(account_info, context)

@@ -8,7 +8,7 @@ from typing import Dict, Any, Optional, List, Tuple
 import requests
 from langchain.chains import LLMChain
 from langchain.prompts import ChatPromptTemplate
-from agents.base_agent import BaseAgent
+from agents.base_agent import BaseAgent, EntityDefinition
 
 logger = logging.getLogger(__name__)
 
@@ -58,7 +58,28 @@ class StoreLocatorAgent(BaseAgent):
         self._extraction_chain = self._create_extraction_chain()
         self._formatting_chain = self._create_formatting_chain()
         
+        # Setup entity collection
+        self.setup_entity_definitions()
+        
         logger.info("Store Locator Agent initialized")
+        
+    def setup_entity_definitions(self) -> None:
+        """
+        Set up entity definitions for store location queries with validation patterns and examples.
+        """
+        # Define location entity
+        location_entity = EntityDefinition(
+            name="location",
+            required=True,
+            validation_pattern=r'^[A-Za-z0-9\s\.,\-\']{3,50}$',
+            error_message="Please provide a valid city, state, or zip code.",
+            description="Your location (city, state, or zip code)",
+            examples=["Boston, MA", "90210", "Chicago"],
+            alternate_names=["city", "zip", "zip code", "postal code", "town", "state", "area"]
+        )
+        
+        # Set up entity collection with these entities
+        self.setup_entity_collection([location_entity])
     
     def _create_classifier_chain(self) -> LLMChain:
         """
@@ -144,25 +165,71 @@ class StoreLocatorAgent(BaseAgent):
         if parent_response:
             # If the parent class returned a response (e.g., for a greeting), use it
             return parent_response
+            
+        # Process entity collection first
+        collection_complete, follow_up_prompt = await self.process_entity_collection(user_input, context)
         
+        # If we need to continue collecting entities, return a follow-up question
+        if not collection_complete and follow_up_prompt:
+            # Add agent_name to context to ensure we stay with this agent during entity collection
+            if context and 'conversation_memory' in context:
+                memory = context['conversation_memory']
+                memory.update_working_memory('continue_with_same_agent', True)
+                memory.update_working_memory('last_selected_agent', self.name)
+            
+            return {
+                "response": follow_up_prompt,
+                "agent": self.name,
+                "confidence": 1.0,
+                "continue_with_same_agent": True
+            }
+            
         try:
-            # Extract location information from the query
+            # Get collected values
+            collected_entities = self.get_collected_entity_values()
+            location = collected_entities.get("location") if "location" in collected_entities else None
+            
+            # Extract location info
             extraction_result = await self._extraction_chain.ainvoke({"query": user_input})
             
             # Handle empty or invalid JSON responses
             try:
                 location_info = json.loads(extraction_result["text"])
                 logger.info(f"Extracted location information: {location_info}")
+                
+                # If we have a location from entity collection, use it instead
+                if location:
+                    location_info["location"] = location
+                
+                # If we don't have a location at all, return a prompt
+                if not location and not location_info.get("location"):
+                    return {
+                        "success": True,
+                        "response": "I'd be happy to help you find a Staples store. Could you please provide a specific location such as a city, zip code, or address?",
+                        "intent": "store_locator",
+                        "entities": {},
+                        "continue_with_same_agent": True
+                    }
             except json.JSONDecodeError as json_err:
                 logger.warning(f"Failed to parse location JSON: {json_err}. Raw text: {extraction_result.get('text', '')}")
-                # Return a default response asking for location
-                return {
-                    "success": True,
-                    "response": "I'd be happy to help you find a Staples store. Could you please provide a specific location such as a city, zip code, or address?",
-                    "intent": "store_locator",
-                    "entities": {},
-                    "continue_with_same_agent": True
-                }
+                
+                # If we have a location from entity collection, create a simple location_info
+                if location:
+                    location_info = {
+                        "location": location,
+                        "radius": 10,
+                        "service": None,
+                        "hours": False
+                    }
+                else:
+                    # Return a default response asking for location
+                    return {
+                        "success": True,
+                        "response": "I'd be happy to help you find a Staples store. Could you please provide a specific location such as a city, zip code, or address?",
+                        "intent": "store_locator",
+                        "entities": {},
+                        "continue_with_same_agent": True
+                    }
             
             # Get store information
             store_info = self._get_store_info(location_info, context)
