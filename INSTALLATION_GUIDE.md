@@ -45,7 +45,7 @@ If you encounter a `ResolutionImpossible` error, it indicates that pip cannot fi
 2. Install with the `--no-deps` option and then manually install core packages:
    ```bash
    pip install --no-deps -r requirements-standard.txt
-   pip install flask==2.3.3 sqlalchemy==2.0.27 langchain-core==0.1.18 langchain-community==0.0.18 langchain-openai==0.0.5 langchain==0.0.335 openai==1.6.1
+   pip install flask==2.3.3 sqlalchemy==2.0.27 langchain-core==0.1.19 langchain-community==0.0.18 langchain-openai==0.0.5 langchain==0.0.335 openai==1.6.1
    ```
 3. Create a new virtual environment with Python 3.11 instead of 3.12 if available
 

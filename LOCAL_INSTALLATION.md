@@ -22,18 +22,34 @@ source .venv/bin/activate
 .venv\Scripts\activate
 ```
 
-## Step 2: Install dependencies (Option 1 - Basic)
+## Step 2: Install dependencies (Option 1 - Using setup script - Recommended)
 
-Try this approach first:
+The easiest and most reliable way to install dependencies is using the provided setup script:
+
+```bash
+# Run the interactive setup script
+python setup_local_env.py
+```
+
+This script will:
+- Check your Python version
+- Upgrade pip to the latest version
+- Install dependencies incrementally in the correct order
+- Create a template `.env` file for you
+- Verify the installation
+
+## Step 3: Install dependencies (Option 2 - Manual installation)
+
+If you prefer to install dependencies manually:
 
 ```bash
 # Install using the standardized requirements file
 pip install -r requirements-standard.txt
 ```
 
-## Step 3: Install dependencies (Option 2 - If Option 1 fails)
+## Step 4: Install dependencies (Option 3 - If other options fail)
 
-If you encounter dependency resolution errors, try this alternative method:
+If you encounter dependency resolution errors, try these alternative methods:
 
 ```bash
 # First, upgrade pip
@@ -47,11 +63,11 @@ pip install --no-deps -r requirements-standard.txt
 
 # Then manually install core packages in the correct order
 pip install flask==2.3.3 werkzeug==2.3.7 sqlalchemy==2.0.27
-pip install langchain-core==0.1.18 langchain-community==0.0.18 langchain-openai==0.0.5 langchain==0.0.335
+pip install langchain-core==0.1.19 langchain-community==0.0.18 langchain-openai==0.0.5 langchain==0.0.335
 pip install openai==1.6.1
 ```
 
-## Step 4: Set up environment variables
+## Step 5: Set up environment variables
 
 Create a `.env` file in the project root with the following variables:
 
@@ -66,7 +82,7 @@ DATABRICKS_HOST=your_databricks_host
 DATABRICKS_TOKEN=your_databricks_token
 ```
 
-## Step 5: Initialize the database (if using PostgreSQL)
+## Step 6: Initialize the database (if using PostgreSQL)
 
 ```bash
 # Log into PostgreSQL
@@ -82,7 +98,7 @@ CREATE USER staples WITH PASSWORD 'your_password';
 GRANT ALL PRIVILEGES ON DATABASE staples_brain TO staples;
 ```
 
-## Step 6: Run database setup scripts
+## Step 7: Run database setup scripts
 
 ```bash
 # Navigate to the db_scripts directory
@@ -92,7 +108,7 @@ cd db_scripts
 python setup_database.py
 ```
 
-## Step 7: Start the application
+## Step 8: Start the application
 
 ```bash
 # Run with Python directly (development mode)
@@ -115,7 +131,7 @@ If you still encounter dependency conflicts, try installing the packages one by 
 pip install flask flask-sqlalchemy flask-login psycopg2-binary
 
 # Then langchain - note the order is important to resolve dependencies correctly
-pip install langchain-core langchain-community langchain-openai langchain
+pip install langchain-core==0.1.19 langchain-community==0.0.18 langchain-openai==0.0.5 langchain==0.0.335
 
 # Then other packages
 pip install openai flask-cors gunicorn prometheus-client
