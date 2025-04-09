@@ -3,13 +3,15 @@ import logging
 import asyncio
 import uuid
 import time
+import random
 from datetime import datetime
 from flask import Flask, render_template, jsonify, request, session, Response, g
 from flask_cors import CORS
 from prometheus_client import CONTENT_TYPE_LATEST
 from brain.intent_handler import IntentHandler
 from brain.planner import ExecutionPlanner
-from models import db, Conversation, Message, PackageTracking, PasswordReset, AgentConfig, AnalyticsData
+from models import db, Conversation, Message, PackageTracking, PasswordReset, StoreLocator, ProductInfo, AgentConfig, AnalyticsData
+from utils.memory import ConversationMemory
 from utils.observability import (
     get_prometheus_metrics, 
     record_intent_classification, 
@@ -100,7 +102,7 @@ def index():
         "conversation_count": Conversation.query.count(),
         "package_tracking_count": PackageTracking.query.count(),
         "password_reset_count": PasswordReset.query.count(),
-        "available_agents": ["Package Tracking Agent", "Reset Password Agent"],
+        "available_agents": ["Package Tracking Agent", "Reset Password Agent", "Store Locator Agent", "Product Information Agent"],
         "database_connected": True,
         "llm_integration": os.environ.get("OPENAI_API_KEY") is not None
     }
@@ -117,7 +119,7 @@ def health_check():
         "status": "healthy",
         "message": "Staples Brain is running",
         "version": "1.0.0",
-        "agents": ["Package Tracking Agent", "Reset Password Agent"],
+        "agents": ["Package Tracking Agent", "Reset Password Agent", "Store Locator Agent", "Product Information Agent"],
         "llm_integration": "available" if has_llm else "unavailable"
     })
 
@@ -126,7 +128,7 @@ def list_agents():
     """List all available agents."""
     return jsonify({
         "success": True,
-        "agents": ["Package Tracking Agent", "Reset Password Agent"]
+        "agents": ["Package Tracking Agent", "Reset Password Agent", "Store Locator Agent", "Product Information Agent"]
     })
 
 @app.route('/api/conversations', methods=["GET"])
@@ -224,6 +226,38 @@ def get_conversation(conversation_id):
                 "reset_link_sent": reset.reset_link_sent
             }
             
+        # Get store locator data if available
+        store_locator_data = None
+        if conversation.store_locator_data:
+            store = conversation.store_locator_data[0]  # Get the first store entry
+            store_locator_data = {
+                "id": store.id,
+                "location": store.location,
+                "radius": store.radius,
+                "service": store.service,
+                "store_id": store.store_id,
+                "store_name": store.store_name,
+                "store_address": store.store_address,
+                "store_phone": store.store_phone,
+                "store_hours": store.store_hours
+            }
+        
+        # Get product info data if available
+        product_info_data = None
+        if conversation.product_info_data:
+            product = conversation.product_info_data[0]  # Get the first product entry
+            product_info_data = {
+                "id": product.id,
+                "product_name": product.product_name,
+                "product_id": product.product_id,
+                "category": product.category,
+                "price": product.price,
+                "availability": product.availability,
+                "description": product.description,
+                "specifications": product.specifications,
+                "search_query": product.search_query
+            }
+            
         # Build the full conversation object
         result = {
             "id": conversation.id,
@@ -236,7 +270,9 @@ def get_conversation(conversation_id):
             "created_at": conversation.created_at.isoformat(),
             "messages": messages,
             "tracking_data": tracking_data,
-            "password_reset_data": password_reset_data
+            "password_reset_data": password_reset_data,
+            "store_locator_data": store_locator_data,
+            "product_info_data": product_info_data
         }
             
         return jsonify({
@@ -298,7 +334,7 @@ def process_request():
         
         # If no suitable intent was found or confidence is too low
         if intent == "unknown" or confidence < 0.3:
-            response_text = "I'm sorry, I don't have the capability to help with that request at the moment. I can assist with package tracking and password reset inquiries."
+            response_text = "I'm sorry, I don't have the capability to help with that request at the moment. I can assist with package tracking, password reset, store location, and product information inquiries."
             
             # Store in database even when no suitable agent is found
             conversation = Conversation(
@@ -927,6 +963,273 @@ def reset_password():
             "reset_link_sent": False,
             "is_simulated": True
         },
+        "success": True,
+        "conversation_id": conversation.id
+    })
+
+@app.route('/api/find-store', methods=["POST"])
+def find_store():
+    """Find store locations directly."""
+    data = request.json
+    
+    # Record agent selection metric
+    record_agent_selection("Store Locator Agent")
+    
+    # Create or get session ID
+    if 'session_id' not in session:
+        session['session_id'] = str(uuid.uuid4())
+    session_id = session.get('session_id')
+    
+    # Extract location if provided
+    query = data.get('query', '')
+    location = data.get('location', '')
+    radius = data.get('radius', 10)
+    service = data.get('service', None)
+    
+    # Initialize conversation memory
+    memory = ConversationMemory(session_id=session_id)
+    
+    # Create store info structure
+    STORE_LOCATOR_SAMPLE = {
+        "location": location or "sample location",
+        "radius": radius,
+        "service": service,
+        "store_id": f"store-{random.randint(100, 999)}",
+        "store_name": f"Staples #{random.randint(1000, 9999)}",
+        "store_address": f"{random.randint(100, 999)} Main St, {location or 'Anytown'}, CA",
+        "store_phone": f"({random.randint(100, 999)}) {random.randint(100, 999)}-{random.randint(1000, 9999)}",
+        "is_simulated": True
+    }
+    
+    try:
+        # Generate LLM-based response if API key available
+        if os.environ.get("OPENAI_API_KEY"):
+            from langchain_openai import ChatOpenAI
+            from langchain_core.prompts import ChatPromptTemplate
+            
+            template = """
+            You are a helpful Staples customer service assistant. Generate a friendly response about 
+            nearby Staples stores based on this information:
+            
+            User query: {query}
+            Location: {location}
+            Radius: {radius} miles
+            
+            Create a helpful response that provides store location information in a clear, conversational way.
+            If specific services were requested, mention those services are available at the store.
+            Include the store address, phone number, and brief store hours information.
+            """
+            
+            prompt = ChatPromptTemplate.from_template(template)
+            llm = ChatOpenAI(model="gpt-4o", temperature=0.7)
+            chain = prompt | llm
+            
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            
+            llm_response = loop.run_until_complete(chain.ainvoke({
+                "query": query,
+                "location": location or "the requested location",
+                "radius": radius
+            }))
+            
+            loop.close()
+            response_text = llm_response.content
+        else:
+            response_text = f"I found a Staples store near {location or 'your location'} at {STORE_LOCATOR_SAMPLE['store_address']}. You can call them at {STORE_LOCATOR_SAMPLE['store_phone']}. They're open from 8:00 AM to 9:00 PM Monday to Friday, and 10:00 AM to 7:00 PM on weekends."
+    except Exception as e:
+        logger.error(f"Error generating LLM response: {str(e)}", exc_info=True)
+        response_text = f"I found a Staples store near {location or 'your location'} at {STORE_LOCATOR_SAMPLE['store_address']}. You can call them at {STORE_LOCATOR_SAMPLE['store_phone']}. They're open from 8:00 AM to 9:00 PM Monday to Friday, and 10:00 AM to 7:00 PM on weekends."
+    
+    # Store conversation in database
+    conversation = Conversation(
+        session_id=session_id,
+        user_input=query,
+        brain_response=response_text,
+        intent="store_locator",
+        confidence=1.0,
+        selected_agent="Store Locator Agent"
+    )
+    db.session.add(conversation)
+    
+    # Add messages
+    user_message = Message(
+        conversation=conversation,
+        role="user",
+        content=query
+    )
+    assistant_message = Message(
+        conversation=conversation,
+        role="assistant",
+        content=response_text
+    )
+    db.session.add_all([user_message, assistant_message])
+    
+    # Add store locator info
+    store_locator = StoreLocator(
+        conversation=conversation,
+        location=location,
+        radius=radius,
+        service=service,
+        store_id=STORE_LOCATOR_SAMPLE["store_id"],
+        store_name=STORE_LOCATOR_SAMPLE["store_name"],
+        store_address=STORE_LOCATOR_SAMPLE["store_address"],
+        store_phone=STORE_LOCATOR_SAMPLE["store_phone"]
+    )
+    db.session.add(store_locator)
+    db.session.commit()
+    
+    # Update agent context with store info
+    memory.update_context("Store Locator Agent", {
+        "last_store_search": {
+            "location": location,
+            "radius": radius,
+            "service": service,
+            "conversation_id": conversation.id
+        }
+    })
+    
+    return jsonify({
+        "agent": "Store Locator Agent",
+        "response": response_text,
+        "store_info": {
+            "location": location,
+            "radius": radius,
+            "service": service
+        },
+        "store_details": STORE_LOCATOR_SAMPLE,
+        "success": True,
+        "conversation_id": conversation.id
+    })
+
+@app.route('/api/product-info', methods=["POST"])
+def product_info():
+    """Get product information directly."""
+    data = request.json
+    
+    # Record agent selection metric
+    record_agent_selection("Product Information Agent")
+    
+    # Create or get session ID
+    if 'session_id' not in session:
+        session['session_id'] = str(uuid.uuid4())
+    session_id = session.get('session_id')
+    
+    # Extract product info if provided
+    query = data.get('query', '')
+    product_name = data.get('product_name', '')
+    category = data.get('category', None)
+    
+    # Initialize conversation memory
+    memory = ConversationMemory(session_id=session_id)
+    
+    # Create product info structure
+    PRODUCT_INFO_SAMPLE = {
+        "product_name": product_name or "sample product",
+        "product_id": f"P{random.randint(100000, 999999)}",
+        "category": category or "Office Supplies",
+        "price": f"${random.randint(5, 100)}.99",
+        "availability": "In Stock",
+        "description": f"High-quality {product_name or 'product'} for home or office use.",
+        "specifications": "Brand: Staples, Color: Black, Quantity: 1",
+        "is_simulated": True
+    }
+    
+    try:
+        # Generate LLM-based response if API key available
+        if os.environ.get("OPENAI_API_KEY"):
+            from langchain_openai import ChatOpenAI
+            from langchain_core.prompts import ChatPromptTemplate
+            
+            template = """
+            You are a helpful Staples customer service assistant. Generate a friendly response about 
+            a product based on this information:
+            
+            User query: {query}
+            Product: {product_name}
+            Category: {category}
+            
+            Create a helpful response that provides product information in a clear, conversational way.
+            Include price, availability, and key specifications.
+            """
+            
+            prompt = ChatPromptTemplate.from_template(template)
+            llm = ChatOpenAI(model="gpt-4o", temperature=0.7)
+            chain = prompt | llm
+            
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            
+            llm_response = loop.run_until_complete(chain.ainvoke({
+                "query": query,
+                "product_name": product_name or "the requested product",
+                "category": category or "Office Supplies"
+            }))
+            
+            loop.close()
+            response_text = llm_response.content
+        else:
+            response_text = f"The {product_name or 'requested product'} is available for {PRODUCT_INFO_SAMPLE['price']} and is currently {PRODUCT_INFO_SAMPLE['availability']}. It's a high-quality item that's perfect for both home and office use. Would you like more information about this product?"
+    except Exception as e:
+        logger.error(f"Error generating LLM response: {str(e)}", exc_info=True)
+        response_text = f"The {product_name or 'requested product'} is available for {PRODUCT_INFO_SAMPLE['price']} and is currently {PRODUCT_INFO_SAMPLE['availability']}. It's a high-quality item that's perfect for both home and office use. Would you like more information about this product?"
+    
+    # Store conversation in database
+    conversation = Conversation(
+        session_id=session_id,
+        user_input=query,
+        brain_response=response_text,
+        intent="product_info",
+        confidence=1.0,
+        selected_agent="Product Information Agent"
+    )
+    db.session.add(conversation)
+    
+    # Add messages
+    user_message = Message(
+        conversation=conversation,
+        role="user",
+        content=query
+    )
+    assistant_message = Message(
+        conversation=conversation,
+        role="assistant",
+        content=response_text
+    )
+    db.session.add_all([user_message, assistant_message])
+    
+    # Add product info
+    product_info_data = ProductInfo(
+        conversation=conversation,
+        product_name=product_name,
+        product_id=PRODUCT_INFO_SAMPLE["product_id"],
+        category=category or PRODUCT_INFO_SAMPLE["category"],
+        price=PRODUCT_INFO_SAMPLE["price"],
+        availability=PRODUCT_INFO_SAMPLE["availability"],
+        description=PRODUCT_INFO_SAMPLE["description"],
+        specifications=PRODUCT_INFO_SAMPLE["specifications"],
+        search_query=query
+    )
+    db.session.add(product_info_data)
+    db.session.commit()
+    
+    # Update agent context with product info
+    memory.update_context("Product Information Agent", {
+        "last_product_search": {
+            "product_name": product_name,
+            "category": category,
+            "conversation_id": conversation.id
+        }
+    })
+    
+    return jsonify({
+        "agent": "Product Information Agent",
+        "response": response_text,
+        "product_info": {
+            "product_name": product_name,
+            "category": category
+        },
+        "product_details": PRODUCT_INFO_SAMPLE,
         "success": True,
         "conversation_id": conversation.id
     })

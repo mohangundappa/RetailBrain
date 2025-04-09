@@ -7,6 +7,8 @@ from langchain_core.outputs import ChatResult, ChatGenerationChunk
 from langchain_core.messages import AIMessageChunk
 from agents.package_tracking import PackageTrackingAgent
 from agents.reset_password import ResetPasswordAgent
+from agents.store_locator import StoreLocatorAgent
+from agents.product_info import ProductInfoAgent
 from brain.orchestrator import AgentOrchestrator
 from config import OPENAI_API_KEY, OPENAI_MODEL
 
@@ -113,7 +115,15 @@ class StaplesBrain:
             self.agents.append(reset_agent)
             logger.info("Reset Password Agent initialized")
             
-            # Future agents would be added here
+            # Add Store Locator Agent
+            store_locator_agent = StoreLocatorAgent(self.llm)
+            self.agents.append(store_locator_agent)
+            logger.info("Store Locator Agent initialized")
+            
+            # Add Product Information Agent
+            product_info_agent = ProductInfoAgent(self.llm)
+            self.agents.append(product_info_agent)
+            logger.info("Product Information Agent initialized")
             
         except Exception as e:
             logger.error(f"Error initializing agents: {str(e)}", exc_info=True)

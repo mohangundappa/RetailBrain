@@ -22,6 +22,8 @@ class Conversation(db.Model):
     messages = db.relationship('Message', back_populates='conversation', cascade='all, delete-orphan')
     tracking_data = db.relationship('PackageTracking', back_populates='conversation', cascade='all, delete-orphan')
     password_reset_data = db.relationship('PasswordReset', back_populates='conversation', cascade='all, delete-orphan')
+    store_locator_data = db.relationship('StoreLocator', back_populates='conversation', cascade='all, delete-orphan')
+    product_info_data = db.relationship('ProductInfo', back_populates='conversation', cascade='all, delete-orphan')
 
 class Message(db.Model):
     """Model to store individual messages in a conversation"""
@@ -71,6 +73,38 @@ class AgentConfig(db.Model):
     prompt_template = db.Column(db.Text, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, onupdate=datetime.utcnow)
+
+class StoreLocator(db.Model):
+    """Model to store store locator information"""
+    id = db.Column(db.Integer, primary_key=True)
+    conversation_id = db.Column(db.Integer, db.ForeignKey('conversation.id'), nullable=False)
+    location = db.Column(db.String(128), nullable=True)
+    radius = db.Column(db.Integer, default=10)
+    service = db.Column(db.String(128), nullable=True)
+    store_id = db.Column(db.String(64), nullable=True)
+    store_name = db.Column(db.String(128), nullable=True)
+    store_address = db.Column(db.String(256), nullable=True)
+    store_phone = db.Column(db.String(64), nullable=True)
+    store_hours = db.Column(db.Text, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    conversation = db.relationship('Conversation', back_populates='store_locator_data')
+
+class ProductInfo(db.Model):
+    """Model to store product information"""
+    id = db.Column(db.Integer, primary_key=True)
+    conversation_id = db.Column(db.Integer, db.ForeignKey('conversation.id'), nullable=False)
+    product_name = db.Column(db.String(256), nullable=True)
+    product_id = db.Column(db.String(128), nullable=True)
+    category = db.Column(db.String(128), nullable=True)
+    price = db.Column(db.String(64), nullable=True)
+    availability = db.Column(db.String(64), nullable=True)
+    description = db.Column(db.Text, nullable=True)
+    specifications = db.Column(db.Text, nullable=True)
+    search_query = db.Column(db.String(256), nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    conversation = db.relationship('Conversation', back_populates='product_info_data')
 
 class AnalyticsData(db.Model):
     """Model to store analytics data about agent usage"""

@@ -1,4 +1,5 @@
 import os
+import re
 import logging
 import json
 from typing import Dict, Any, List, Optional
@@ -72,7 +73,23 @@ class IntentHandler:
           Example: "The login page isn't accepting my credentials"
         - forgot_password: User states they've forgotten their password
           Example: "I forgot my password and need to recover it"
-        
+          
+        STORE RELATED:
+        - store_locator: User wants to find a nearby Staples store or get information about a specific store
+          Example: "Where's the nearest Staples store?"
+        - store_hours: User wants to know when a store is open
+          Example: "What time does the Staples on 5th Avenue close?"
+        - store_services: User wants to know what services are available at Staples stores
+          Example: "Do you offer printing services in stores?"
+          
+        PRODUCT RELATED:
+        - product_info: User wants information about specific Staples products
+          Example: "Do you have wireless headphones in stock?"
+        - product_comparison: User wants to compare multiple products
+          Example: "What's the difference between the basic and premium office chairs?"
+        - product_recommendation: User wants recommendations for products
+          Example: "What's a good printer for a home office?"
+          
         OTHER:
         - unknown: The query doesn't match any of the available intents
           Example: "What's the weather like today?"
@@ -84,7 +101,7 @@ class IntentHandler:
         - intent: The most likely intent from the list above
         - confidence: A score between 0 and 1 indicating how confident you are in this classification
         - explanation: Your reasoning for why this intent was chosen
-        - primary_category: Either "package_tracking" (for shipping/package intents) or "password_reset" (for account intents) or null if unknown
+        - primary_category: One of "package_tracking" (for shipping/package intents), "password_reset" (for account intents), "store_locator" (for store intents), "product_info" (for product intents), or null if unknown
         - is_follow_up: Boolean indicating if this appears to be a follow-up to a previous conversation
         
         Format your response as a valid JSON object only, with no additional text.
@@ -115,6 +132,22 @@ class IntentHandler:
         - last_login_attempt: Any information about when they last tried to login
         - device_info: Any device information mentioned (mobile, desktop, app, etc.)
         - browser_info: Any browser information mentioned (Chrome, Firefox, etc.)
+        
+        For any store-related intents (store_locator, store_hours, store_services), extract:
+        - location: Any location mentioned (address, city, zip code, etc.)
+        - radius: Search radius mentioned (e.g., "within 5 miles")
+        - service: Any specific service mentioned (printing, copying, tech services, etc.)
+        - store_id: Specific store ID if mentioned
+        - time_frame: Specific time or day mentioned (e.g., "open on Sunday", "closing time today")
+        - transportation: Mode of transportation mentioned (driving, walking, public transit)
+
+        For any product-related intents (product_info, product_comparison, product_recommendation), extract:
+        - product_name: Specific product name or type mentioned
+        - category: Product category mentioned (e.g., printers, chairs, paper, ink)
+        - price_range: Price range mentioned (e.g., "under $100", "between $50-100")
+        - brand: Brand name mentioned
+        - features: Specific features mentioned (e.g., "wireless", "adjustable height")
+        - use_case: How the user intends to use the product (e.g., "for home office", "for a classroom")
         
         For all intents, also extract:
         - sentiment: The user's apparent sentiment (frustrated, neutral, positive)
@@ -147,6 +180,16 @@ class IntentHandler:
            - Handles all account access and password reset related inquiries
            - Can generate password reset instructions and troubleshoot login issues
            - Works best with email addresses, usernames, or account types
+        
+        3. Store Locator Agent
+           - Helps customers find nearby Staples stores
+           - Can provide store details, hours, and available services
+           - Works best with location information, zip codes, or specific service requests
+        
+        4. Product Information Agent
+           - Provides details about Staples products, availability, and pricing
+           - Can compare products and make recommendations
+           - Works best with specific product names, categories, or use cases
         
         Create a detailed execution plan addressing this user request, including:
         - Which agent should handle this request and why
@@ -410,6 +453,58 @@ class IntentHandler:
                 "is_follow_up": False
             }
         
+        # Store locator related intents
+        elif any(phrase in query_lower for phrase in ["find store", "nearest store", "closest store", "store near"]):
+            return {
+                "intent": "store_locator",
+                "confidence": 0.85,
+                "explanation": "Query specifically mentions finding a store",
+                "primary_category": "store_locator",
+                "is_follow_up": False
+            }
+        elif "store" in query_lower and any(word in query_lower for word in ["hour", "open", "close", "time"]):
+            return {
+                "intent": "store_hours",
+                "confidence": 0.8,
+                "explanation": "Query is about store hours",
+                "primary_category": "store_locator",
+                "is_follow_up": False
+            }
+        elif "store" in query_lower and any(word in query_lower for word in ["service", "offer", "provide", "available"]):
+            return {
+                "intent": "store_services",
+                "confidence": 0.8,
+                "explanation": "Query is about store services",
+                "primary_category": "store_locator",
+                "is_follow_up": False
+            }
+            
+        # Product information related intents
+        elif any(phrase in query_lower for phrase in ["product info", "product information", "tell me about", "do you have"]) and not "store" in query_lower:
+            return {
+                "intent": "product_info",
+                "confidence": 0.85,
+                "explanation": "Query specifically asks for product information",
+                "primary_category": "product_info",
+                "is_follow_up": False
+            }
+        elif "compare" in query_lower or "difference between" in query_lower:
+            return {
+                "intent": "product_comparison",
+                "confidence": 0.8,
+                "explanation": "Query is asking to compare products",
+                "primary_category": "product_info",
+                "is_follow_up": False
+            }
+        elif any(phrase in query_lower for phrase in ["recommend", "suggestion", "which is better", "what's a good"]):
+            return {
+                "intent": "product_recommendation",
+                "confidence": 0.8,
+                "explanation": "Query is asking for product recommendations",
+                "primary_category": "product_info",
+                "is_follow_up": False
+            }
+            
         # General catch-all for broader categories
         elif any(keyword in query_lower for keyword in ["tracking", "package", "shipping", "delivery", "order"]):
             return {
@@ -425,6 +520,22 @@ class IntentHandler:
                 "confidence": 0.7,
                 "explanation": "Query contains password reset related keywords",
                 "primary_category": "password_reset",
+                "is_follow_up": False
+            }
+        elif any(keyword in query_lower for keyword in ["store", "location", "near me", "nearby", "address"]):
+            return {
+                "intent": "store_locator",
+                "confidence": 0.7,
+                "explanation": "Query contains store locator related keywords",
+                "primary_category": "store_locator",
+                "is_follow_up": False
+            }
+        elif any(keyword in query_lower for keyword in ["product", "item", "price", "cost", "available", "in stock"]):
+            return {
+                "intent": "product_info",
+                "confidence": 0.7,
+                "explanation": "Query contains product information related keywords",
+                "primary_category": "product_info",
                 "is_follow_up": False
             }
         
@@ -622,6 +733,166 @@ class IntentHandler:
                 **entities
             }
         
+        # Store locator related intents
+        elif intent in ["store_locator", "store_hours", "store_services"]:
+            # Extract location
+            location = None
+            location_indicators = ["in", "near", "at", "around", "close to"]
+            for i, word in enumerate(words):
+                if i < len(words) - 1 and word.lower() in location_indicators:
+                    # Capture the rest of the sentence as location
+                    location = " ".join(words[i+1:]).strip('.,;:!?')
+                    break
+            
+            # Extract radius
+            radius = None
+            radius_pattern = re.search(r'(\d+)\s*(mile|km|kilometer)', query_lower)
+            if radius_pattern:
+                radius = f"{radius_pattern.group(1)} {radius_pattern.group(2)}s"
+            
+            # Extract service
+            service = None
+            services = ["printing", "copy", "copies", "fax", "scan", "tech", "computer", 
+                       "repair", "shipping", "passport", "photo", "business", "self-serve"]
+            for srv in services:
+                if srv in query_lower:
+                    service = srv
+                    break
+            
+            # Extract store ID
+            store_id = None
+            store_id_pattern = re.search(r'store\s+(?:id|number|#)?\s*(\d+)', query_lower)
+            if store_id_pattern:
+                store_id = store_id_pattern.group(1)
+            
+            # Extract time frame (for hours)
+            time_frame = None
+            days = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday", "weekend", "weekday"]
+            times = ["open", "close", "closing", "opening", "hour", "morning", "afternoon", "evening", "night"]
+            
+            for day in days:
+                if day in query_lower:
+                    time_frame = day
+                    break
+            
+            if not time_frame:
+                for time in times:
+                    if time in query_lower:
+                        time_frame = time
+                        break
+            
+            return {
+                "location": location,
+                "radius": radius,
+                "service": service,
+                "store_id": store_id,
+                "time_frame": time_frame,
+                "transportation": "driving" if any(mode in query_lower for mode in ["drive", "driving", "car"]) else
+                                "walking" if any(mode in query_lower for mode in ["walk", "walking", "on foot"]) else
+                                "public transport" if any(mode in query_lower for mode in ["bus", "train", "transit", "subway"]) else None,
+                **entities
+            }
+        
+        # Product information related intents
+        elif intent in ["product_info", "product_comparison", "product_recommendation"]:
+            # Extract product name
+            product_name = None
+            
+            # Try to extract after phrases like "looking for" or "need a"
+            product_indicators = ["for", "need", "want", "about", "have", "sell", "carry", "stock"]
+            for i, word in enumerate(words):
+                if i < len(words) - 1 and word.lower() in product_indicators:
+                    # Take the rest of the sentence as potential product
+                    remainder = " ".join(words[i+1:]).strip('.,;:!?')
+                    if len(remainder) > 0 and len(remainder.split()) <= 5:  # Reasonable length for product name
+                        product_name = remainder
+                        break
+            
+            # Extract category
+            category = None
+            categories = {
+                "printer": ["printer", "printing"],
+                "paper": ["paper", "cardstock", "notepad", "sticky note"],
+                "ink": ["ink", "toner", "cartridge"],
+                "chair": ["chair", "seating"],
+                "desk": ["desk", "table", "workstation"],
+                "computer": ["computer", "laptop", "desktop", "pc", "mac"],
+                "tablet": ["tablet", "ipad"],
+                "phone": ["phone", "cell", "mobile"],
+                "accessory": ["accessory", "keyboard", "mouse", "headphone", "speaker"],
+                "supply": ["supply", "pen", "pencil", "marker", "highlighter", "staple", "paperclip"]
+            }
+            
+            for cat, indicators in categories.items():
+                if any(indicator in query_lower for indicator in indicators):
+                    category = cat
+                    break
+            
+            # Extract price range
+            price_range = None
+            price_patterns = [
+                r'under\s+\$(\d+)',
+                r'less\s+than\s+\$(\d+)',
+                r'around\s+\$(\d+)',
+                r'about\s+\$(\d+)',
+                r'between\s+\$(\d+)\s+and\s+\$(\d+)',
+                r'\$(\d+)\s*-\s*\$(\d+)'
+            ]
+            
+            for pattern in price_patterns:
+                price_match = re.search(pattern, query_lower)
+                if price_match:
+                    if len(price_match.groups()) == 1:
+                        price_range = f"Under ${price_match.group(1)}"
+                    elif len(price_match.groups()) == 2:
+                        price_range = f"${price_match.group(1)} - ${price_match.group(2)}"
+                    break
+            
+            # Extract brand
+            brand = None
+            brands = ["hp", "canon", "epson", "brother", "dell", "apple", "microsoft", "logitech", 
+                     "samsung", "lenovo", "asus", "acer", "staples", "post-it", "sharpie", "bic"]
+            
+            for b in brands:
+                if b in query_lower or b.replace("-", " ") in query_lower:
+                    brand = b
+                    break
+            
+            # Extract features
+            features = []
+            feature_keywords = ["wireless", "bluetooth", "cordless", "adjustable", "ergonomic", "portable", 
+                             "lightweight", "heavy-duty", "durable", "color", "black", "white", "fast", 
+                             "high-capacity", "rechargeable", "laser", "inkjet", "mechanical", "optical"]
+            
+            for feature in feature_keywords:
+                if feature in query_lower:
+                    features.append(feature)
+            
+            # Extract use case
+            use_case = None
+            use_cases = {
+                "home office": ["home office", "work from home", "remote work"],
+                "business": ["business", "office", "work", "professional"],
+                "school": ["school", "student", "college", "education", "classroom"],
+                "gaming": ["game", "gaming", "play"],
+                "creative": ["design", "art", "creative", "drawing", "photo", "video"]
+            }
+            
+            for case, indicators in use_cases.items():
+                if any(indicator in query_lower for indicator in indicators):
+                    use_case = case
+                    break
+                    
+            return {
+                "product_name": product_name,
+                "category": category,
+                "price_range": price_range,
+                "brand": brand,
+                "features": features if features else None,
+                "use_case": use_case,
+                **entities
+            }
+        
         else:
             return entities
     
@@ -793,6 +1064,43 @@ class IntentHandler:
                 "fallback_response": "I can help you recover your password. What email address did you use for your account?"
             }
             
+        # Store locator related intents
+        elif intent in ["store_locator", "store_hours", "store_services"]:
+            return {
+                "agent": "Store Locator Agent",
+                "confidence": 0.8,
+                "reasoning": "This is a store locator request requiring the Store Locator Agent",
+                "actions": [
+                    "extract_location_info",
+                    "find_nearby_stores",
+                    "get_store_details",
+                    "format_store_response"
+                ],
+                "required_entities": ["location"],
+                "optional_entities": ["radius", "service", "store_id", "time_frame", "transportation"],
+                "expected_output": "List of nearby stores with addresses, hours, and available services",
+                "continue_with_same_agent": True,
+                "fallback_response": "I'll need your location to find Staples stores near you. Could you please provide your city or zip code?"
+            }
+            
+        # Product information related intents
+        elif intent in ["product_info", "product_comparison", "product_recommendation"]:
+            return {
+                "agent": "Product Information Agent",
+                "confidence": 0.8,
+                "reasoning": "This is a product information request requiring the Product Information Agent",
+                "actions": [
+                    "extract_product_query",
+                    "search_product_catalog",
+                    "format_product_response"
+                ],
+                "required_entities": [],
+                "optional_entities": ["product_name", "category", "price_range", "brand", "features", "use_case"],
+                "expected_output": "Product information including availability, pricing, and specifications",
+                "continue_with_same_agent": True,
+                "fallback_response": "I can help you find product information. What specific product are you looking for?"
+            }
+            
         # Fallback for unknown intents
         else:
             return {
@@ -830,9 +1138,27 @@ class IntentHandler:
             "forgot_password"
         ]
         
+        # Store-related intents
+        store_intents = [
+            "store_locator",
+            "store_hours",
+            "store_services"
+        ]
+        
+        # Product-related intents
+        product_intents = [
+            "product_info",
+            "product_comparison",
+            "product_recommendation"
+        ]
+        
         if intent in package_intents:
             return "Package Tracking Agent"
         elif intent in account_intents:
             return "Reset Password Agent"
+        elif intent in store_intents:
+            return "Store Locator Agent"
+        elif intent in product_intents:
+            return "Product Information Agent"
         else:
             return "Default Agent"

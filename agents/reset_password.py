@@ -26,10 +26,31 @@ class ResetPasswordAgent(BaseAgent):
             llm: The language model to use for this agent
         """
         super().__init__(
-            name="Reset Password Agent",
-            description="I can help you reset your password and recover your account.",
+            name="Password Recovery",
+            description="I can help you reset your password, recover your account, and resolve login issues.",
             llm=llm
         )
+        
+        # Customize the Staples Customer Service Representative persona for password reset
+        self.persona = {
+            "role": "Staples Customer Service Representative",
+            "style": "helpful, friendly, and professional",
+            "tone": "patient, reassuring, and security-focused",
+            "knowledge_areas": [
+                "Staples account systems",
+                "password reset procedures", 
+                "account recovery protocols",
+                "login troubleshooting",
+                "account security best practices",
+                "multiple account types (website, rewards, business)"
+            ],
+            "communication_preferences": [
+                "clear", 
+                "step-by-step",
+                "security-conscious",
+                "empathetic with account access frustrations"
+            ]
+        }
         
         # Create specialized chains
         self.classifier_chain = self._create_classifier_chain()
@@ -83,45 +104,63 @@ class ResetPasswordAgent(BaseAgent):
     
     def _create_instruction_chain(self) -> LLMChain:
         """
-        Create a chain to format password reset instructions into a user-friendly response.
+        Create a chain to format password reset instructions into a user-friendly response
+        in the style of a Staples Customer Service Representative.
         
         Returns:
             An LLMChain that can format instructions
         """
         template = """
-        You are an AI assistant that provides helpful password reset instructions.
-        
+        You are a Staples Customer Service Representative specializing in account recovery and password resets.
+
+        CUSTOMER SERVICE GUIDELINES:
+        - Be helpful, friendly, and professional in all communications
+        - Use a patient, reassuring, and security-focused tone
+        - Express empathy and understanding for the customer's account access frustrations
+        - Speak as a Staples representative using "we" when referring to Staples
+        - Never mention being an AI, language model, or assistant
+        - Present information in clear, step-by-step instructions
+        - Prioritize account security while still being helpful
+        - Be knowledgeable about Staples account systems and recovery procedures
+        - Focus on resolving the customer's login issues efficiently
+        - Reassure customers about the security of their accounts
+
         Account Information:
         {account_info}
         
         Reset Status:
         {reset_status}
         
-        User Query:
+        Customer Query:
         {user_input}
         
-        Based on this information, provide a helpful, conversational response to the user.
-        Include step-by-step instructions for resetting their password if applicable.
-        If there are any issues or the status indicates a problem, acknowledge that and offer alternative solutions.
-        Keep your response friendly, clear, and concise.
+        Respond in a conversational, helpful manner as a Staples Customer Service Representative.
+        Include clear step-by-step instructions for resetting their password.
+        If there are any issues or the status indicates a problem, acknowledge that and offer specific next steps or alternatives.
+        Provide reassurance about Staples' commitment to helping them regain access to their account.
+        Emphasize the importance of account security while being empathetic to their situation.
         """
         
         return self._create_chain(template, ["account_info", "reset_status", "user_input"])
     
     async def process(self, user_input: str, context: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """
-        Process a user query related to password reset.
+        Process a user query related to password reset with a Staples customer service persona.
+        Applies guardrails to ensure appropriate responses.
         
         Args:
             user_input: The user's question about password reset
             context: Additional context information
             
         Returns:
-            A dictionary containing the agent's response
+            A dictionary containing the agent's response with guardrails applied
         """
         logger.debug(f"Processing password reset request: {user_input}")
         
         try:
+            # Initialize parent class context (for conversation memory)
+            await super().process(user_input, context)
+            
             # Extract account information from user input
             extraction_result = await self.extraction_chain.arun(user_input=user_input)
             account_info = json.loads(extraction_result)
@@ -129,36 +168,57 @@ class ResetPasswordAgent(BaseAgent):
             # Get reset instructions or initiate reset process
             reset_status = self._get_reset_status(account_info, context)
             
-            # Format the response with instructions
+            # Format the response with customer service persona
             formatted_response = await self.instruction_chain.arun(
                 account_info=json.dumps(account_info, indent=2),
                 reset_status=json.dumps(reset_status, indent=2),
                 user_input=user_input
             )
             
-            # Create response object
+            # Apply guardrails to ensure appropriate responses
+            corrected_response, violations = self.apply_response_guardrails(formatted_response)
+            
+            # Log if any guardrail violations were detected and corrected
+            if violations:
+                logger.warning(f"Guardrail violations detected in password reset response: {len(violations)}")
+            
+            # Create response object with guardrail-corrected response
             response = {
                 "agent": self.name,
-                "response": formatted_response,
+                "response": corrected_response,
                 "account_info": account_info,
                 "reset_status": reset_status,
+                "guardrail_violations": violations,
                 "success": True
             }
             
             # Add to memory
             self.add_to_memory({
-                "user_input": user_input,
-                "account_info": account_info,
-                "response": formatted_response
+                "role": "assistant",
+                "content": corrected_response,
+                "conversation_id": context.get("conversation_id") if context else None,
+                "extracted_info": {
+                    "email": account_info.get("email"),
+                    "username": account_info.get("username"),
+                    "account_type": account_info.get("account_type"),
+                    "issue": account_info.get("issue"),
+                    "reset_link_sent": reset_status.get("reset_link_sent", False)
+                }
             })
             
             return response
             
         except Exception as e:
             logger.error(f"Error processing password reset request: {str(e)}", exc_info=True)
+            # Create a customer service-appropriate error message
+            error_response = f"I apologize, but I'm experiencing some difficulty processing your password reset request at the moment. Could you please provide additional details about your account? Alternatively, you can reach our dedicated customer service team at 1-800-STAPLES for immediate assistance with your account access."
+            
+            # Apply guardrails to error message too
+            corrected_error, _ = self.apply_response_guardrails(error_response)
+            
             return {
                 "agent": self.name,
-                "response": f"I'm sorry, I encountered an error while trying to help with your password reset: {str(e)}. Please try again or provide more details about your account.",
+                "response": corrected_error,
                 "success": False,
                 "error": str(e)
             }
