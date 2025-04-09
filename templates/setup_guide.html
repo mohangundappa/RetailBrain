@@ -22,9 +22,10 @@
             <li><a href="#code-download" class="text-decoration-none">2. Code Download</a></li>
             <li><a href="#environment-setup" class="text-decoration-none">3. Environment Setup</a></li>
             <li><a href="#database-configuration" class="text-decoration-none">4. Database Configuration</a></li>
-            <li><a href="#api-keys" class="text-decoration-none">5. API Keys Configuration</a></li>
-            <li><a href="#running-app" class="text-decoration-none">6. Running the Application</a></li>
-            <li><a href="#troubleshooting" class="text-decoration-none">7. Troubleshooting</a></li>
+            <li><a href="#memory-system" class="text-decoration-none">5. Memory System Configuration</a></li>
+            <li><a href="#api-keys" class="text-decoration-none">6. API Keys Configuration</a></li>
+            <li><a href="#running-app" class="text-decoration-none">7. Running the Application</a></li>
+            <li><a href="#troubleshooting" class="text-decoration-none">8. Troubleshooting</a></li>
           </ul>
         </div>
       </div>
@@ -600,10 +601,264 @@ LIMIT 10;</code></pre>
     </div>
   </div>
 
+  <!-- Memory System Section -->
+  <div class="row mb-5" id="memory-system">
+    <div class="col-lg-8 offset-lg-2">
+      <h2 class="border-bottom pb-2">5. Memory System Configuration</h2>
+      
+      <div class="mt-4">
+        <p>The Staples Brain application uses a sophisticated memory system to maintain context during conversations. Understanding this system is important for proper setup and customization:</p>
+        
+        <div class="card mb-4 border-0 bg-light">
+          <div class="card-body">
+            <h5 class="text-primary"><i class="bi bi-brain"></i> Memory Architecture Overview</h5>
+            <p>Staples Brain uses LangChain's memory system combined with a PostgreSQL database for persistent conversation history. The system includes:</p>
+            <ul>
+              <li><strong>ConversationMemory:</strong> Custom implementation that maintains conversation history</li> 
+              <li><strong>Session-based Storage:</strong> Conversation threads are tracked by session IDs</li>
+              <li><strong>Entity Memory:</strong> Extracted entities are stored for contextual understanding</li>
+              <li><strong>Agent-specific Memory:</strong> Each specialized agent has its own memory management</li>
+            </ul>
+          </div>
+        </div>
+        
+        <div class="accordion mb-4" id="memoryAccordion">
+          <div class="accordion-item">
+            <h2 class="accordion-header" id="headingMemoryCode">
+              <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseMemoryCode" aria-expanded="false" aria-controls="collapseMemoryCode">
+                <strong>Memory Implementation Details</strong>
+              </button>
+            </h2>
+            <div id="collapseMemoryCode" class="accordion-collapse collapse" aria-labelledby="headingMemoryCode" data-bs-parent="#memoryAccordion">
+              <div class="accordion-body">
+                <p>The core memory implementation is in <code>utils/memory.py</code>. Here's the implementation of the ConversationMemory class:</p>
+                
+                <div class="card mb-3">
+                  <div class="card-header bg-dark text-white">
+                    <h6 class="mb-0">utils/memory.py</h6>
+                  </div>
+                  <div class="card-body bg-dark text-white">
+                    <pre class="mb-0"><code>import os
+import json
+from datetime import datetime
+from typing import List, Dict, Any, Optional
+from sqlalchemy import create_engine, select
+from sqlalchemy.orm import Session
+from models import Conversation, Message
+
+class ConversationMemory:
+    """Custom memory implementation for Staples Brain conversations"""
+    
+    def __init__(self, session_id: str, max_messages: int = 10):
+        """Initialize memory with session ID and optional max_messages limit"""
+        self.session_id = session_id
+        self.max_messages = max_messages
+        self.DATABASE_URL = os.environ.get("DATABASE_URL")
+        self.engine = create_engine(self.DATABASE_URL) if self.DATABASE_URL else None
+        
+    def get_conversation_history(self) -> List[Dict[str, Any]]:
+        """Retrieve conversation history from the database"""
+        if not self.engine:
+            return []
+            
+        with Session(self.engine) as session:
+            # Find all messages for conversations with this session ID
+            messages = []
+            conversations = session.query(Conversation).filter_by(session_id=self.session_id).all()
+            
+            for conversation in conversations:
+                conv_messages = session.query(Message).filter_by(conversation_id=conversation.id).order_by(Message.created_at).all()
+                for msg in conv_messages:
+                    messages.append({
+                        "role": msg.role,
+                        "content": msg.content,
+                        "created_at": msg.created_at
+                    })
+                    
+            # Limit to the most recent messages if needed
+            return messages[-self.max_messages:] if len(messages) > self.max_messages else messages
+    
+    def add_message(self, conversation_id: int, role: str, content: str) -> None:
+        """Add a new message to conversation history"""
+        if not self.engine:
+            return
+            
+        with Session(self.engine) as session:
+            # Create new message
+            message = Message(
+                conversation_id=conversation_id,
+                role=role,
+                content=content,
+                created_at=datetime.utcnow()
+            )
+            session.add(message)
+            session.commit()
+    
+    def get_formatted_history(self, include_system: bool = False) -> str:
+        """Get conversation history formatted for LLM context"""
+        history = self.get_conversation_history()
+        formatted_messages = []
+        
+        for message in history:
+            # Skip system messages if not requested
+            if message["role"] == "system" and not include_system:
+                continue
+                
+            formatted_messages.append(f"{message['role'].capitalize()}: {message['content']}")
+            
+        return "\n".join(formatted_messages)
+    
+    def clear(self) -> None:
+        """Clear conversation history for this session"""
+        if not self.engine:
+            return
+            
+        with Session(self.engine) as session:
+            conversations = session.query(Conversation).filter_by(session_id=self.session_id).all()
+            for conversation in conversations:
+                # Message deletion will happen via CASCADE
+                session.delete(conversation)
+            session.commit()
+    
+    def get_entities(self, conversation_id: Optional[int] = None) -> Dict[str, Any]:
+        """Get extracted entities from the conversation"""
+        if not self.engine or not conversation_id:
+            return {}
+            
+        with Session(self.engine) as session:
+            # This will be different based on the agent type
+            # Check for package tracking
+            tracking = session.query(PackageTracking).filter_by(conversation_id=conversation_id).first()
+            if tracking:
+                return {
+                    "tracking_number": tracking.tracking_number,
+                    "order_number": tracking.order_number,
+                    "shipping_carrier": tracking.shipping_carrier
+                }
+                
+            # Check for password reset
+            password = session.query(PasswordReset).filter_by(conversation_id=conversation_id).first()
+            if password:
+                return {
+                    "email": password.email,
+                    "username": password.username,
+                    "account_type": password.account_type
+                }
+                
+            # Other agent types can be added here
+                
+        return {}</code></pre>
+                  </div>
+                </div>
+                
+                <p>This memory system is used throughout the application by agents for maintaining conversation context.</p>
+              </div>
+            </div>
+          </div>
+          
+          <div class="accordion-item">
+            <h2 class="accordion-header" id="headingMemoryUsage">
+              <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseMemoryUsage" aria-expanded="false" aria-controls="collapseMemoryUsage">
+                <strong>Using the Memory System</strong>
+              </button>
+            </h2>
+            <div id="collapseMemoryUsage" class="accordion-collapse collapse" aria-labelledby="headingMemoryUsage" data-bs-parent="#memoryAccordion">
+              <div class="accordion-body">
+                <p>Here's how the memory system is typically used within agent implementations:</p>
+                
+                <div class="card mb-3">
+                  <div class="card-header bg-dark text-white">
+                    <h6 class="mb-0">Example Agent Integration</h6>
+                  </div>
+                  <div class="card-body bg-dark text-white">
+                    <pre class="mb-0"><code>from utils.memory import ConversationMemory
+
+class SomeAgent:
+    def __init__(self, session_id):
+        self.session_id = session_id
+        self.memory = ConversationMemory(session_id=session_id)
+        
+    def process_request(self, user_input, conversation_id=None):
+        # Get conversation history
+        conversation_history = self.memory.get_formatted_history()
+        
+        # Include history in LLM context
+        llm_context = f"Previous conversation:\n{conversation_history}\n\nUser: {user_input}"
+        
+        # Process with LLM
+        response = "Agent response here..."
+        
+        # Save the interaction
+        if conversation_id:
+            self.memory.add_message(conversation_id, "user", user_input)
+            self.memory.add_message(conversation_id, "assistant", response)
+            
+        return response</code></pre>
+                  </div>
+                </div>
+                
+                <h6 class="mt-3">Memory Configuration Options</h6>
+                <p>The memory system can be configured through environment variables:</p>
+                
+                <div class="card mb-3">
+                  <div class="card-header bg-dark text-white">
+                    <h6 class="mb-0">.env (memory configuration)</h6>
+                  </div>
+                  <div class="card-body bg-dark text-white">
+                    <pre class="mb-0"><code># Memory system configuration
+MEMORY_MAX_MESSAGES=20  # Maximum number of messages to retrieve per conversation
+MEMORY_INCLUDE_SYSTEM=false  # Whether to include system messages in history</code></pre>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="accordion-item">
+            <h2 class="accordion-header" id="headingMemoryCustomization">
+              <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseMemoryCustomization" aria-expanded="false" aria-controls="collapseMemoryCustomization">
+                <strong>Extending the Memory System</strong>
+              </button>
+            </h2>
+            <div id="collapseMemoryCustomization" class="accordion-collapse collapse" aria-labelledby="headingMemoryCustomization" data-bs-parent="#memoryAccordion">
+              <div class="accordion-body">
+                <p>If you need to extend the memory system for custom needs, here are some approaches:</p>
+                
+                <h6 class="mt-3">Adding Agent-Specific Memory</h6>
+                <p>You can add specialized memory for new agents by:</p>
+                <ol>
+                  <li>Adding a new table in <code>models.py</code> to store agent-specific data</li>
+                  <li>Extending the <code>get_entities</code> method in <code>ConversationMemory</code> to include your new agent type</li>
+                  <li>Creating specific methods in your agent class to store and retrieve specialized memory data</li>
+                </ol>
+                
+                <h6 class="mt-3">Implementing Alternative Memory Storage</h6>
+                <p>If you prefer not to use PostgreSQL for memory, you can modify the <code>ConversationMemory</code> class to use a different storage system:</p>
+                <ul>
+                  <li><strong>Redis:</strong> For faster, in-memory storage of conversation history</li>
+                  <li><strong>MongoDB:</strong> For more flexible document-based storage</li>
+                  <li><strong>File-based:</strong> For simpler deployments without database dependencies</li>
+                </ul>
+                
+                <div class="alert alert-warning">
+                  <i class="bi bi-exclamation-triangle"></i> When replacing the memory system, make sure to implement all methods of the <code>ConversationMemory</code> class to maintain compatibility with the rest of the application.
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="alert alert-info mb-4">
+          <i class="bi bi-info-circle"></i> <strong>Memory Database Tables:</strong> The memory system primarily uses the <code>conversation</code> and <code>message</code> tables in the database, along with agent-specific tables like <code>package_tracking</code>, <code>password_reset</code>, etc. Make sure these tables are properly set up as described in the Database Configuration section.
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- API Keys Configuration Section -->
   <div class="row mb-5" id="api-keys">
     <div class="col-lg-8 offset-lg-2">
-      <h2 class="border-bottom pb-2">5. API Keys Configuration</h2>
+      <h2 class="border-bottom pb-2">6. API Keys Configuration</h2>
       
       <div class="mt-4">
         <p>Staples Brain requires several API keys to function properly. Add these to your <code>.env</code> file:</p>
@@ -641,7 +896,7 @@ TWILIO_PHONE_NUMBER=your_twilio_phone_number</code></pre>
   <!-- Running the Application Section -->
   <div class="row mb-5" id="running-app">
     <div class="col-lg-8 offset-lg-2">
-      <h2 class="border-bottom pb-2">6. Running the Application</h2>
+      <h2 class="border-bottom pb-2">7. Running the Application</h2>
       
       <div class="mt-4">
         <p>Once everything is set up, you can run the application:</p>
@@ -686,7 +941,7 @@ gunicorn --bind 0.0.0.0:5000 --reuse-port --reload main:app</code></pre>
   <!-- Troubleshooting Section -->
   <div class="row mb-5" id="troubleshooting">
     <div class="col-lg-8 offset-lg-2">
-      <h2 class="border-bottom pb-2">7. Troubleshooting</h2>
+      <h2 class="border-bottom pb-2">8. Troubleshooting</h2>
       
       <div class="mt-4">
         <div class="accordion" id="troubleshootingAccordion">
