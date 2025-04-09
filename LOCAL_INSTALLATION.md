@@ -27,8 +27,8 @@ source .venv/bin/activate
 Try this approach first:
 
 ```bash
-# Install using the Python 3.12 compatible requirements
-pip install -r requirements-python312.txt
+# Install using the standardized requirements file
+pip install -r requirements-standard.txt
 ```
 
 ## Step 3: Install dependencies (Option 2 - If Option 1 fails)
@@ -40,13 +40,15 @@ If you encounter dependency resolution errors, try this alternative method:
 pip install --upgrade pip
 
 # Install with more forgiving options
-pip install -r requirements-python312.txt --use-pep517
+pip install -r requirements-standard.txt --use-pep517
 
 # If that also fails, try installing without dependency resolution
-pip install --no-deps -r requirements-python312.txt
+pip install --no-deps -r requirements-standard.txt
 
-# Then manually install core packages
-pip install flask==2.3.3 sqlalchemy==2.0.23 langchain==0.0.335 openai==1.3.7
+# Then manually install core packages in the correct order
+pip install flask==2.3.3 werkzeug==2.3.7 sqlalchemy==2.0.27
+pip install langchain-core==0.1.18 langchain-community==0.0.18 langchain-openai==0.0.5 langchain==0.0.335
+pip install openai==1.6.1
 ```
 
 ## Step 4: Set up environment variables

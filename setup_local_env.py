@@ -133,6 +133,9 @@ def check_installation():
         "flask",
         "sqlalchemy",
         "langchain",
+        "langchain_core",
+        "langchain_community",
+        "langchain_openai",
         "openai",
     ]
     

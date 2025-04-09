@@ -111,17 +111,17 @@ venv\Scripts\activate
 source venv/bin/activate
 
 # Install dependencies
-pip install -r requirements-local.txt</code></pre>
+pip install -r requirements-standard.txt</code></pre>
           </div>
         </div>
         
         <div class="alert alert-info">
-          <i class="bi bi-info-circle"></i> We've provided a <code>requirements-local.txt</code> file in the repository that contains all the necessary dependencies with specific versions. If you don't have this file, you can <a href="/api/download/requirements-local.txt" download="requirements-local.txt" class="alert-link">download it here</a>.
+          <i class="bi bi-info-circle"></i> We've provided a <code>requirements-standard.txt</code> file in the repository that contains all the necessary dependencies with specific versions. If you don't have this file, you can <a href="/api/download/requirements-standard.txt" download="requirements-standard.txt" class="alert-link">download it here</a>.
         </div>
         
         <div class="card mb-4">
           <div class="card-header bg-dark text-white">
-            <h5 class="mb-0">requirements-local.txt</h5>
+            <h5 class="mb-0">requirements-standard.txt</h5>
           </div>
           <div class="card-body bg-dark text-white">
             <pre class="mb-0"><code># Core dependencies
@@ -1152,7 +1152,7 @@ gunicorn --bind 0.0.0.0:5000 --reuse-port --reload main:app</code></pre>
             <div id="collapseThree" class="accordion-collapse collapse" aria-labelledby="headingThree" data-bs-parent="#troubleshootingAccordion">
               <div class="accordion-body">
                 <ol>
-                  <li>Try reinstalling dependencies: <code>pip install -r requirements.txt --force-reinstall</code></li>
+                  <li>Try reinstalling dependencies: <code>pip install -r requirements-standard.txt --force-reinstall</code></li>
                   <li>Check for version conflicts with <code>pip check</code></li>
                   <li>Ensure you're using a compatible Python version (3.9+ recommended)</li>
                   <li>If specific packages are causing issues, try installing them individually with explicit versions</li>
