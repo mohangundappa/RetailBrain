@@ -145,6 +145,78 @@ openai==1.3.7
 # And other dependencies... (download the complete file)</code></pre>
           </div>
         </div>
+
+        <div class="card mb-4 border-0 bg-light">
+          <div class="card-body">
+            <h5 class="text-primary"><i class="bi bi-gear-fill"></i> Environment Configuration</h5>
+            <p>Staples Brain supports different environment configurations, determined by the <code>APP_ENV</code> environment variable:</p>
+            
+            <table class="table table-sm table-striped">
+              <thead>
+                <tr>
+                  <th>Environment</th>
+                  <th>Description</th>
+                  <th>LLM Settings</th>
+                  <th>Database Pool</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>development</code></td>
+                  <td>Local laptop development with debug enabled</td>
+                  <td>gpt-3.5-turbo (temp: 0.7)</td>
+                  <td>Basic pool</td>
+                </tr>
+                <tr>
+                  <td><code>testing</code></td>
+                  <td>Automated tests environment</td>
+                  <td>Same as development</td>
+                  <td>Basic pool</td>
+                </tr>
+                <tr>
+                  <td><code>qa</code></td>
+                  <td>Quality assurance environment</td>
+                  <td>gpt-4o (temp: 0.8)</td>
+                  <td>Medium pool (size: 10)</td>
+                </tr>
+                <tr>
+                  <td><code>staging</code></td>
+                  <td>Pre-production environment</td>
+                  <td>gpt-4o (temp: 0.7)</td>
+                  <td>Large pool (size: 20)</td>
+                </tr>
+                <tr>
+                  <td><code>production</code></td>
+                  <td>Production environment</td>
+                  <td>gpt-4o (temp: 0.2)</td>
+                  <td>Full pool (size: 30)</td>
+                </tr>
+              </tbody>
+            </table>
+            
+            <div class="mt-3">
+              <p>Configure the environment in your <code>.env</code> file or system environment:</p>
+              <div class="card">
+                <div class="card-header bg-dark text-white">
+                  <h6 class="mb-0">.env file</h6>
+                </div>
+                <div class="card-body bg-dark text-white">
+                  <pre class="mb-0"><code># Set the environment (defaults to 'development' if not specified)
+APP_ENV=development
+
+# Configure environment-specific variables
+# Optionally override default LLM model
+LLM_MODEL_NAME=gpt-4o
+
+# Other environment variables
+SECRET_KEY=your_secret_key
+OPENAI_API_KEY=your_openai_api_key
+LANGSMITH_API_KEY=your_langsmith_api_key</code></pre>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>

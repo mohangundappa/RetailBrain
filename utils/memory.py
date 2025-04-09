@@ -3,14 +3,61 @@ Memory management utilities for Staples Brain.
 
 This module provides classes and functions for managing conversation memory
 and context persistence between agent interactions.
+
+This module is environment-aware and will configure memory settings based on the
+current environment (development, qa, staging, production).
 """
 
+import os
 import logging
 from typing import Dict, Any, List, Optional
 from datetime import datetime
 from models import db, Conversation, Message
 
 logger = logging.getLogger(__name__)
+
+# Environment-specific memory configurations
+MEMORY_CONFIG = {
+    "development": {
+        "max_history": 20,
+        "memory_ttl": 60 * 30,  # 30 minutes in seconds
+        "session_ttl": 60 * 60 * 24,  # 24 hours in seconds
+    },
+    "testing": {
+        "max_history": 10,
+        "memory_ttl": 60 * 5,  # 5 minutes in seconds
+        "session_ttl": 60 * 60,  # 1 hour in seconds
+    },
+    "qa": {
+        "max_history": 30,
+        "memory_ttl": 60 * 60,  # 1 hour in seconds
+        "session_ttl": 60 * 60 * 24 * 2,  # 2 days in seconds
+    },
+    "staging": {
+        "max_history": 50,
+        "memory_ttl": 60 * 60 * 3,  # 3 hours in seconds
+        "session_ttl": 60 * 60 * 24 * 3,  # 3 days in seconds
+    },
+    "production": {
+        "max_history": 100,
+        "memory_ttl": 60 * 60 * 6,  # 6 hours in seconds
+        "session_ttl": 60 * 60 * 24 * 7,  # 7 days in seconds
+    }
+}
+
+# Get current environment (default to development)
+CURRENT_ENV = os.environ.get("APP_ENV", "development")
+if CURRENT_ENV not in MEMORY_CONFIG:
+    logger.warning(f"Unknown environment '{CURRENT_ENV}'. Using development memory settings.")
+    CURRENT_ENV = "development"
+
+# Apply environment-specific configuration
+current_memory_config = MEMORY_CONFIG[CURRENT_ENV]
+DEFAULT_MAX_HISTORY = current_memory_config["max_history"]
+MEMORY_TTL = current_memory_config["memory_ttl"]
+SESSION_TTL = current_memory_config["session_ttl"]
+
+logger.info(f"Memory configured for {CURRENT_ENV} environment with max_history={DEFAULT_MAX_HISTORY}")
 
 class ConversationMemory:
     """
@@ -20,19 +67,19 @@ class ConversationMemory:
     history from the database and maintaining context between agent interactions.
     """
     
-    def __init__(self, session_id: str, max_history: int = 20):
+    def __init__(self, session_id: str, max_history: Optional[int] = None):
         """
         Initialize a conversation memory manager.
         
         Args:
             session_id: The session ID to track conversation history
-            max_history: Maximum number of messages to include in history
+            max_history: Maximum number of messages to include in history (defaults to environment setting)
         """
         self.session_id = session_id
-        self.max_history = max_history
+        self.max_history = max_history if max_history is not None else DEFAULT_MAX_HISTORY
         self.working_memory: Dict[str, Any] = {}
         self.context: Dict[str, Any] = {}
-        logger.debug(f"Initialized conversation memory for session {session_id}")
+        logger.debug(f"Initialized conversation memory for session {session_id} with max_history={self.max_history}")
         
     def load_conversation_history(self, conversation_id: Optional[int] = None) -> List[Dict[str, Any]]:
         """
