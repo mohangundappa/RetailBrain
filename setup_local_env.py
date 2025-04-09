@@ -81,7 +81,7 @@ def install_dependencies_incrementally():
     
     # LangChain dependencies (order is important to resolve dependencies correctly)
     langchain_packages = [
-        "langchain-core==0.1.18",
+        "langchain-core==0.1.19",
         "langchain-community==0.0.18",
         "langchain-openai==0.0.5",
         "langchain==0.0.335",
