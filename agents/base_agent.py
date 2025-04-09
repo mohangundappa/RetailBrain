@@ -143,6 +143,221 @@ class Guardrails:
         
         return corrected_text, violations
 
+class EntityDefinition:
+    """
+    Define entity requirements for agent data collection.
+    """
+    
+    def __init__(self, 
+                 name: str, 
+                 required: bool = True, 
+                 validation_pattern: Optional[str] = None,
+                 error_message: Optional[str] = None,
+                 description: Optional[str] = None,
+                 examples: Optional[List[str]] = None,
+                 alternate_names: Optional[List[str]] = None):
+        """
+        Initialize an entity definition.
+        
+        Args:
+            name: The name of the entity (e.g., 'order_number', 'zip_code')
+            required: Whether this entity is required for the agent to proceed
+            validation_pattern: A regex pattern to validate the entity value
+            error_message: Custom error message when validation fails
+            description: A description of the entity for the user
+            examples: Example values for this entity
+            alternate_names: Other names this entity might be called in user input
+        """
+        self.name = name
+        self.required = required
+        self.validation_pattern = validation_pattern
+        self.error_message = error_message or f"Please provide a valid {name.replace('_', ' ')}."
+        self.description = description or f"The {name.replace('_', ' ')} for this request."
+        self.examples = examples or []
+        self.alternate_names = alternate_names or []
+        self.collected = False
+        self.value = None
+        self.attempts = 0
+        self.max_attempts = 3  # Maximum attempts to collect this entity
+
+    def is_valid(self, value: str) -> bool:
+        """
+        Validate the entity value against the pattern if provided.
+        
+        Args:
+            value: The value to validate
+            
+        Returns:
+            True if valid, False otherwise
+        """
+        if not value:
+            return False
+            
+        if not self.validation_pattern:
+            return True
+            
+        return bool(re.match(self.validation_pattern, value))
+        
+    def to_dict(self) -> Dict[str, Any]:
+        """
+        Convert the entity definition to a dictionary.
+        
+        Returns:
+            A dictionary representation of the entity
+        """
+        return {
+            "name": self.name,
+            "required": self.required,
+            "description": self.description,
+            "examples": self.examples,
+            "collected": self.collected,
+            "value": self.value,
+            "attempts": self.attempts
+        }
+
+
+class EntityCollectionState:
+    """
+    Track the state of entity collection for an agent conversation.
+    """
+    
+    def __init__(self):
+        """Initialize the entity collection state."""
+        self.entities: Dict[str, EntityDefinition] = {}
+        self.current_entity: Optional[str] = None
+        self.is_collecting = False
+        self.max_collection_turns = 5  # Maximum conversation turns for entity collection
+        self.collection_turns = 0
+        self.exit_condition_met = False
+        self.exit_reason = None
+        
+    def add_entity(self, entity: EntityDefinition) -> None:
+        """
+        Add an entity to collect.
+        
+        Args:
+            entity: The entity definition
+        """
+        self.entities[entity.name] = entity
+        
+    def set_value(self, entity_name: str, value: str) -> bool:
+        """
+        Set a value for an entity and validate it.
+        
+        Args:
+            entity_name: The name of the entity
+            value: The value to set
+            
+        Returns:
+            True if the value is valid, False otherwise
+        """
+        if entity_name not in self.entities:
+            return False
+            
+        entity = self.entities[entity_name]
+        
+        if entity.is_valid(value):
+            entity.value = value
+            entity.collected = True
+            return True
+        else:
+            entity.attempts += 1
+            
+            # If we've exceeded max attempts, mark as exit condition
+            if entity.attempts >= entity.max_attempts:
+                self.exit_condition_met = True
+                self.exit_reason = f"max_attempts_exceeded_for_{entity_name}"
+                
+            return False
+            
+    def get_next_missing_entity(self) -> Optional[str]:
+        """
+        Get the name of the next required entity that hasn't been collected.
+        
+        Returns:
+            The name of the next entity to collect, or None if all required entities are collected
+        """
+        for name, entity in self.entities.items():
+            if entity.required and not entity.collected:
+                return name
+        return None
+        
+    def are_all_required_entities_collected(self) -> bool:
+        """
+        Check if all required entities have been collected.
+        
+        Returns:
+            True if all required entities are collected, False otherwise
+        """
+        for entity in self.entities.values():
+            if entity.required and not entity.collected:
+                return False
+        return True
+        
+    def get_missing_entities(self) -> List[str]:
+        """
+        Get a list of all required entities that haven't been collected.
+        
+        Returns:
+            A list of entity names
+        """
+        return [name for name, entity in self.entities.items() 
+                if entity.required and not entity.collected]
+                
+    def get_collected_entities(self) -> Dict[str, Any]:
+        """
+        Get all collected entity values.
+        
+        Returns:
+            A dictionary of entity names and their values
+        """
+        return {name: entity.value for name, entity in self.entities.items() 
+                if entity.collected}
+                
+    def should_exit_collection(self) -> bool:
+        """
+        Determine if we should exit the entity collection process.
+        
+        Returns:
+            True if we should exit, False otherwise
+        """
+        # Exit if all required entities are collected
+        if self.are_all_required_entities_collected():
+            self.exit_condition_met = True
+            self.exit_reason = "all_required_entities_collected"
+            return True
+            
+        # Exit if we've exceeded max collection turns
+        if self.collection_turns >= self.max_collection_turns:
+            self.exit_condition_met = True
+            self.exit_reason = "max_collection_turns_exceeded"
+            return True
+            
+        # Exit if an explicit exit condition has been met
+        return self.exit_condition_met
+        
+    def increment_turn(self) -> None:
+        """Increment the collection turn counter."""
+        self.collection_turns += 1
+        
+    def to_dict(self) -> Dict[str, Any]:
+        """
+        Convert the collection state to a dictionary.
+        
+        Returns:
+            A dictionary representation of the collection state
+        """
+        return {
+            "entities": {name: entity.to_dict() for name, entity in self.entities.items()},
+            "current_entity": self.current_entity,
+            "is_collecting": self.is_collecting,
+            "collection_turns": self.collection_turns,
+            "max_collection_turns": self.max_collection_turns,
+            "exit_condition_met": self.exit_condition_met,
+            "exit_reason": self.exit_reason
+        }
+
+
 class BaseAgent(ABC):
     """
     Base class for all Staples Brain agents.
@@ -168,6 +383,9 @@ class BaseAgent(ABC):
         
         # Initialize guardrails
         self.guardrails = Guardrails()
+        
+        # Initialize entity collection state
+        self.entity_collection_state = EntityCollectionState()
         
         # Customer service persona attributes
         self.persona = {
@@ -373,3 +591,151 @@ Remember: Your goal is to provide excellent customer service while representing 
         violation_dicts = [v.to_dict() for v in violations]
         
         return corrected_text, violation_dicts
+    
+    def setup_entity_collection(self, entity_definitions: List[EntityDefinition]) -> None:
+        """
+        Set up entity collection with the provided entity definitions.
+        
+        Args:
+            entity_definitions: List of entity definitions to collect
+        """
+        # Reset entity collection state
+        self.entity_collection_state = EntityCollectionState()
+        
+        # Add entities to collection state
+        for entity in entity_definitions:
+            self.entity_collection_state.add_entity(entity)
+            
+        # Mark entity collection as active
+        self.entity_collection_state.is_collecting = True
+        
+        # Set the current entity to the first required entity
+        self.entity_collection_state.current_entity = self.entity_collection_state.get_next_missing_entity()
+        
+    def extract_entities_from_input(self, user_input: str) -> Dict[str, str]:
+        """
+        Extract entity values from user input using string matching and patterns.
+        This is a simple extraction mechanism, for complex extraction use LLM-based extraction.
+        
+        Args:
+            user_input: The user's input text
+            
+        Returns:
+            Dictionary of entity names and their extracted values
+        """
+        extracted_values = {}
+        
+        # Simple pattern-based extraction for common entities
+        # Order number pattern (alphanumeric with optional hyphen)
+        order_number_match = re.search(r'\b([A-Za-z0-9]{2,}-?[A-Za-z0-9]{2,})\b', user_input)
+        if order_number_match and 'order_number' in self.entity_collection_state.entities:
+            extracted_values['order_number'] = order_number_match.group(1)
+            
+        # Zip code pattern (5 digits, optionally followed by hyphen and 4 more digits)
+        zip_code_match = re.search(r'\b(\d{5}(?:-\d{4})?)\b', user_input)
+        if zip_code_match and 'zip_code' in self.entity_collection_state.entities:
+            extracted_values['zip_code'] = zip_code_match.group(1)
+            
+        # Email pattern
+        email_match = re.search(r'\b([A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,})\b', user_input)
+        if email_match and 'email' in self.entity_collection_state.entities:
+            extracted_values['email'] = email_match.group(1)
+            
+        # For other entity types, check for <entity_name>: <value> pattern in user input
+        for entity_name in self.entity_collection_state.entities:
+            if entity_name not in extracted_values:
+                # Look for explicit entity mentions like "order number: ABC123"
+                pattern = fr'\b{entity_name.replace("_", " ")}:?\s*([A-Za-z0-9@.\-_+]+)\b'
+                match = re.search(pattern, user_input, re.IGNORECASE)
+                if match:
+                    extracted_values[entity_name] = match.group(1)
+                    
+        return extracted_values
+    
+    async def process_entity_collection(self, user_input: str, context: Optional[Dict[str, Any]] = None) -> Tuple[bool, Optional[str]]:
+        """
+        Process entity collection based on user input.
+        
+        Args:
+            user_input: The user's input text
+            context: Additional context information
+            
+        Returns:
+            Tuple of (collection_complete, follow_up_prompt)
+            - collection_complete: True if entity collection is complete, False otherwise
+            - follow_up_prompt: A follow-up prompt for the user if collection is not complete
+        """
+        # If we're not in collection mode, return immediately
+        if not self.entity_collection_state.is_collecting:
+            return True, None
+            
+        # Increment the collection turn counter
+        self.entity_collection_state.increment_turn()
+        
+        # Extract entities from user input
+        extracted_entities = self.extract_entities_from_input(user_input)
+        
+        # Update entity values
+        for entity_name, value in extracted_entities.items():
+            self.entity_collection_state.set_value(entity_name, value)
+            
+        # Check if we should exit collection
+        if self.entity_collection_state.should_exit_collection():
+            logger.info(f"Entity collection complete for {self.name}. Reason: {self.entity_collection_state.exit_reason}")
+            self.entity_collection_state.is_collecting = False
+            
+            # If exit due to max attempts, generate the appropriate response
+            if self.entity_collection_state.exit_reason and "max_attempts_exceeded" in self.entity_collection_state.exit_reason:
+                entity_name = self.entity_collection_state.exit_reason.split("_for_")[1]
+                entity = self.entity_collection_state.entities.get(entity_name)
+                
+                if entity:
+                    transfer_message = f"I'm having trouble collecting the {entity_name.replace('_', ' ')}. Let me transfer you to a customer service representative who can help you further."
+                    return True, transfer_message
+                    
+            return True, None
+            
+        # Get the next entity to collect
+        next_entity_name = self.entity_collection_state.get_next_missing_entity()
+        
+        if not next_entity_name:
+            # All required entities have been collected
+            self.entity_collection_state.is_collecting = False
+            self.entity_collection_state.exit_condition_met = True
+            self.entity_collection_state.exit_reason = "all_required_entities_collected"
+            return True, None
+            
+        # Update the current entity
+        self.entity_collection_state.current_entity = next_entity_name
+        current_entity = self.entity_collection_state.entities[next_entity_name]
+        
+        # Generate a follow-up prompt for the missing entity
+        missing_entities = self.entity_collection_state.get_missing_entities()
+        if len(missing_entities) == 1:
+            # Only one entity missing, ask for it specifically
+            follow_up = f"Could you please provide your {next_entity_name.replace('_', ' ')}?"
+            if current_entity.examples:
+                example = current_entity.examples[0]
+                follow_up += f" For example: {example}"
+        else:
+            # Multiple entities missing, ask for the current one first
+            follow_up = f"To proceed, I need a few more details. Could you please provide your {next_entity_name.replace('_', ' ')}?"
+            
+        # If there have been validation failures, add the error message
+        if current_entity.attempts > 0:
+            follow_up += f" {current_entity.error_message}"
+            
+        return False, follow_up
+        
+    def get_collected_entity_values(self) -> Dict[str, Any]:
+        """
+        Get all collected entity values.
+        
+        Returns:
+            Dictionary of entity names and their values
+        """
+        return self.entity_collection_state.get_collected_entities()
+        
+    def reset_entity_collection(self) -> None:
+        """Reset the entity collection state."""
+        self.entity_collection_state = EntityCollectionState()

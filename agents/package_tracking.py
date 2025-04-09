@@ -5,7 +5,7 @@ from typing import Dict, Any, Optional, List
 import requests
 from langchain.chains import LLMChain
 from langchain.prompts import ChatPromptTemplate
-from agents.base_agent import BaseAgent
+from agents.base_agent import BaseAgent, EntityDefinition
 from config import PACKAGE_TRACKING_ENDPOINT
 
 logger = logging.getLogger(__name__)
@@ -70,6 +70,9 @@ class PackageTrackingAgent(BaseAgent):
         self.classifier_chain = self._create_classifier_chain()
         self.tracking_chain = self._create_tracking_chain()
         self.formatting_chain = self._create_formatting_chain()
+        
+        # Set up entity collection for order tracking
+        self.setup_entity_definitions()
     
     def _create_classifier_chain(self) -> LLMChain:
         """
@@ -143,6 +146,35 @@ class PackageTrackingAgent(BaseAgent):
         
         return self._create_chain(template, ["user_input"])
     
+    def setup_entity_definitions(self) -> None:
+        """
+        Set up entity definitions for order tracking with validation patterns and examples.
+        """
+        # Define order number entity
+        order_number_entity = EntityDefinition(
+            name="order_number",
+            required=True,
+            validation_pattern=r'^[A-Za-z0-9]{2,}-?[A-Za-z0-9]{2,}$',
+            error_message="Order numbers typically contain letters and numbers, like 'OD1234567' or 'STB-987654'.",
+            description="Your Staples order number",
+            examples=["OD1234567", "STB-987654"],
+            alternate_names=["order id", "order confirmation number", "purchase number"]
+        )
+        
+        # Define zip code entity
+        zip_code_entity = EntityDefinition(
+            name="zip_code",
+            required=True,
+            validation_pattern=r'^\d{5}(-\d{4})?$',
+            error_message="Please provide a valid 5-digit zip code (e.g., 90210) or 9-digit zip (e.g., 90210-1234).",
+            description="The billing zip code associated with your order",
+            examples=["90210", "60611-2222"],
+            alternate_names=["postal code", "billing zip", "delivery zip"]
+        )
+        
+        # Set up entity collection with these entities
+        self.setup_entity_collection([order_number_entity, zip_code_entity])
+    
     def _create_formatting_chain(self) -> LLMChain:
         """
         Create a chain to format the tracking information into a user-friendly response
@@ -210,8 +242,65 @@ class PackageTrackingAgent(BaseAgent):
             # Initialize parent class context (for conversation memory)
             await super().process(user_input, context)
             
-            # Extract tracking information from user input
+            # Process entity collection first
+            collection_complete, follow_up_prompt = await self.process_entity_collection(user_input, context)
+            
+            # If we need to continue collecting entities, return a follow-up question
+            if not collection_complete and follow_up_prompt:
+                # Build a friendly response asking for the missing information
+                tracking_info = {
+                    "order_number": None,
+                    "zip_code": None,
+                    "tracking_number": None,
+                    "human_agent_requested": False
+                }
+                
+                # Get collected values, if any
+                collected_entities = self.get_collected_entity_values()
+                if "order_number" in collected_entities:
+                    tracking_info["order_number"] = collected_entities["order_number"]
+                if "zip_code" in collected_entities:
+                    tracking_info["zip_code"] = collected_entities["zip_code"]
+                
+                # Create a status indicating the information we need
+                package_status = {
+                    "status": "information_needed",
+                    "message": follow_up_prompt,
+                    "estimated_delivery": None,
+                    "current_location": None,
+                    "last_updated": None
+                }
+                
+                # Return immediately with the follow-up prompt
+                formatted_response = follow_up_prompt
+                corrected_response, violations = self.apply_response_guardrails(formatted_response)
+                
+                response = {
+                    "agent": self.name,
+                    "response": corrected_response,
+                    "tracking_info": tracking_info,
+                    "package_status": package_status,
+                    "guardrail_violations": violations,
+                    "success": True
+                }
+                
+                self.add_to_memory({
+                    "role": "assistant",
+                    "content": corrected_response,
+                    "conversation_id": context.get("conversation_id") if context else None,
+                    "extracted_info": {
+                        "order_number": tracking_info.get("order_number"),
+                        "zip_code": tracking_info.get("zip_code"),
+                        "tracking_number": tracking_info.get("tracking_number"),
+                        "package_status": "information_needed"
+                    }
+                })
+                
+                return response
+            
+            # If we have all the required entities or we exited collection for another reason
             try:
+                # Extract tracking information from user input to catch any values not found by entity collection
                 tracking_result = await self.tracking_chain.arun(user_input=user_input)
                 
                 # Clean up the tracking result to handle potential whitespace in JSON keys
@@ -222,13 +311,20 @@ class PackageTrackingAgent(BaseAgent):
                     tracking_info = json.loads(tracking_result)
                 except json.JSONDecodeError as json_err:
                     logger.warning(f"JSON parse error: {json_err}. Attempting to fix malformed JSON")
-                    # If JSON parsing fails, try to extract values using regex as fallback
+                    # If JSON parsing fails, use entity collection values
                     tracking_info = {
                         "order_number": None,
                         "zip_code": None,
                         "tracking_number": None,
                         "human_agent_requested": False
                     }
+                
+                # Merge with collected entity values, which take precedence
+                collected_entities = self.get_collected_entity_values()
+                if "order_number" in collected_entities:
+                    tracking_info["order_number"] = collected_entities["order_number"]
+                if "zip_code" in collected_entities:
+                    tracking_info["zip_code"] = collected_entities["zip_code"]
                 
                 # Check if the user explicitly stated they don't have or can't find their order number
                 # This requires checking original input for statements about not having order information
@@ -238,8 +334,12 @@ class PackageTrackingAgent(BaseAgent):
                     "don't have an order", "no order number", "lost order"
                 ])
                 
-                # Set human_agent_requested to True if user doesn't have order number
-                if dont_have_order_number:
+                # Check if we've had too many failed collection attempts
+                collection_failed = (self.entity_collection_state.exit_reason and 
+                                     "max_attempts_exceeded" in self.entity_collection_state.exit_reason)
+                
+                # Set human_agent_requested to True if user doesn't have order number or we've failed collection
+                if dont_have_order_number or collection_failed:
                     tracking_info["human_agent_requested"] = True
                     package_status = {
                         "status": "transfer_to_human",
@@ -248,7 +348,19 @@ class PackageTrackingAgent(BaseAgent):
                         "current_location": None,
                         "last_updated": None,
                         "transfer_to_human": True,
-                        "human_transfer_reason": "missing_order_number"
+                        "human_transfer_reason": "missing_order_number" if dont_have_order_number else "max_attempts_exceeded"
+                    }
+                # If we have an entity collection exit message from max attempts, transfer to human
+                elif follow_up_prompt and "transfer" in follow_up_prompt:
+                    tracking_info["human_agent_requested"] = True
+                    package_status = {
+                        "status": "transfer_to_human",
+                        "message": follow_up_prompt,
+                        "estimated_delivery": None,
+                        "current_location": None,
+                        "last_updated": None,
+                        "transfer_to_human": True,
+                        "human_transfer_reason": "entity_collection_failed"
                     }
                 # If no order number is provided, we'll need to handle this gracefully
                 elif not tracking_info.get("order_number"):
