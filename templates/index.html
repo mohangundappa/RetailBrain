@@ -1,0 +1,265 @@
+{% extends "base.html" %}
+
+{% block title %}Staples Brain - AI Super Brain{% endblock %}
+
+{% block header %}
+<header class="brain-header text-white text-center">
+    <div class="container">
+        <h1 class="display-4"><i class="fas fa-brain"></i> Staples Brain</h1>
+        <p class="lead">A modular AI super brain system with specialized agents</p>
+    </div>
+</header>
+{% endblock %}
+
+{% block content %}
+<div class="row mb-5">
+    <div class="col-md-8 offset-md-2">
+        <div class="card bg-dark text-light">
+            <div class="card-body">
+                <h3 class="card-title mb-4">Ask Staples Brain</h3>
+                <form id="brain-form">
+                    <div class="mb-3">
+                        <textarea id="user-input" class="form-control" rows="3" placeholder="Ask about package tracking, password reset, or anything else..."></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-paper-plane"></i> Send
+                    </button>
+                </form>
+                <div class="loading-indicator" id="loading">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="mt-2">Thinking...</p>
+                </div>
+                <div class="response-container mt-4" id="response-container">
+                    <p class="text-muted">Responses will appear here...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<h2 class="text-center mb-4">Available Agents</h2>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card agent-card bg-dark text-light h-100">
+            <div class="card-body text-center">
+                <div class="agent-icon">
+                    <i class="fas fa-box"></i>
+                </div>
+                <h3 class="card-title">Package Tracking</h3>
+                <p class="card-text">Track your packages and check delivery status</p>
+                <button class="btn btn-outline-info" onclick="setPrompt('Track my package with tracking number TRACK123456')">Try Package Tracking</button>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card agent-card bg-dark text-light h-100">
+            <div class="card-body text-center">
+                <div class="agent-icon">
+                    <i class="fas fa-key"></i>
+                </div>
+                <h3 class="card-title">Password Reset</h3>
+                <p class="card-text">Reset your password and recover your account</p>
+                <button class="btn btn-outline-info" onclick="setPrompt('I need to reset my password for user@example.com')">Try Password Reset</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="mt-5 pt-5" id="api-docs">
+    <h2 class="mb-4">API Documentation</h2>
+    <p>Staples Brain provides a RESTful API for integration with other systems.</p>
+    
+    <div class="endpoint">
+        <h4><span class="method">POST</span> <span class="url-path">/api/process</span></h4>
+        <p>Process a natural language request using the most appropriate agent.</p>
+        <h5>Request Body:</h5>
+        <div class="response-example">
+            {
+                "input": "Track my package with tracking number TRACK123456",
+                "context": {
+                    "user_id": "12345",
+                    "session_id": "abcdef"
+                }
+            }
+        </div>
+        <h5>Response:</h5>
+        <div class="response-example">
+            {
+                "agent": "Package Tracking Agent",
+                "response": "Your package with tracking number TRACK123456 is currently in transit...",
+                "tracking_info": { ... },
+                "package_status": { ... },
+                "success": true,
+                "selected_agent": "Package Tracking Agent",
+                "confidence": 0.95
+            }
+        </div>
+    </div>
+    
+    <div class="endpoint">
+        <h4><span class="method">POST</span> <span class="url-path">/api/track-package</span></h4>
+        <p>Directly access the package tracking agent.</p>
+        <h5>Request Body:</h5>
+        <div class="response-example">
+            {
+                "tracking_number": "TRACK123456"
+            }
+        </div>
+        <h5>Or:</h5>
+        <div class="response-example">
+            {
+                "query": "Where is my package that I ordered last week?"
+            }
+        </div>
+    </div>
+    
+    <div class="endpoint">
+        <h4><span class="method">POST</span> <span class="url-path">/api/reset-password</span></h4>
+        <p>Directly access the password reset agent.</p>
+        <h5>Request Body:</h5>
+        <div class="response-example">
+            {
+                "email": "user@example.com"
+            }
+        </div>
+        <h5>Or:</h5>
+        <div class="response-example">
+            {
+                "query": "I forgot my password and need to reset it"
+            }
+        </div>
+    </div>
+    
+    <div class="endpoint">
+        <h4><span class="method">GET</span> <span class="url-path">/api/agents</span></h4>
+        <p>List all available agents.</p>
+        <h5>Response:</h5>
+        <div class="response-example">
+            {
+                "success": true,
+                "agents": [
+                    "Package Tracking Agent",
+                    "Reset Password Agent"
+                ]
+            }
+        </div>
+    </div>
+    
+    <div class="endpoint">
+        <h4><span class="method">GET</span> <span class="url-path">/api/health</span></h4>
+        <p>Check the health status of the Staples Brain.</p>
+        <h5>Response:</h5>
+        <div class="response-example">
+            {
+                "status": "healthy",
+                "message": "Staples Brain is running",
+                "version": "1.0.0",
+                "agents": [
+                    "Package Tracking Agent",
+                    "Reset Password Agent"
+                ]
+            }
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const brainForm = document.getElementById('brain-form');
+    const userInput = document.getElementById('user-input');
+    const loading = document.getElementById('loading');
+    const responseContainer = document.getElementById('response-container');
+    
+    brainForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const input = userInput.value.trim();
+        if (!input) return;
+        
+        // Show loading indicator
+        loading.style.display = 'block';
+        responseContainer.innerHTML = '';
+        
+        try {
+            const response = await fetch('/api/process', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    input: input,
+                    context: {}
+                })
+            });
+            
+            const data = await response.json();
+            
+            // Format and display response
+            let html = '';
+            
+            if (data.success) {
+                html += `<div class="alert alert-info">
+                    <strong>Agent: ${data.agent}</strong>
+                    <div class="mt-2">${formatResponse(data.response)}</div>
+                </div>`;
+                
+                if (data.selected_agent) {
+                    html += `<div class="text-muted small">
+                        <em>Selected Agent: ${data.selected_agent} (Confidence: ${(data.confidence * 100).toFixed(1)}%)</em>
+                    </div>`;
+                }
+                
+                if (data.tracking_info && data.package_status) {
+                    html += '<div class="mt-3 small">
+                        <details>
+                            <summary>View Details</summary>
+                            <div class="mt-2">
+                                <h6>Tracking Info:</h6>
+                                <pre class="bg-dark p-2">${JSON.stringify(data.tracking_info, null, 2)}</pre>
+                                <h6>Package Status:</h6>
+                                <pre class="bg-dark p-2">${JSON.stringify(data.package_status, null, 2)}</pre>
+                            </div>
+                        </details>
+                    </div>';
+                }
+                
+            } else {
+                html = `<div class="alert alert-danger">
+                    <strong>Error:</strong> ${data.error || 'Unknown error occurred'}
+                    <div class="mt-2">${data.response || ''}</div>
+                </div>`;
+            }
+            
+            responseContainer.innerHTML = html;
+            
+        } catch (error) {
+            responseContainer.innerHTML = `<div class="alert alert-danger">
+                <strong>Error:</strong> ${error.message}
+            </div>`;
+        } finally {
+            // Hide loading indicator
+            loading.style.display = 'none';
+        }
+    });
+});
+
+function formatResponse(text) {
+    // Convert line breaks to <br>
+    return text.replace(/\n/g, '<br>');
+}
+
+function setPrompt(text) {
+    const userInput = document.getElementById('user-input');
+    userInput.value = text;
+    userInput.focus();
+    
+    // Scroll to form
+    document.getElementById('brain-form').scrollIntoView({ behavior: 'smooth' });
+}
+</script>
+{% endblock %}
