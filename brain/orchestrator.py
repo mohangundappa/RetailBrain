@@ -312,12 +312,12 @@ class AgentOrchestrator:
                             logger.info(f"Responding to greeting for an ongoing conversation with agent: {agent.name}")
                             return agent, 0.8, True
             
-            # Return the most appropriate agent for handling generic welcome messages
-            # We'll choose the agent dynamically based on the client's role
-            for agent in self.agents:
-                if agent.name == "Store Locator Agent":  # This agent handles general inquiries best
-                    logger.info("Responding to welcome greeting with the Store Locator Agent")
-                    return agent, 0.9, False
+            # For a simple greeting, don't select a specific agent
+            # Instead, present all options
+            logger.info("Received a simple greeting, presenting all agent options")
+            
+            # Return None with very low confidence to trigger the welcome message
+            return None, 0.0, False
         
         # 1. Check if a specific agent is explicitly requested
         if context and "agent_name" in context:
