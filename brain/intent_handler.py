@@ -44,30 +44,47 @@ class IntentHandler:
         
     def _create_templates(self):
         """Create prompt templates for different tasks."""
-        # Intent identification template
+        # Zero-shot intent identification template
         self.intent_template = ChatPromptTemplate.from_template("""
-        You are an intent classifier for the Staples Brain system. Your job is to identify the intent
-        behind the user's query and return it in a structured format.
+        You are performing zero-shot intent classification for the Staples Brain system. Without any training data,
+        you need to determine the user's intent from their query using just your understanding of language.
         
-        Current available intents:
-        - package_tracking: User wants to track a package or get shipping information
-        - order_status: User wants to check the status of an order
-        - shipping_inquiry: User has questions about shipping methods, costs, or timelines
-        - delivery_status: User wants to know when their order will be delivered
-        - package_location: User wants to know where their package is currently located
-        - password_reset: User wants to reset password or recover account
-        - account_access: User is having trouble accessing their account
-        - login_issue: User can't log in to their account
-        - forgot_password: User specifically mentions forgetting their password
-        - unknown: The user's query doesn't match any known intent
+        Available intents (classify the query into one of these categories):
+        
+        SHIPPING & PACKAGES RELATED:
+        - package_tracking: User wants to track a specific package or get status of a shipment with a tracking number
+          Example: "Where is my package with tracking number ABC123?"
+        - order_status: User wants information about an order they placed, often by order number
+          Example: "What's the status of my order #123456?"
+        - shipping_inquiry: User has general questions about shipping methods, costs, policies or timeframes
+          Example: "How much does overnight shipping cost?"
+        - delivery_status: User wants to know specifically when their order will arrive
+          Example: "When will my order be delivered?"
+        - package_location: User wants to know the current location of their package in transit
+          Example: "Where exactly is my package right now?"
+        
+        ACCOUNT RELATED:
+        - password_reset: User explicitly wants to reset their password
+          Example: "I need to reset my password"
+        - account_access: User is having general trouble accessing their account
+          Example: "I can't get into my account"
+        - login_issue: User specifically mentions problems with the login process
+          Example: "The login page isn't accepting my credentials"
+        - forgot_password: User states they've forgotten their password
+          Example: "I forgot my password and need to recover it"
+        
+        OTHER:
+        - unknown: The query doesn't match any of the available intents
+          Example: "What's the weather like today?"
         
         User query: {query}
         
-        Return a JSON object with the following fields:
-        - intent: The identified intent from the list above
-        - confidence: A confidence score between 0 and 1
-        - explanation: A brief explanation of why this intent was chosen
-        - primary_category: Either "package_tracking" or "password_reset" (the high-level category)
+        Think through your reasoning step by step to determine the most likely intent.
+        Then return a JSON object with these fields:
+        - intent: The most likely intent from the list above
+        - confidence: A score between 0 and 1 indicating how confident you are in this classification
+        - explanation: Your reasoning for why this intent was chosen
+        - primary_category: Either "package_tracking" (for shipping/package intents) or "password_reset" (for account intents) or null if unknown
         - is_follow_up: Boolean indicating if this appears to be a follow-up to a previous conversation
         
         Format your response as a valid JSON object only, with no additional text.
@@ -155,37 +172,59 @@ class IntentHandler:
         
     async def identify_intent(self, query: str) -> Dict[str, Any]:
         """
-        Identify the intent behind a user query.
+        Identify the intent behind a user query using zero-shot prompting.
+        
+        This method uses a large language model to classify the intent without training
+        on labeled data. Instead, it relies on the model's understanding of language and
+        the descriptions of available intents provided in the prompt.
         
         Args:
             query: The user's query
             
         Returns:
-            Dict containing intent classification
+            Dict containing intent classification with confidence score and explanation
         """
         if not hasattr(self, 'api_key') or not self.api_key:
+            # Fall back to rule-based classification if no API key is available
+            logger.warning("No API key available for LLM-based intent classification, using rule-based fallback")
             return self._fallback_intent_classification(query)
             
         try:
+            # Use the LLM for zero-shot classification
+            logger.info(f"Performing zero-shot intent classification for query: {query}")
             chain = self.intent_template | self.llm
+            
+            # Configure the model to respond in JSON format
             response = await chain.ainvoke({"query": query})
             content = response.content
             
             # Parse JSON response
             result = json.loads(content)
-            logger.info(f"Identified intent: {result['intent']} with confidence {result['confidence']}")
+            
+            # Log the result with detailed information
+            logger.info(f"Zero-shot intent classification: {result['intent']} (confidence: {result['confidence']:.2f})")
+            logger.debug(f"Classification explanation: {result.get('explanation', 'No explanation provided')}")
+            
+            # Add method used for tracking purposes
+            result['classification_method'] = 'zero_shot_llm'
+            
             return result
         except Exception as e:
-            logger.error(f"Error identifying intent: {str(e)}", exc_info=True)
+            logger.error(f"Error in zero-shot intent classification: {str(e)}", exc_info=True)
             return {
                 "intent": "unknown",
                 "confidence": 0.0,
-                "explanation": f"Error in intent identification: {str(e)}"
+                "explanation": f"Error in intent classification: {str(e)}",
+                "classification_method": "error_fallback"
             }
     
     async def extract_entities(self, query: str, intent: str) -> Dict[str, Any]:
         """
-        Extract relevant entities from a user query based on intent.
+        Extract relevant entities from a user query based on intent using zero-shot extraction.
+        
+        This method leverages the LLM's ability to understand and identify relevant entities
+        in natural language without explicit training on labeled examples. Instead, it relies
+        on the description of entity types provided in the prompt template.
         
         Args:
             query: The user's query
@@ -195,26 +234,47 @@ class IntentHandler:
             Dict containing extracted entities
         """
         if not hasattr(self, 'api_key') or not self.api_key:
+            logger.warning("No API key available for LLM-based entity extraction, using rule-based fallback")
             return self._fallback_entity_extraction(query, intent)
             
         try:
+            # Use the LLM for zero-shot entity extraction
+            logger.info(f"Performing zero-shot entity extraction for query with intent '{intent}'")
             chain = self.entity_template | self.llm
+            
+            # Pass the query and intent to the LLM
             response = await chain.ainvoke({"query": query, "intent": intent})
             content = response.content
             
             # Parse JSON response
             result = json.loads(content)
-            logger.info(f"Extracted entities for {intent}: {result}")
+            
+            # Log concise summary of extracted entities
+            entity_count = sum(1 for v in result.values() if v is not None)
+            entity_types = [k for k, v in result.items() if v is not None]
+            
+            logger.info(f"Zero-shot entity extraction found {entity_count} entities of types: {', '.join(entity_types)}")
+            logger.debug(f"Extracted entities for {intent}: {result}")
+            
+            # Add extraction method for tracking
+            result['extraction_method'] = 'zero_shot_llm'
+            
             return result
         except Exception as e:
-            logger.error(f"Error extracting entities: {str(e)}", exc_info=True)
+            logger.error(f"Error in zero-shot entity extraction: {str(e)}", exc_info=True)
             return {
-                "error": f"Failed to extract entities: {str(e)}"
+                "error": f"Failed to extract entities: {str(e)}",
+                "extraction_method": "error_fallback"
             }
     
     async def create_execution_plan(self, query: str, intent: str, entities: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Create a plan for executing the user's request.
+        Create a plan for executing the user's request using zero-shot planning.
+        
+        This method uses the LLM to generate an execution plan based on a description
+        of available agents and their capabilities, without relying on pre-defined planning
+        templates for each intent. It's a zero-shot approach because the model reasons about
+        the best execution path given only a description of the available options.
         
         Args:
             query: The user's query
@@ -222,31 +282,45 @@ class IntentHandler:
             entities: The extracted entities
             
         Returns:
-            Dict containing execution plan
+            Dict containing a structured execution plan
         """
         if not hasattr(self, 'api_key') or not self.api_key:
+            logger.warning("No API key available for LLM-based execution planning, using rule-based fallback")
             return self._fallback_execution_plan(intent)
             
         try:
+            # Use the LLM for zero-shot execution planning
+            logger.info(f"Performing zero-shot execution planning for intent '{intent}'")
+            
+            # Prepare entities as JSON string for the template
+            entities_json = json.dumps(entities, ensure_ascii=False, indent=2)
+            
+            # Generate the execution plan using the LLM
             chain = self.planning_template | self.llm
             response = await chain.ainvoke({
                 "query": query,
                 "intent": intent,
-                "entities": json.dumps(entities)
+                "entities": entities_json
             })
             content = response.content
             
             # Parse JSON response
             result = json.loads(content)
-            logger.info(f"Created execution plan for {intent}")
+            
+            # Log concise summary of the plan
+            logger.info(f"Zero-shot execution plan created for intent '{intent}' using agent '{result.get('agent')}'")
+            logger.info(f"Plan requires entities: {result.get('required_entities', [])}")
+            logger.debug(f"Execution plan details: {result}")
+            
+            # Add planning method for tracking
+            result['planning_method'] = 'zero_shot_llm'
+            
             return result
         except Exception as e:
-            logger.error(f"Error creating execution plan: {str(e)}", exc_info=True)
-            return {
-                "agent": self._get_agent_for_intent(intent),
-                "actions": ["default_processing"],
-                "expected_output": "Basic response based on intent"
-            }
+            logger.error(f"Error in zero-shot execution planning: {str(e)}", exc_info=True)
+            fallback_plan = self._fallback_execution_plan(intent)
+            fallback_plan['planning_method'] = 'error_fallback'
+            return fallback_plan
     
     def _fallback_intent_classification(self, query: str) -> Dict[str, Any]:
         """
