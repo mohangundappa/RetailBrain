@@ -392,6 +392,15 @@ def process_request():
                     # Process with the orchestrator directly - it will handle welcome flows
                     # and provide appropriate responses when no specific agent is found
                     try:
+                        # First, let's check directly for custom agents 
+                        try:
+                            custom_agents = CustomAgent.query.filter_by(is_active=True, wizard_completed=True).all()
+                            logger.info(f"Found {len(custom_agents)} custom agents in the database from main")
+                            for agent in custom_agents:
+                                logger.info(f"Custom agent: {agent.id} - {agent.name}")
+                        except Exception as e:
+                            logger.error(f"Error querying custom agents from main: {str(e)}")
+                        
                         # Set up the necessary context for intent handling
                         intent_context = {
                             'session_id': session_id,
@@ -404,19 +413,47 @@ def process_request():
                     except Exception as e:
                         # Fallback if orchestrator fails
                         logger.error(f"Error using orchestrator for fallback: {str(e)}")
+                        # Try one more time to get custom agents
+                        custom_agents = []
+                        try:
+                            custom_agents = CustomAgent.query.filter_by(is_active=True, wizard_completed=True).all()
+                            logger.info(f"Found {len(custom_agents)} custom agents in fallback handler")
+                        except Exception as e:
+                            logger.error(f"Error in fallback when getting custom agents: {str(e)}")
+                        
+                        # Create the base response
+                        welcome_text = "Hello! I'm Staples Brain, here to assist you with various Staples-related services. I can help you with:\n\n" + \
+                                  "• Tracking your packages and orders\n" + \
+                                  "• Resetting your password or account access\n" + \
+                                  "• Finding Staples stores near you\n" + \
+                                  "• Getting information about Staples products"
+                                  
+                        # Add custom agents if available
+                        if custom_agents:
+                            welcome_text += "\n• Working with custom agents: "
+                            welcome_text += ", ".join([agent.name for agent in custom_agents])
+                            
+                        welcome_text += "\n\nHow can I assist you today?"
+                        
+                        # Create suggested actions
+                        suggested_actions = [
+                            {"id": "package-tracking", "name": "Track my package", "description": "Check the status of your order or package"},
+                            {"id": "reset-password", "name": "Reset my password", "description": "Get help with account access or password reset"},
+                            {"id": "store-locator", "name": "Find a store", "description": "Locate Staples stores near you"},
+                            {"id": "product-info", "name": "Product information", "description": "Get details about Staples products"}
+                        ]
+                        
+                        # Add custom agents to suggested actions
+                        for agent in custom_agents:
+                            suggested_actions.append({
+                                "id": f"custom-{agent.id}", 
+                                "name": agent.name,
+                                "description": agent.description or f"Custom agent: {agent.name}"
+                            })
+                            
                         response = {
-                            "response": "Hello! I'm Staples Brain, here to assist you with various Staples-related services. I can help you with:\n\n" +
-                                  "• Tracking your packages and orders\n" +
-                                  "• Resetting your password or account access\n" +
-                                  "• Finding Staples stores near you\n" +
-                                  "• Getting information about Staples products\n\n" +
-                                  "How can I assist you today?",
-                            "suggested_actions": [
-                                {"id": "package-tracking", "name": "Track my package", "description": "Check the status of your order or package"},
-                                {"id": "reset-password", "name": "Reset my password", "description": "Get help with account access or password reset"},
-                                {"id": "store-locator", "name": "Find a store", "description": "Locate Staples stores near you"},
-                                {"id": "product-info", "name": "Product information", "description": "Get details about Staples products"}
-                            ],
+                            "response": welcome_text,
+                            "suggested_actions": suggested_actions,
                             "agent": None  # Explicitly show there's no agent selected yet
                         }
             

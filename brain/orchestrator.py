@@ -152,9 +152,29 @@ class AgentOrchestrator:
                 try:
                     # This import is inside the try block to avoid circular imports
                     from models import CustomAgent
-                    custom_agents = CustomAgent.query.filter_by(is_active=True, wizard_completed=True).all()
+                    from flask import current_app
+                    
+                    # Check if we're in an application context
+                    if current_app:
+                        # Use direct SQL query to ensure it works
+                        from db import db
+                        result = db.session.execute("SELECT id, name, description FROM custom_agent WHERE is_active = TRUE AND wizard_completed = TRUE").fetchall()
+                        
+                        # Convert the raw SQL results to a format we can use
+                        for row in result:
+                            custom_agent = type('CustomAgent', (object,), {
+                                'id': row[0],
+                                'name': row[1],
+                                'description': row[2]
+                            })
+                            custom_agents.append(custom_agent)
+                        
+                        logger.info(f"Found {len(custom_agents)} custom agents in the database")
                 except Exception as e:
                     logger.warning(f"Could not fetch custom agents: {str(e)}")
+                    # Print the full stack trace for debugging
+                    import traceback
+                    logger.warning(traceback.format_exc())
                 
                 # Create the default suggested actions for built-in agents
                 suggested_actions = [
