@@ -507,25 +507,66 @@
           </div>
         </div>
         
+        <h5>Types of Agents in Staples Brain</h5>
+        <p>Staples Brain supports two types of agents that are displayed in the Agent Management interface:</p>
+        
+        <div class="row mb-4 mt-3">
+          <div class="col-md-6">
+            <div class="card h-100">
+              <div class="card-header bg-secondary text-white">
+                <h5 class="mb-0">Built-in Specialized Agents <span class="badge bg-light text-dark ms-2">System</span></h5>
+              </div>
+              <div class="card-body">
+                <p>These agents are defined in the system's code and offer specialized functionality:</p>
+                <ul>
+                  <li><strong>Package Tracking Agent</strong></li>
+                  <li><strong>Reset Password Agent</strong></li>
+                  <li><strong>Store Locator Agent</strong></li>
+                  <li><strong>Product Information Agent</strong></li>
+                </ul>
+                <p>Built-in agents appear with a <span class="badge bg-secondary">Built-in</span> label and can only be viewed, not edited through the interface.</p>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="card h-100">
+              <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">Custom Agents <span class="badge bg-light text-dark ms-2">User-Created</span></h5>
+              </div>
+              <div class="card-body">
+                <p>These agents are created through the Agent Builder interface:</p>
+                <ul>
+                  <li>Created from scratch with custom components</li>
+                  <li>Based on templates from the Template Gallery</li>
+                  <li>Can be fully customized with unique logic</li>
+                  <li>Stored in the database for easy management</li>
+                </ul>
+                <p>Custom agents can be edited, tested, and deleted through the interface.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        
         <h5>Accessing Agent Management</h5>
         <p>You can access the agent management features in the Agent Builder section of Staples Brain:</p>
         <ol>
           <li>Navigate to the Agent Builder from the main navigation</li>
           <li>The "Manage Existing Agents" panel appears at the top of the page</li>
           <li>Click "Show/Hide Agents" to expand the management interface</li>
+          <li>You'll see all agents (both built-in and custom) with appropriate labels</li>
           <li>For detailed instructions, click the "View Documentation" link</li>
         </ol>
         
         <div class="row mt-4 mb-4">
-          <div class="col-md-6">
+          <div class="col-md-4">
             <div class="card h-100">
               <div class="card-header bg-primary text-white">
-                <h5 class="mb-0">Editing Agents</h5>
+                <h5 class="mb-0">Editing Custom Agents</h5>
               </div>
               <div class="card-body">
-                <p>The edit functionality allows you to modify existing agents:</p>
+                <p>The edit functionality allows you to modify custom agents:</p>
                 <ul>
-                  <li>Click the "Edit" button next to an agent in the list</li>
+                  <li>Click the <button class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil"></i> Edit</button> button next to a custom agent</li>
                   <li>This loads the agent onto the canvas</li>
                   <li>Modify components, connections, or configuration</li>
                   <li>Click "Save Agent" to preserve changes</li>
@@ -535,21 +576,40 @@
             </div>
           </div>
           
-          <div class="col-md-6">
+          <div class="col-md-4">
             <div class="card h-100">
-              <div class="card-header bg-danger text-white">
-                <h5 class="mb-0">Deleting Agents</h5>
+              <div class="card-header bg-secondary text-white">
+                <h5 class="mb-0">Viewing Built-in Agents</h5>
               </div>
               <div class="card-body">
-                <p>To remove an agent from your system:</p>
+                <p>To view details about built-in system agents:</p>
                 <ul>
-                  <li>Click the "Delete" button next to the agent</li>
+                  <li>Click the <button class="btn btn-sm btn-outline-secondary"><i class="bi bi-eye"></i> View</button> button next to a built-in agent</li>
+                  <li>A modal dialog displays information about the agent</li>
+                  <li>Learn about the agent's purpose and functionality</li>
+                  <li>Built-in agents cannot be edited through the UI</li>
+                </ul>
+                <p><strong>Note:</strong> Built-in agents are identified with a <span class="badge bg-secondary">Built-in</span> label.</p>
+              </div>
+            </div>
+          </div>
+          
+          <div class="col-md-4">
+            <div class="card h-100">
+              <div class="card-header bg-danger text-white">
+                <h5 class="mb-0">Deleting Custom Agents</h5>
+              </div>
+              <div class="card-body">
+                <p>To remove a custom agent from your system:</p>
+                <ul>
+                  <li>Click the <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i> Delete</button> button next to the agent</li>
                   <li>A confirmation dialog appears</li>
                   <li>Confirm deletion by clicking "Delete Agent"</li>
                 </ul>
                 <div class="alert alert-warning mt-2">
                   <i class="bi bi-exclamation-triangle-fill"></i> <strong>Warning:</strong> Deletion is permanent and cannot be undone.
                 </div>
+                <p><strong>Note:</strong> Built-in agents cannot be deleted.</p>
               </div>
             </div>
           </div>

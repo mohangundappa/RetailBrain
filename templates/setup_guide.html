@@ -23,9 +23,10 @@
             <li><a href="#environment-setup" class="text-decoration-none">3. Environment Setup</a></li>
             <li><a href="#database-configuration" class="text-decoration-none">4. Database Configuration</a></li>
             <li><a href="#memory-system" class="text-decoration-none">5. Memory System Configuration</a></li>
-            <li><a href="#api-keys" class="text-decoration-none">6. API Keys Configuration</a></li>
-            <li><a href="#running-app" class="text-decoration-none">7. Running the Application</a></li>
-            <li><a href="#troubleshooting" class="text-decoration-none">8. Troubleshooting</a></li>
+            <li><a href="#agent-types" class="text-decoration-none">6. Agent Types and Configuration</a></li>
+            <li><a href="#api-keys" class="text-decoration-none">7. API Keys Configuration</a></li>
+            <li><a href="#running-app" class="text-decoration-none">8. Running the Application</a></li>
+            <li><a href="#troubleshooting" class="text-decoration-none">9. Troubleshooting</a></li>
           </ul>
         </div>
       </div>
@@ -859,10 +860,94 @@ MEMORY_INCLUDE_SYSTEM=false  # Whether to include system messages in history</co
     </div>
   </div>
 
+  <!-- Agent Types and Configuration Section -->
+  <div class="row mb-5" id="agent-types">
+    <div class="col-lg-8 offset-lg-2">
+      <h2 class="border-bottom pb-2">6. Agent Types and Configuration</h2>
+      
+      <div class="mt-4">
+        <p>Staples Brain supports two types of agents that serve different purposes and are managed differently within the system:</p>
+        
+        <div class="row row-cols-1 row-cols-md-2 g-4 mb-4">
+          <div class="col">
+            <div class="card h-100 border-secondary">
+              <div class="card-header bg-secondary text-white">
+                <h5 class="mb-0">Built-in Specialized Agents</h5>
+              </div>
+              <div class="card-body">
+                <p>These agents are defined directly in the system code:</p>
+                <ul>
+                  <li><strong>Package Tracking Agent:</strong> Handles package tracking requests</li>
+                  <li><strong>Reset Password Agent:</strong> Assists with password reset</li>
+                  <li><strong>Store Locator Agent:</strong> Helps find store locations</li>
+                  <li><strong>Product Information Agent:</strong> Provides product details</li>
+                </ul>
+                <h6>Implementation:</h6>
+                <p>Built-in agents are implemented in the <code>agents/</code> directory as Python classes that inherit from the <code>BaseAgent</code> class:</p>
+                <pre class="bg-dark text-white p-2 mt-2 mb-0"><code>class PackageTrackingAgent(BaseAgent):
+    """Agent for tracking packages and orders."""
+    
+    name = "Order Tracking"
+    
+    def process_entities(self, entities):
+        # Agent-specific logic
+        ...
+</code></pre>
+              </div>
+              <div class="card-footer">
+                <strong>Location:</strong> Defined in <code>agents/</code> directory as Python classes
+              </div>
+            </div>
+          </div>
+          
+          <div class="col">
+            <div class="card h-100 border-primary">
+              <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">Custom Agents</h5>
+              </div>
+              <div class="card-body">
+                <p>These agents are created through the Agent Builder interface:</p>
+                <ul>
+                  <li>User-defined agents with custom components</li>
+                  <li>Created using drag-and-drop components</li>
+                  <li>Configured with the agent wizard</li>
+                  <li>May be based on templates from the gallery</li>
+                </ul>
+                <h6>Implementation:</h6>
+                <p>Custom agents are stored in the database in the <code>custom_agent</code> table along with their components and connections:</p>
+                <pre class="bg-dark text-white p-2 mt-2 mb-0"><code>class CustomAgent(db.Model):
+    """Model to store custom agent configurations"""
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(64), nullable=False)
+    # Components, connections, etc.
+    ...</code></pre>
+              </div>
+              <div class="card-footer">
+                <strong>Location:</strong> Stored in database tables, managed through UI
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <h5 class="mt-4">Agent Management</h5>
+        <p>The Agent Builder interface now displays both types of agents:</p>
+        <ul>
+          <li>Built-in agents appear with a <span class="badge bg-secondary">Built-in</span> label and can only be viewed (not edited)</li>
+          <li>Custom agents can be created, edited, and deleted through the interface</li>
+          <li>The Agent Management panel provides a unified view of all agents in the system</li>
+        </ul>
+        
+        <div class="alert alert-info mb-4">
+          <i class="bi bi-info-circle"></i> <strong>Development Note:</strong> To add new built-in agent types, create a new subclass of <code>BaseAgent</code> in the <code>agents/</code> directory and register it in <code>brain/staples_brain.py</code> in the <code>_initialize_agents</code> method.
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- API Keys Configuration Section -->
   <div class="row mb-5" id="api-keys">
     <div class="col-lg-8 offset-lg-2">
-      <h2 class="border-bottom pb-2">6. API Keys Configuration</h2>
+      <h2 class="border-bottom pb-2">7. API Keys Configuration</h2>
       
       <div class="mt-4">
         <p>Staples Brain requires several API keys to function properly. Add these to your <code>.env</code> file:</p>
@@ -900,7 +985,7 @@ TWILIO_PHONE_NUMBER=your_twilio_phone_number</code></pre>
   <!-- Running the Application Section -->
   <div class="row mb-5" id="running-app">
     <div class="col-lg-8 offset-lg-2">
-      <h2 class="border-bottom pb-2">7. Running the Application</h2>
+      <h2 class="border-bottom pb-2">8. Running the Application</h2>
       
       <div class="mt-4">
         <p>Once everything is set up, you can run the application:</p>
@@ -945,7 +1030,7 @@ gunicorn --bind 0.0.0.0:5000 --reuse-port --reload main:app</code></pre>
   <!-- Troubleshooting Section -->
   <div class="row mb-5" id="troubleshooting">
     <div class="col-lg-8 offset-lg-2">
-      <h2 class="border-bottom pb-2">8. Troubleshooting</h2>
+      <h2 class="border-bottom pb-2">9. Troubleshooting</h2>
       
       <div class="mt-4">
         <div class="accordion" id="troubleshootingAccordion">
