@@ -27,7 +27,8 @@ class BaseAgent(ABC):
         self.name = name
         self.description = description
         self.llm = llm
-        self.memory = []  # Simple memory for demo purposes
+        self.memory = []  # In-memory cache
+        self.conversation_memory = None  # Will be set when processing with a session
         logger.info(f"Initialized agent: {name}")
         
     @abstractmethod
@@ -42,6 +43,11 @@ class BaseAgent(ABC):
         Returns:
             A dictionary containing the agent's response and any metadata
         """
+        # Access conversation memory if available in context
+        if context and 'conversation_memory' in context:
+            self.conversation_memory = context['conversation_memory']
+        
+        # Continue with implementation in subclasses
         pass
     
     @abstractmethod
@@ -79,10 +85,31 @@ class BaseAgent(ABC):
         Args:
             message: The message to add
         """
+        # Add to in-memory cache
         self.memory.append(message)
         # Limit memory size
         if len(self.memory) > 10:
             self.memory.pop(0)
+            
+        # If we have a conversation memory, update the context
+        if self.conversation_memory and 'conversation_id' in message:
+            try:
+                # Add to persistent memory if role and content are provided
+                if 'role' in message and 'content' in message:
+                    self.conversation_memory.add_message(
+                        role=message['role'],
+                        content=message['content'],
+                        conversation_id=message['conversation_id']
+                    )
+                
+                # Update agent context with any extracted information
+                if 'extracted_info' in message:
+                    self.conversation_memory.update_context(
+                        agent_name=self.name,
+                        context_updates=message['extracted_info']
+                    )
+            except Exception as e:
+                logger.error(f"Error adding to conversation memory: {str(e)}")
             
     def get_memory(self) -> List[Dict[str, Any]]:
         """
@@ -91,8 +118,35 @@ class BaseAgent(ABC):
         Returns:
             The agent's memory as a list of messages
         """
+        # If we have conversation memory, try to load history
+        if self.conversation_memory:
+            try:
+                # Load from database for persistent memory
+                history = self.conversation_memory.load_conversation_history()
+                if history:
+                    return history
+            except Exception as e:
+                logger.error(f"Error loading conversation memory: {str(e)}")
+        
+        # Fall back to in-memory if needed
         return self.memory
     
     def clear_memory(self) -> None:
-        """Clear the agent's memory."""
+        """Clear the agent's in-memory cache."""
         self.memory = []
+        
+    def get_system_prompt(self) -> str:
+        """
+        Get a system prompt with conversation context.
+        
+        Returns:
+            A system prompt incorporating conversation history and context
+        """
+        if self.conversation_memory:
+            try:
+                return self.conversation_memory.get_system_prompt(self.name)
+            except Exception as e:
+                logger.error(f"Error getting system prompt from memory: {str(e)}")
+        
+        # Default system prompt if no conversation memory
+        return f"You are a helpful Staples assistant specializing in {self.name}. {self.description}"

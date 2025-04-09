@@ -270,6 +270,13 @@ def process_request():
         session['session_id'] = str(uuid.uuid4())
     session_id = session.get('session_id')
     
+    # Add session_id to context
+    context['session_id'] = session_id
+    
+    # Check if we should continue with the same agent from previous conversation
+    if data.get('continue_with_same_agent', False):
+        context['continue_with_same_agent'] = True
+    
     # Run the async planning process in a new event loop
     try:
         # Track the process with metrics
@@ -318,11 +325,13 @@ def process_request():
             db.session.add_all([user_message, assistant_message])
             db.session.commit()
             
+            # Add conversation ID to the response for memory tracking
             return jsonify({
                 "success": False,
                 "error": "No suitable agent found",
                 "response": response_text,
-                "confidence": confidence
+                "confidence": confidence,
+                "conversation_id": conversation.id
             })
         
         # Get the entities extracted by the intent handler
@@ -628,13 +637,37 @@ def track_package():
     # Record agent selection metric
     record_agent_selection("Package Tracking Agent")
     
+    # Create or get session ID
+    if 'session_id' not in session:
+        session['session_id'] = str(uuid.uuid4())
+    session_id = session.get('session_id')
+    
     # Extract tracking number if provided
     tracking_number = data.get("tracking_number", "TRACK123456") if data else "TRACK123456"
     query = data.get("query", f"Track my package {tracking_number}") if data else f"Track my package {tracking_number}"
     
+    # Get or create conversation memory
+    from utils.memory import ConversationMemory
+    memory = ConversationMemory(session_id)
+    
     # Create a modified copy with the provided tracking number
     tracking_info = PACKAGE_TRACKING_SAMPLE.copy()
     tracking_info["tracking_number"] = tracking_number
+    
+    # Store tracking info in memory
+    memory.update_working_memory('current_tracking_number', tracking_number)
+    memory.update_working_memory('current_package_status', tracking_info["status"])
+    
+    # Check if there's conversation history to include
+    history_context = ""
+    history = memory.load_conversation_history()
+    if history:
+        # Include only the last 2 messages for context
+        recent_history = history[-min(2, len(history)):]
+        history_context = "\n".join([
+            f"{msg['role'].title()}: {msg['content']}" 
+            for msg in recent_history
+        ])
     
     # Generate LLM-based response when available
     if os.environ.get("OPENAI_API_KEY"):
@@ -651,8 +684,20 @@ def track_package():
             Package status: {status}
             Estimated delivery: {delivery_date}
             Current location: {location}
+            """
+            
+            # Include conversation history context if available
+            if history_context:
+                template += f"""
+                
+                Recent conversation history:
+                {history_context}
+                """
+            
+            template += """
             
             Keep your response concise (50 words max) and conversational, as if you're speaking directly to the customer.
+            If this is a follow-up to a previous conversation, maintain continuity.
             """
             
             prompt = ChatPromptTemplate.from_template(template)
@@ -677,6 +722,54 @@ def track_package():
     else:
         response_text = f"Your package with tracking number {tracking_number} is currently in transit and expected to be delivered in 3 days. It's currently in Chicago, IL and should arrive at your location soon."
     
+    # Store conversation in database
+    conversation = Conversation(
+        session_id=session_id,
+        user_input=query,
+        brain_response=response_text,
+        intent="package_tracking",
+        confidence=1.0,
+        selected_agent="Package Tracking Agent"
+    )
+    db.session.add(conversation)
+    
+    # Add messages
+    user_message = Message(
+        conversation=conversation,
+        role="user",
+        content=query
+    )
+    assistant_message = Message(
+        conversation=conversation,
+        role="assistant",
+        content=response_text
+    )
+    db.session.add_all([user_message, assistant_message])
+    
+    # Add package tracking info
+    package_tracking = PackageTracking(
+        conversation=conversation,
+        tracking_number=tracking_info["tracking_number"],
+        shipping_carrier=tracking_info["shipping_carrier"],
+        order_number=tracking_info["order_number"],
+        status=tracking_info["status"],
+        estimated_delivery=tracking_info["estimated_delivery"],
+        current_location=tracking_info["current_location"],
+        last_updated=datetime.utcnow()
+    )
+    db.session.add(package_tracking)
+    db.session.commit()
+    
+    # Update agent context with tracking info
+    memory.update_context("Package Tracking Agent", {
+        "last_tracking": {
+            "tracking_number": tracking_number,
+            "status": tracking_info["status"],
+            "estimated_delivery": tracking_info["estimated_delivery"],
+            "conversation_id": conversation.id
+        }
+    })
+    
     return jsonify({
         "agent": "Package Tracking Agent",
         "response": response_text,
@@ -687,7 +780,8 @@ def track_package():
             "time_frame": tracking_info["time_frame"]
         },
         "package_status": tracking_info,
-        "success": True
+        "success": True,
+        "conversation_id": conversation.id
     })
 
 @app.route('/api/reset-password', methods=["POST"])
@@ -698,9 +792,32 @@ def reset_password():
     # Record agent selection metric
     record_agent_selection("Reset Password Agent")
     
+    # Create or get session ID
+    if 'session_id' not in session:
+        session['session_id'] = str(uuid.uuid4())
+    session_id = session.get('session_id')
+    
     # Extract email if provided
     email = data.get("email", "user@example.com") if data else "user@example.com"
     query = data.get("query", f"Reset password for {email}") if data else f"Reset password for {email}"
+    
+    # Get or create conversation memory
+    from utils.memory import ConversationMemory
+    memory = ConversationMemory(session_id)
+    
+    # Store account info in memory
+    memory.update_working_memory('current_email', email)
+    
+    # Check if there's conversation history to include
+    history_context = ""
+    history = memory.load_conversation_history()
+    if history:
+        # Include only the last 2 messages for context
+        recent_history = history[-min(2, len(history)):]
+        history_context = "\n".join([
+            f"{msg['role'].title()}: {msg['content']}" 
+            for msg in recent_history
+        ])
     
     # Generate LLM-based response when available
     if os.environ.get("OPENAI_API_KEY"):
@@ -713,9 +830,21 @@ def reset_password():
             conversational response about password reset based on this information:
             
             Email address: {email}
+            """
+            
+            # Include conversation history context if available
+            if history_context:
+                template += f"""
+                
+                Recent conversation history:
+                {history_context}
+                """
+            
+            template += """
             
             Keep your response concise (50 words max) and conversational, as if you're speaking directly to the customer.
             Explain that you've sent instructions to reset their password to their email.
+            If this is a follow-up to a previous conversation, maintain continuity.
             """
             
             prompt = ChatPromptTemplate.from_template(template)
@@ -737,6 +866,51 @@ def reset_password():
     else:
         response_text = f"I've sent password reset instructions to your email address ({email}). Please check your inbox and follow the instructions to create a new password. The email should arrive within the next few minutes."
     
+    # Store conversation in database
+    conversation = Conversation(
+        session_id=session_id,
+        user_input=query,
+        brain_response=response_text,
+        intent="password_reset",
+        confidence=1.0,
+        selected_agent="Reset Password Agent"
+    )
+    db.session.add(conversation)
+    
+    # Add messages
+    user_message = Message(
+        conversation=conversation,
+        role="user",
+        content=query
+    )
+    assistant_message = Message(
+        conversation=conversation,
+        role="assistant",
+        content=response_text
+    )
+    db.session.add_all([user_message, assistant_message])
+    
+    # Add password reset info
+    password_reset = PasswordReset(
+        conversation=conversation,
+        email=email,
+        username=PASSWORD_RESET_SAMPLE["username"],
+        account_type=PASSWORD_RESET_SAMPLE["account_type"],
+        issue=PASSWORD_RESET_SAMPLE["issue"],
+        reset_link_sent=False
+    )
+    db.session.add(password_reset)
+    db.session.commit()
+    
+    # Update agent context with tracking info
+    memory.update_context("Reset Password Agent", {
+        "last_reset": {
+            "email": email,
+            "reset_link_sent": False,
+            "conversation_id": conversation.id
+        }
+    })
+    
     return jsonify({
         "agent": "Reset Password Agent",
         "response": response_text,
@@ -753,7 +927,8 @@ def reset_password():
             "reset_link_sent": False,
             "is_simulated": True
         },
-        "success": True
+        "success": True,
+        "conversation_id": conversation.id
     })
 
 # Dashboard route
