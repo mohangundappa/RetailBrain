@@ -1,9 +1,12 @@
 import os
 import logging
 import asyncio
-from flask import Flask, render_template, jsonify, request
+import uuid
+from datetime import datetime
+from flask import Flask, render_template, jsonify, request, session
 from brain.intent_handler import IntentHandler
 from brain.planner import ExecutionPlanner
+from models import db, Conversation, Message, PackageTracking, PasswordReset, AgentConfig, AnalyticsData
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG, 
@@ -12,6 +15,19 @@ logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SESSION_SECRET", "staples-brain-secret-key")
+
+# Configure database
+app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("DATABASE_URL")
+app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
+    "pool_recycle": 300,
+    "pool_pre_ping": True,
+}
+db.init_app(app)
+
+# Create database tables
+with app.app_context():
+    db.create_all()
+    logger.info("Database tables created")
 
 # Initialize components
 intent_handler = IntentHandler()
@@ -52,7 +68,17 @@ PASSWORD_RESET_SAMPLE = {
 
 @app.route('/')
 def index():
-    return render_template('index.html')
+    # Get some stats for the home page
+    stats = {
+        "conversation_count": Conversation.query.count(),
+        "package_tracking_count": PackageTracking.query.count(),
+        "password_reset_count": PasswordReset.query.count(),
+        "available_agents": ["Package Tracking Agent", "Reset Password Agent"],
+        "database_connected": True,
+        "llm_integration": os.environ.get("OPENAI_API_KEY") is not None
+    }
+    
+    return render_template('index.html', stats=stats)
 
 @app.route('/api/health', methods=["GET"])
 def health_check():
@@ -76,6 +102,127 @@ def list_agents():
         "agents": ["Package Tracking Agent", "Reset Password Agent"]
     })
 
+@app.route('/api/conversations', methods=["GET"])
+def list_conversations():
+    """List all conversations."""
+    try:
+        # Get session ID from cookie or query parameter
+        if 'session_id' in session:
+            session_id = session.get('session_id')
+        else:
+            session_id = request.args.get('session_id')
+            
+        # If session_id is provided, filter by it
+        if session_id:
+            conversations = Conversation.query.filter_by(session_id=session_id).order_by(Conversation.created_at.desc()).all()
+        else:
+            # Otherwise return all conversations (with pagination)
+            page = request.args.get('page', 1, type=int)
+            per_page = request.args.get('per_page', 10, type=int)
+            conversations = Conversation.query.order_by(Conversation.created_at.desc()).paginate(page=page, per_page=per_page)
+            conversations = conversations.items
+            
+        result = []
+        for conv in conversations:
+            result.append({
+                "id": conv.id,
+                "session_id": conv.session_id,
+                "user_input": conv.user_input,
+                "brain_response": conv.brain_response,
+                "intent": conv.intent,
+                "confidence": conv.confidence,
+                "selected_agent": conv.selected_agent,
+                "created_at": conv.created_at.isoformat()
+            })
+            
+        return jsonify({
+            "success": True,
+            "conversations": result
+        })
+    except Exception as e:
+        logger.error(f"Error listing conversations: {str(e)}", exc_info=True)
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+        
+@app.route('/api/conversations/<int:conversation_id>', methods=["GET"])
+def get_conversation(conversation_id):
+    """Get a specific conversation with all its messages and related data."""
+    try:
+        # Get the conversation
+        conversation = Conversation.query.get(conversation_id)
+        
+        if not conversation:
+            return jsonify({
+                "success": False,
+                "error": f"Conversation with ID {conversation_id} not found"
+            }), 404
+            
+        # Get messages
+        messages = []
+        for msg in conversation.messages:
+            messages.append({
+                "id": msg.id,
+                "role": msg.role,
+                "content": msg.content,
+                "created_at": msg.created_at.isoformat()
+            })
+            
+        # Get tracking data if available
+        tracking_data = None
+        if conversation.tracking_data:
+            tracking = conversation.tracking_data[0]  # Get the first tracking entry
+            tracking_data = {
+                "id": tracking.id,
+                "tracking_number": tracking.tracking_number,
+                "shipping_carrier": tracking.shipping_carrier,
+                "order_number": tracking.order_number,
+                "status": tracking.status,
+                "estimated_delivery": tracking.estimated_delivery,
+                "current_location": tracking.current_location,
+                "last_updated": tracking.last_updated.isoformat() if tracking.last_updated else None
+            }
+            
+        # Get password reset data if available
+        password_reset_data = None
+        if conversation.password_reset_data:
+            reset = conversation.password_reset_data[0]  # Get the first reset entry
+            password_reset_data = {
+                "id": reset.id,
+                "email": reset.email,
+                "username": reset.username,
+                "account_type": reset.account_type,
+                "issue": reset.issue,
+                "reset_link_sent": reset.reset_link_sent
+            }
+            
+        # Build the full conversation object
+        result = {
+            "id": conversation.id,
+            "session_id": conversation.session_id,
+            "user_input": conversation.user_input,
+            "brain_response": conversation.brain_response,
+            "intent": conversation.intent,
+            "confidence": conversation.confidence,
+            "selected_agent": conversation.selected_agent,
+            "created_at": conversation.created_at.isoformat(),
+            "messages": messages,
+            "tracking_data": tracking_data,
+            "password_reset_data": password_reset_data
+        }
+            
+        return jsonify({
+            "success": True,
+            "conversation": result
+        })
+    except Exception as e:
+        logger.error(f"Error getting conversation: {str(e)}", exc_info=True)
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
 @app.route('/api/process', methods=["POST"])
 def process_request():
     """Process a user request with LLM-based intent identification."""
@@ -89,6 +236,11 @@ def process_request():
     
     user_input = data["input"]
     context = data.get("context", {})
+    
+    # Create or get session ID
+    if 'session_id' not in session:
+        session['session_id'] = str(uuid.uuid4())
+    session_id = session.get('session_id')
     
     # Run the async planning process in a new event loop
     try:
@@ -106,10 +258,37 @@ def process_request():
         
         # If no suitable intent was found or confidence is too low
         if intent == "unknown" or confidence < 0.3:
+            response_text = "I'm sorry, I don't have the capability to help with that request at the moment. I can assist with package tracking and password reset inquiries."
+            
+            # Store in database even when no suitable agent is found
+            conversation = Conversation(
+                session_id=session_id,
+                user_input=user_input,
+                brain_response=response_text,
+                intent="unknown",
+                confidence=confidence,
+                selected_agent="Unknown"
+            )
+            db.session.add(conversation)
+            
+            # Add messages
+            user_message = Message(
+                conversation=conversation,
+                role="user",
+                content=user_input
+            )
+            assistant_message = Message(
+                conversation=conversation,
+                role="assistant",
+                content=response_text
+            )
+            db.session.add_all([user_message, assistant_message])
+            db.session.commit()
+            
             return jsonify({
                 "success": False,
                 "error": "No suitable agent found",
-                "response": "I'm sorry, I don't have the capability to help with that request at the moment. I can assist with package tracking and password reset inquiries.",
+                "response": response_text,
                 "confidence": confidence
             })
         
@@ -157,6 +336,44 @@ def process_request():
             else:
                 response_text = f"Your package with tracking number {tracking_info['tracking_number']} is currently {tracking_info['status'].replace('_', ' ')} and expected to be delivered on {tracking_info['estimated_delivery']}. It's currently in {tracking_info['current_location']} and should arrive at your location soon."
             
+            # Store conversation in database
+            conversation = Conversation(
+                session_id=session_id,
+                user_input=user_input,
+                brain_response=response_text,
+                intent=intent,
+                confidence=confidence,
+                selected_agent="Package Tracking Agent"
+            )
+            db.session.add(conversation)
+            
+            # Add messages
+            user_message = Message(
+                conversation=conversation,
+                role="user",
+                content=user_input
+            )
+            assistant_message = Message(
+                conversation=conversation,
+                role="assistant",
+                content=response_text
+            )
+            db.session.add_all([user_message, assistant_message])
+            
+            # Add package tracking info
+            package_tracking = PackageTracking(
+                conversation=conversation,
+                tracking_number=tracking_info["tracking_number"],
+                shipping_carrier=tracking_info["shipping_carrier"],
+                order_number=tracking_info["order_number"],
+                status=tracking_info["status"],
+                estimated_delivery=tracking_info["estimated_delivery"],
+                current_location=tracking_info["current_location"],
+                last_updated=datetime.utcnow()
+            )
+            db.session.add(package_tracking)
+            db.session.commit()
+            
             # Return the response
             return jsonify({
                 "agent": "Package Tracking Agent",
@@ -172,7 +389,8 @@ def process_request():
                 "selected_agent": "Package Tracking Agent",
                 "confidence": confidence,
                 "intent": intent,
-                "entities": entities
+                "entities": entities,
+                "conversation_id": conversation.id
             })
             
         elif intent == "password_reset":
@@ -225,6 +443,42 @@ def process_request():
             else:
                 response_text = f"I've sent password reset instructions to your email address ({account_info['email']}). Please check your inbox and follow the instructions to create a new password. The email should arrive within the next few minutes. If you don't see it, please check your spam folder."
             
+            # Store conversation in database
+            conversation = Conversation(
+                session_id=session_id,
+                user_input=user_input,
+                brain_response=response_text,
+                intent=intent,
+                confidence=confidence,
+                selected_agent="Reset Password Agent"
+            )
+            db.session.add(conversation)
+            
+            # Add messages
+            user_message = Message(
+                conversation=conversation,
+                role="user",
+                content=user_input
+            )
+            assistant_message = Message(
+                conversation=conversation,
+                role="assistant",
+                content=response_text
+            )
+            db.session.add_all([user_message, assistant_message])
+            
+            # Add password reset info
+            password_reset = PasswordReset(
+                conversation=conversation,
+                email=account_info["email"],
+                username=account_info["username"],
+                account_type=account_info["account_type"],
+                issue=account_info["issue"],
+                reset_link_sent=PASSWORD_RESET_SAMPLE["reset_link_sent"]
+            )
+            db.session.add(password_reset)
+            db.session.commit()
+            
             # Return the response
             return jsonify({
                 "agent": "Reset Password Agent",
@@ -241,25 +495,87 @@ def process_request():
                 "selected_agent": "Reset Password Agent",
                 "confidence": confidence,
                 "intent": intent,
-                "entities": entities
+                "entities": entities,
+                "conversation_id": conversation.id
             })
         
         else:
             # Should not reach here based on earlier check, but just in case
+            response_text = "I'm sorry, I don't have the capability to help with that request at the moment."
+            
+            # Store in database even for unsupported intent
+            conversation = Conversation(
+                session_id=session_id,
+                user_input=user_input,
+                brain_response=response_text,
+                intent=intent,
+                confidence=confidence,
+                selected_agent="Unknown"
+            )
+            db.session.add(conversation)
+            
+            # Add messages
+            user_message = Message(
+                conversation=conversation,
+                role="user",
+                content=user_input
+            )
+            assistant_message = Message(
+                conversation=conversation,
+                role="assistant",
+                content=response_text
+            )
+            db.session.add_all([user_message, assistant_message])
+            db.session.commit()
+            
             return jsonify({
                 "success": False,
                 "error": "Unsupported intent",
-                "response": "I'm sorry, I don't have the capability to help with that request at the moment.",
+                "response": response_text,
                 "confidence": confidence,
-                "intent": intent
+                "intent": intent,
+                "conversation_id": conversation.id
             })
         
     except Exception as e:
         logger.error(f"Error processing request: {str(e)}", exc_info=True)
+        response_text = "I'm sorry, I encountered an error while processing your request. Please try again or rephrase your question."
+        
+        try:
+            # Store error in database
+            conversation = Conversation(
+                session_id=session_id if 'session_id' in session else str(uuid.uuid4()),
+                user_input=user_input,
+                brain_response=response_text,
+                intent="error",
+                confidence=0.0,
+                selected_agent="Error"
+            )
+            db.session.add(conversation)
+            
+            # Add messages
+            user_message = Message(
+                conversation=conversation,
+                role="user",
+                content=user_input
+            )
+            assistant_message = Message(
+                conversation=conversation,
+                role="assistant",
+                content=response_text
+            )
+            db.session.add_all([user_message, assistant_message])
+            db.session.commit()
+            conversation_id = conversation.id
+        except Exception as db_error:
+            logger.error(f"Error storing conversation in database: {str(db_error)}", exc_info=True)
+            conversation_id = None
+        
         return jsonify({
             "success": False,
             "error": str(e),
-            "response": "I'm sorry, I encountered an error while processing your request. Please try again or rephrase your question."
+            "response": response_text,
+            "conversation_id": conversation_id
         }), 500
 
 @app.route('/api/track-package', methods=["POST"])

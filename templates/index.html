@@ -7,6 +7,55 @@
     <div class="container">
         <h1 class="display-4"><i class="fas fa-brain"></i> Staples Brain</h1>
         <p class="lead">A modular AI super brain system with specialized agents</p>
+        
+        <!-- System Status -->
+        <div class="row mt-4">
+            <div class="col-md-8 offset-md-2">
+                <div class="card bg-dark text-light">
+                    <div class="card-body">
+                        <h5 class="card-title">System Status</h5>
+                        <div class="row text-center">
+                            <div class="col">
+                                <div class="status-indicator">
+                                    <div class="status-icon">
+                                        <i class="fas fa-database {% if stats.database_connected %}text-success{% else %}text-danger{% endif %}"></i>
+                                    </div>
+                                    <div class="status-text">Database</div>
+                                    <div class="status-value">{% if stats.database_connected %}Connected{% else %}Disconnected{% endif %}</div>
+                                </div>
+                            </div>
+                            <div class="col">
+                                <div class="status-indicator">
+                                    <div class="status-icon">
+                                        <i class="fas fa-robot {% if stats.llm_integration %}text-success{% else %}text-warning{% endif %}"></i>
+                                    </div>
+                                    <div class="status-text">LLM Integration</div>
+                                    <div class="status-value">{% if stats.llm_integration %}Active{% else %}Inactive{% endif %}</div>
+                                </div>
+                            </div>
+                            <div class="col">
+                                <div class="status-indicator">
+                                    <div class="status-icon">
+                                        <i class="fas fa-comments text-info"></i>
+                                    </div>
+                                    <div class="status-text">Conversations</div>
+                                    <div class="status-value">{{ stats.conversation_count }}</div>
+                                </div>
+                            </div>
+                            <div class="col">
+                                <div class="status-indicator">
+                                    <div class="status-icon">
+                                        <i class="fas fa-server text-info"></i>
+                                    </div>
+                                    <div class="status-text">Agents</div>
+                                    <div class="status-value">{{ stats.available_agents|length }}</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 </header>
 {% endblock %}
@@ -63,6 +112,46 @@
                 <h3 class="card-title">Password Reset</h3>
                 <p class="card-text">Reset your password and recover your account</p>
                 <button class="btn btn-outline-info" onclick="setPrompt('I need to reset my password for user@example.com')">Try Password Reset</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Conversation History Section -->
+<div class="mt-5 pt-3">
+    <h2 class="mb-4 text-center">Recent Conversations</h2>
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="card bg-dark text-light">
+                <div class="card-body">
+                    <div id="conversations-list">
+                        {% if stats.conversation_count > 0 %}
+                            <div class="table-responsive">
+                                <table class="table table-dark table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>ID</th>
+                                            <th>User Input</th>
+                                            <th>Intent</th>
+                                            <th>Agent</th>
+                                            <th>Created</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="conversations-table-body">
+                                        <!-- Will be populated via API -->
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="text-center mt-3">
+                                <button id="load-conversations" class="btn btn-outline-info">Load Recent Conversations</button>
+                            </div>
+                        {% else %}
+                            <div class="text-center text-muted">
+                                <p>No conversations yet. Try asking Staples Brain a question!</p>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -174,7 +263,10 @@ document.addEventListener('DOMContentLoaded', function() {
     const userInput = document.getElementById('user-input');
     const loading = document.getElementById('loading');
     const responseContainer = document.getElementById('response-container');
+    const loadConversationsBtn = document.getElementById('load-conversations');
+    const conversationsTableBody = document.getElementById('conversations-table-body');
     
+    // Initialize the brain form submission
     brainForm.addEventListener('submit', async function(e) {
         e.preventDefault();
         
@@ -215,7 +307,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
                 
                 if (data.tracking_info && data.package_status) {
-                    html += '<div class="mt-3 small">
+                    html += `<div class="mt-3 small">
                         <details>
                             <summary>View Details</summary>
                             <div class="mt-2">
@@ -225,7 +317,14 @@ document.addEventListener('DOMContentLoaded', function() {
                                 <pre class="bg-dark p-2">${JSON.stringify(data.package_status, null, 2)}</pre>
                             </div>
                         </details>
-                    </div>';
+                    </div>`;
+                }
+                
+                // Reload conversation history after successful conversation
+                if (loadConversationsBtn) {
+                    setTimeout(() => {
+                        loadConversationsBtn.click();
+                    }, 1000);
                 }
                 
             } else {
@@ -246,9 +345,231 @@ document.addEventListener('DOMContentLoaded', function() {
             loading.style.display = 'none';
         }
     });
+    
+    // Initialize the load conversations button
+    if (loadConversationsBtn) {
+        loadConversationsBtn.addEventListener('click', async function() {
+            loadConversationsBtn.disabled = true;
+            loadConversationsBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Loading...';
+            
+            try {
+                const response = await fetch('/api/conversations');
+                const data = await response.json();
+                
+                if (data.success && data.conversations && data.conversations.length > 0) {
+                    let html = '';
+                    
+                    data.conversations.forEach(conv => {
+                        const date = new Date(conv.created_at);
+                        const formattedDate = date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
+                        
+                        html += `<tr class="conversation-row" data-id="${conv.id}">
+                            <td>${conv.id}</td>
+                            <td>${truncateText(conv.user_input, 30)}</td>
+                            <td><span class="badge ${getIntentBadgeClass(conv.intent)}">${conv.intent}</span></td>
+                            <td>${conv.selected_agent}</td>
+                            <td>${formattedDate}</td>
+                        </tr>`;
+                    });
+                    
+                    conversationsTableBody.innerHTML = html;
+                    
+                    // Add click event to conversation rows
+                    document.querySelectorAll('.conversation-row').forEach(row => {
+                        row.addEventListener('click', async function() {
+                            const id = this.getAttribute('data-id');
+                            await loadConversationDetails(id);
+                        });
+                    });
+                    
+                } else {
+                    conversationsTableBody.innerHTML = `<tr><td colspan="5" class="text-center">No conversations found</td></tr>`;
+                }
+                
+            } catch (error) {
+                conversationsTableBody.innerHTML = `<tr><td colspan="5" class="text-center text-danger">Error loading conversations: ${error.message}</td></tr>`;
+            } finally {
+                loadConversationsBtn.disabled = false;
+                loadConversationsBtn.innerHTML = 'Load Recent Conversations';
+            }
+        });
+        
+        // Auto-load conversations on page load
+        if (conversationsTableBody.innerHTML.trim() === '') {
+            loadConversationsBtn.click();
+        }
+    }
 });
 
+// Load conversation details
+async function loadConversationDetails(id) {
+    const responseContainer = document.getElementById('response-container');
+    
+    responseContainer.innerHTML = `<div class="text-center">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+        <p class="mt-2">Loading conversation details...</p>
+    </div>`;
+    
+    document.getElementById('brain-form').scrollIntoView({ behavior: 'smooth' });
+    
+    try {
+        const response = await fetch(`/api/conversations/${id}`);
+        const data = await response.json();
+        
+        if (data.success && data.conversation) {
+            const conv = data.conversation;
+            
+            let html = `<div class="card bg-dark mb-3">
+                <div class="card-header bg-secondary">
+                    <strong>Conversation #${conv.id}</strong>
+                    <span class="float-end">${new Date(conv.created_at).toLocaleString()}</span>
+                </div>
+                <div class="card-body">
+                    <h5>User Input</h5>
+                    <div class="alert alert-dark mb-3">${conv.user_input}</div>
+                    
+                    <h5>Brain Response</h5>
+                    <div class="alert alert-info mb-3">${formatResponse(conv.brain_response)}</div>
+                    
+                    <div class="row small mt-4">
+                        <div class="col-md-4">
+                            <strong>Intent:</strong> 
+                            <span class="badge ${getIntentBadgeClass(conv.intent)}">${conv.intent}</span>
+                        </div>
+                        <div class="col-md-4">
+                            <strong>Agent:</strong> ${conv.selected_agent}
+                        </div>
+                        <div class="col-md-4">
+                            <strong>Confidence:</strong> ${(conv.confidence * 100).toFixed(1)}%
+                        </div>
+                    </div>`;
+            
+            // Add message history if available
+            if (conv.messages && conv.messages.length > 0) {
+                html += `<div class="mt-4">
+                    <h5>Message History</h5>
+                    <div class="message-history">`;
+                
+                conv.messages.forEach(msg => {
+                    const isUser = msg.role === 'user';
+                    html += `<div class="message ${isUser ? 'user-message' : 'assistant-message'}">
+                        <div class="message-header">
+                            <strong>${isUser ? 'User' : 'Assistant'}</strong>
+                            <span class="small text-muted float-end">${new Date(msg.created_at).toLocaleTimeString()}</span>
+                        </div>
+                        <div class="message-content">
+                            ${formatResponse(msg.content)}
+                        </div>
+                    </div>`;
+                });
+                
+                html += `</div></div>`;
+            }
+            
+            // Add tracking data if available
+            if (conv.tracking_data) {
+                html += `<div class="mt-4">
+                    <h5>Tracking Information</h5>
+                    <div class="p-3 rounded tracking-info bg-dark">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <strong>Tracking Number:</strong> ${conv.tracking_data.tracking_number}
+                            </div>
+                            <div class="col-md-6">
+                                <strong>Carrier:</strong> ${conv.tracking_data.shipping_carrier || 'N/A'}
+                            </div>
+                        </div>
+                        <div class="row mt-2">
+                            <div class="col-md-6">
+                                <strong>Status:</strong> ${conv.tracking_data.status ? conv.tracking_data.status.replace('_', ' ') : 'N/A'}
+                            </div>
+                            <div class="col-md-6">
+                                <strong>Estimated Delivery:</strong> ${conv.tracking_data.estimated_delivery || 'N/A'}
+                            </div>
+                        </div>
+                        <div class="row mt-2">
+                            <div class="col-md-6">
+                                <strong>Current Location:</strong> ${conv.tracking_data.current_location || 'N/A'}
+                            </div>
+                            <div class="col-md-6">
+                                <strong>Last Updated:</strong> ${conv.tracking_data.last_updated ? new Date(conv.tracking_data.last_updated).toLocaleString() : 'N/A'}
+                            </div>
+                        </div>
+                    </div>
+                </div>`;
+            }
+            
+            // Add password reset data if available
+            if (conv.password_reset_data) {
+                html += `<div class="mt-4">
+                    <h5>Password Reset Information</h5>
+                    <div class="p-3 rounded password-reset-info bg-dark">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <strong>Email:</strong> ${conv.password_reset_data.email || 'N/A'}
+                            </div>
+                            <div class="col-md-6">
+                                <strong>Username:</strong> ${conv.password_reset_data.username || 'N/A'}
+                            </div>
+                        </div>
+                        <div class="row mt-2">
+                            <div class="col-md-6">
+                                <strong>Account Type:</strong> ${conv.password_reset_data.account_type || 'N/A'}
+                            </div>
+                            <div class="col-md-6">
+                                <strong>Issue:</strong> ${conv.password_reset_data.issue || 'N/A'}
+                            </div>
+                        </div>
+                        <div class="row mt-2">
+                            <div class="col-md-12">
+                                <strong>Reset Link Sent:</strong> ${conv.password_reset_data.reset_link_sent ? 'Yes' : 'No'}
+                            </div>
+                        </div>
+                    </div>
+                </div>`;
+            }
+            
+            html += `</div></div>`;
+            
+            responseContainer.innerHTML = html;
+            
+        } else {
+            responseContainer.innerHTML = `<div class="alert alert-danger">
+                <strong>Error:</strong> Unable to load conversation details
+            </div>`;
+        }
+        
+    } catch (error) {
+        responseContainer.innerHTML = `<div class="alert alert-danger">
+            <strong>Error:</strong> ${error.message}
+        </div>`;
+    }
+}
+
+function getIntentBadgeClass(intent) {
+    switch(intent) {
+        case 'package_tracking':
+            return 'bg-primary';
+        case 'password_reset':
+            return 'bg-success';
+        case 'unknown':
+            return 'bg-warning';
+        case 'error':
+            return 'bg-danger';
+        default:
+            return 'bg-secondary';
+    }
+}
+
+function truncateText(text, maxLength) {
+    if (!text) return '';
+    return text.length > maxLength ? text.substring(0, maxLength) + '...' : text;
+}
+
 function formatResponse(text) {
+    if (!text) return '';
     // Convert line breaks to <br>
     return text.replace(/\n/g, '<br>');
 }
@@ -262,4 +583,53 @@ function setPrompt(text) {
     document.getElementById('brain-form').scrollIntoView({ behavior: 'smooth' });
 }
 </script>
+
+<style>
+.status-indicator {
+    text-align: center;
+    margin-bottom: 15px;
+}
+.status-icon {
+    font-size: 2rem;
+    margin-bottom: 5px;
+}
+.status-text {
+    color: #aaa;
+    font-size: 0.9rem;
+}
+.status-value {
+    font-weight: bold;
+}
+.conversation-row {
+    cursor: pointer;
+}
+.conversation-row:hover {
+    background-color: rgba(255, 255, 255, 0.1) !important;
+}
+.message-history {
+    border: 1px solid #2c2c2c;
+    border-radius: 5px;
+    padding: 10px;
+    background-color: #1c1c1c;
+}
+.message {
+    margin-bottom: 10px;
+    padding: 10px;
+    border-radius: 5px;
+}
+.user-message {
+    background-color: #2c3e50;
+}
+.assistant-message {
+    background-color: #2d3748;
+}
+.message-header {
+    margin-bottom: 5px;
+    padding-bottom: 5px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+.tracking-info, .password-reset-info {
+    border: 1px solid #2c2c2c;
+}
+</style>
 {% endblock %}
