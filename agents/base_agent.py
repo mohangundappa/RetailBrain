@@ -4,9 +4,9 @@ import re
 from datetime import datetime
 from typing import Dict, Any, List, Optional, Tuple, Set, Type, Union
 
-from langchain.schema import BaseMessage
+from langchain_core.messages import BaseMessage
 from langchain.chains import LLMChain
-from langchain.prompts import ChatPromptTemplate
+from langchain_core.prompts import ChatPromptTemplate
 
 # Import constants for agent names
 from config.agent_constants import (
@@ -184,7 +184,7 @@ class EntityDefinition:
         self.examples = examples or []
         self.alternate_names = alternate_names or []
         self.collected = False
-        self.value = None
+        self.value: Optional[str] = None
         self.attempts = 0
         self.max_attempts = 3  # Maximum attempts to collect this entity
 
@@ -232,6 +232,7 @@ class EntityCollectionState:
     def __init__(self):
         """Initialize the entity collection state."""
         self.entities: Dict[str, EntityDefinition] = {}
+        self.entity_definitions: List[EntityDefinition] = []  # Store a list of entity definitions for reference
         self.current_entity: Optional[str] = None
         self.is_collecting = False
         self.max_collection_turns = 5  # Maximum conversation turns for entity collection
@@ -247,6 +248,7 @@ class EntityCollectionState:
             entity: The entity definition
         """
         self.entities[entity.name] = entity
+        self.entity_definitions.append(entity)  # Add to the list of entity definitions
         
     def set_value(self, entity_name: str, value: str) -> bool:
         """
@@ -265,7 +267,8 @@ class EntityCollectionState:
         entity = self.entities[entity_name]
         
         if entity.is_valid(value):
-            entity.value = value
+            # Cast to Optional[str] to satisfy type checker
+            entity.value = value  # type: ignore
             entity.collected = True
             return True
         else:
@@ -660,30 +663,94 @@ Remember: Your goal is to provide excellent customer service while representing 
         """
         extracted_values = {}
         
-        # Simple pattern-based extraction for common entities
-        # Order number pattern (alphanumeric with optional hyphen)
-        order_number_match = re.search(r'\b([A-Za-z0-9]{2,}-?[A-Za-z0-9]{2,})\b', user_input)
-        if order_number_match and 'order_number' in self.entity_collection_state.entities:
-            extracted_values['order_number'] = order_number_match.group(1)
+        # Enhanced pattern-based extraction for common entities
+        
+        # Order number patterns - Match various formats
+        if 'order_number' in self.entity_collection_state.entities:
+            # Try to find order number in multiple formats
+            # First, check for explicit mentions with label
+            order_pattern_explicit = r'(?:order(?:\s+number)?|confirmation(?:\s+number)?|order\s+id)[\s:]*([A-Za-z0-9]{2,}(?:-[A-Za-z0-9]{2,})?)'
+            order_match_explicit = re.search(order_pattern_explicit, user_input, re.IGNORECASE)
             
-        # Zip code pattern (5 digits, optionally followed by hyphen and 4 more digits)
-        zip_code_match = re.search(r'\b(\d{5}(?:-\d{4})?)\b', user_input)
-        if zip_code_match and 'zip_code' in self.entity_collection_state.entities:
-            extracted_values['zip_code'] = zip_code_match.group(1)
+            # Then try common formats without labels
+            order_pattern_standard = r'\b([A-Za-z]{2}\d{6,})\b'  # e.g., OD1234567, ST7654321
+            order_pattern_hyphen = r'\b([A-Za-z]{2,3}-\d{6,})\b'  # e.g., STB-123456
             
-        # Email pattern
-        email_match = re.search(r'\b([A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,})\b', user_input)
-        if email_match and 'email' in self.entity_collection_state.entities:
-            extracted_values['email'] = email_match.group(1)
+            if order_match_explicit:
+                extracted_values['order_number'] = order_match_explicit.group(1).strip()
+            else:
+                # Try standard pattern
+                order_match_std = re.search(order_pattern_standard, user_input)
+                if order_match_std:
+                    extracted_values['order_number'] = order_match_std.group(1)
+                else:
+                    # Try hyphenated pattern
+                    order_match_hyphen = re.search(order_pattern_hyphen, user_input)
+                    if order_match_hyphen:
+                        extracted_values['order_number'] = order_match_hyphen.group(1)
+                    else:
+                        # Last resort, try a more general alphanumeric pattern when near "order" keywords
+                        general_order_pattern = r'(?:order|number|confirmation).*?\b([A-Za-z0-9]{2,}[-]?[A-Za-z0-9]{2,})\b'
+                        general_match = re.search(general_order_pattern, user_input, re.IGNORECASE)
+                        if general_match:
+                            extracted_values['order_number'] = general_match.group(1)
+            
+        # Zip code patterns - More comprehensive
+        if 'zip_code' in self.entity_collection_state.entities:
+            # First check for explicit mentions with label
+            zip_pattern_explicit = r'(?:zip|postal)(?:\s+code)?[\s:]*(\d{5}(?:-\d{4})?)'
+            zip_match_explicit = re.search(zip_pattern_explicit, user_input, re.IGNORECASE)
+            
+            # Standard US zip code pattern
+            zip_pattern_standard = r'\b(\d{5}(?:-\d{4})?)\b'
+            
+            if zip_match_explicit:
+                extracted_values['zip_code'] = zip_match_explicit.group(1).strip()
+            else:
+                # Try standard pattern
+                zip_match_std = re.search(zip_pattern_standard, user_input)
+                if zip_match_std:
+                    extracted_values['zip_code'] = zip_match_std.group(1)
+            
+        # Email pattern - Improved
+        if 'email' in self.entity_collection_state.entities:
+            email_pattern = r'\b([A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,})\b'
+            email_match = re.search(email_pattern, user_input)
+            if email_match:
+                extracted_values['email'] = email_match.group(1)
+            
+        # Phone number pattern
+        if 'phone_number' in self.entity_collection_state.entities:
+            phone_pattern = r'\b(?:\+?1[-\s]?)?(?:\(?([0-9]{3})\)?[-\s]?)?([0-9]{3})[-\s]?([0-9]{4})\b'
+            phone_match = re.search(phone_pattern, user_input)
+            if phone_match:
+                # Format the phone number consistently
+                area_code = phone_match.group(1) or ""
+                prefix = phone_match.group(2) or ""
+                line = phone_match.group(3) or ""
+                if area_code and prefix and line:
+                    extracted_values['phone_number'] = f"{area_code}-{prefix}-{line}"
+                elif prefix and line:
+                    extracted_values['phone_number'] = f"{prefix}-{line}"
             
         # For other entity types, check for <entity_name>: <value> pattern in user input
         for entity_name in self.entity_collection_state.entities:
             if entity_name not in extracted_values:
                 # Look for explicit entity mentions like "order number: ABC123"
-                pattern = fr'\b{entity_name.replace("_", " ")}:?\s*([A-Za-z0-9@.\-_+]+)\b'
+                pattern = fr'\b{entity_name.replace("_", " ")}:?\s*([^\s.,;!?]+(?:\s+[^\s.,;!?]+)*)'
                 match = re.search(pattern, user_input, re.IGNORECASE)
                 if match:
-                    extracted_values[entity_name] = match.group(1)
+                    extracted_values[entity_name] = match.group(1).strip()
+                
+                # Also check alt_names if defined for the entity
+                entity_def = next((e for e in self.entity_collection_state.entity_definitions if e.name == entity_name), None)
+                if entity_def and entity_def.alternate_names:
+                    for alt_name in entity_def.alternate_names:
+                        if entity_name not in extracted_values:
+                            alt_pattern = fr'\b{alt_name}:?\s*([^\s.,;!?]+(?:\s+[^\s.,;!?]+)*)'
+                            alt_match = re.search(alt_pattern, user_input, re.IGNORECASE)
+                            if alt_match:
+                                extracted_values[entity_name] = alt_match.group(1).strip()
                     
         return extracted_values
     
@@ -709,12 +776,21 @@ Remember: Your goal is to provide excellent customer service while representing 
         
         # Extract entities from user input
         extracted_entities = self.extract_entities_from_input(user_input)
+        logger.info(f"Extracted entities from input: {extracted_entities}")
         
         # Update entity values
         for entity_name, value in extracted_entities.items():
             self.entity_collection_state.set_value(entity_name, value)
+        
+        # Check if all required entities are collected after extraction
+        if self.entity_collection_state.are_all_required_entities_collected():
+            logger.info(f"All required entities collected for {self.name}. Proceeding.")
+            self.entity_collection_state.is_collecting = False
+            self.entity_collection_state.exit_condition_met = True
+            self.entity_collection_state.exit_reason = "all_required_entities_collected"
+            return True, None
             
-        # Check if we should exit collection
+        # Check if we should exit collection due to other reasons
         if self.entity_collection_state.should_exit_collection():
             logger.info(f"Entity collection complete for {self.name}. Reason: {self.entity_collection_state.exit_reason}")
             self.entity_collection_state.is_collecting = False
