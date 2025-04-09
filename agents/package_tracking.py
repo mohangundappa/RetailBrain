@@ -120,7 +120,8 @@ class PackageTrackingAgent(BaseAgent):
         3. Tracking number (if provided)
         4. Any request to speak with a human agent (yes/no)
         
-        Return your answer as a JSON object with these fields:
+        IMPORTANT FORMATTING INSTRUCTIONS:
+        - Return your answer as a valid, parseable JSON object with ONLY these fields:
         {
           "order_number": string or null,
           "zip_code": string or null,
@@ -128,7 +129,16 @@ class PackageTrackingAgent(BaseAgent):
           "human_agent_requested": boolean
         }
         
-        If information is not available, use null. Set human_agent_requested to true if the customer explicitly asks to speak to a human, representative, agent, or person.
+        STRICT GUIDELINES:
+        - If information is not available or not provided, use null instead of empty string
+        - ONLY include the JSON object in your response, no additional text
+        - Set human_agent_requested to true if the customer explicitly asks to speak to a human, representative, agent, or person
+        - Format the JSON without extra whitespace in key names
+        - Make sure the JSON is valid and can be parsed by json.loads()
+        - Do not use line breaks or newlines within the JSON keys
+        
+        Example valid response:
+        {"order_number": "OD1234567", "zip_code": "90210", "tracking_number": null, "human_agent_requested": false}
         """
         
         return self._create_chain(template, ["user_input"])
@@ -201,11 +211,55 @@ class PackageTrackingAgent(BaseAgent):
             await super().process(user_input, context)
             
             # Extract tracking information from user input
-            tracking_result = await self.tracking_chain.arun(user_input=user_input)
-            tracking_info = json.loads(tracking_result)
+            try:
+                tracking_result = await self.tracking_chain.arun(user_input=user_input)
+                
+                # Clean up the tracking result to handle potential whitespace in JSON keys
+                tracking_result = tracking_result.replace('\n', '').replace('  ', ' ').strip()
+                
+                # Try to parse JSON, handle potential formatting issues
+                try:
+                    tracking_info = json.loads(tracking_result)
+                except json.JSONDecodeError as json_err:
+                    logger.warning(f"JSON parse error: {json_err}. Attempting to fix malformed JSON")
+                    # If JSON parsing fails, try to extract values using regex as fallback
+                    tracking_info = {
+                        "order_number": None,
+                        "zip_code": None,
+                        "tracking_number": None,
+                        "human_agent_requested": False
+                    }
+                
+                # If no order number is provided, we'll need to handle this gracefully
+                if not tracking_info.get("order_number"):
+                    # Instead of failing, continue with a request for the order number
+                    package_status = {
+                        "status": "information_needed",
+                        "message": "Order number required for tracking",
+                        "estimated_delivery": None,
+                        "current_location": None,
+                        "last_updated": None
+                    }
+                else:
+                    # Get package status from external API
+                    package_status = self._get_package_status(tracking_info, context)
             
-            # Get package status from external API
-            package_status = self._get_package_status(tracking_info, context)
+            except Exception as e:
+                logger.error(f"Error extracting tracking information: {str(e)}")
+                # Provide a fallback status for a more graceful error experience
+                tracking_info = {
+                    "order_number": None,
+                    "zip_code": None,
+                    "tracking_number": None,
+                    "human_agent_requested": False
+                }
+                package_status = {
+                    "status": "information_needed",
+                    "message": "Unable to process tracking request",
+                    "estimated_delivery": None,
+                    "current_location": None,
+                    "last_updated": None
+                }
             
             # Format the response with customer service persona
             formatted_response = await self.formatting_chain.arun(
