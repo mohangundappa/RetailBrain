@@ -44,7 +44,10 @@
 .loading-indicator {
     display: none;
     text-align: center;
-    padding: 2rem;
+    padding: 1rem;
+    border-radius: 8px;
+    background-color: rgba(0, 0, 0, 0.2);
+    margin-top: 15px;
 }
 
 .brain-footer {
@@ -90,7 +93,74 @@
     background-color: rgba(42, 133, 208, 0.1) !important;
 }
 
-/* Message history styles */
+/* Chat interface styles */
+.chat-container {
+    max-height: 400px;
+    overflow-y: auto;
+    background-color: var(--secondary-dark);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 20px;
+    scroll-behavior: smooth;
+}
+
+.message-wrapper {
+    display: flex;
+    margin-bottom: 20px;
+    align-items: flex-start;
+}
+
+.avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 1.2rem;
+    margin-right: 15px;
+    flex-shrink: 0;
+}
+
+.user-avatar {
+    background-color: #3498db; 
+}
+
+.brain-avatar {
+    background-color: #8e44ad;
+}
+
+.message {
+    padding: 15px;
+    border-radius: 10px;
+    flex-grow: 1;
+    max-width: calc(100% - 55px);
+}
+
+.user-message {
+    background-color: #2c3e50;
+    border-top-left-radius: 2px;
+}
+
+.brain-message {
+    background-color: #3A4A5F;
+    border-top-right-radius: 2px;
+}
+
+.message p {
+    margin: 0;
+    word-break: break-word;
+    line-height: 1.5;
+}
+
+.message .agent-info {
+    margin-top: 8px;
+    font-size: 0.85rem;
+    color: #a0aec0;
+}
+
+/* Message history styles for recent conversations */
 .message-history {
     max-height: 400px;
     overflow-y: auto;
@@ -98,22 +168,6 @@
     border: 1px solid var(--border-color);
     border-radius: 6px;
     margin-top: 15px;
-}
-
-.message {
-    padding: 12px;
-    margin: 10px;
-    border-radius: 6px;
-}
-
-.user-message {
-    background-color: #2c3e50;
-    margin-right: 40px;
-}
-
-.assistant-message {
-    background-color: #2a3a4a;
-    margin-left: 40px;
 }
 
 .message-header {

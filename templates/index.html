@@ -76,23 +76,45 @@
     <div class="col-md-8 offset-md-2">
         <div class="card bg-dark text-light">
             <div class="card-body">
-                <h3 class="card-title mb-4">Ask Staples Brain</h3>
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h3 class="card-title mb-0">Chat with Staples Brain</h3>
+                    <button id="new-session-btn" class="btn btn-outline-warning">
+                        <i class="fas fa-plus"></i> New Session
+                    </button>
+                </div>
+                
+                <!-- Chat History -->
+                <div class="chat-container mb-3" id="chat-container">
+                    <div class="welcome-message">
+                        <div class="message-wrapper">
+                            <div class="avatar brain-avatar">
+                                <i class="fas fa-brain"></i>
+                            </div>
+                            <div class="message brain-message">
+                                <p>Hello! I'm Staples Brain, here to assist you with various Staples services. How can I help you today?</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
                 <form id="brain-form">
                     <div class="mb-3">
                         <textarea id="user-input" class="form-control" rows="3" placeholder="Ask about package tracking, password reset, or anything else..."></textarea>
                     </div>
-                    <button type="submit" class="btn btn-primary">
-                        <i class="fas fa-paper-plane"></i> Send
-                    </button>
+                    <div class="d-flex">
+                        <button type="submit" class="btn btn-primary me-2">
+                            <i class="fas fa-paper-plane"></i> Send
+                        </button>
+                        <button type="button" id="clear-chat-btn" class="btn btn-outline-secondary">
+                            <i class="fas fa-eraser"></i> Clear Chat
+                        </button>
+                    </div>
                 </form>
                 <div class="loading-indicator" id="loading">
                     <div class="spinner-border text-primary" role="status">
                         <span class="visually-hidden">Loading...</span>
                     </div>
                     <p class="mt-2">Thinking...</p>
-                </div>
-                <div class="response-container mt-4" id="response-container">
-                    <p class="text-muted">Responses will appear here...</p>
                 </div>
             </div>
         </div>
@@ -307,9 +329,103 @@ document.addEventListener('DOMContentLoaded', function() {
     const brainForm = document.getElementById('brain-form');
     const userInput = document.getElementById('user-input');
     const loading = document.getElementById('loading');
-    const responseContainer = document.getElementById('response-container');
+    const chatContainer = document.getElementById('chat-container');
     const loadConversationsBtn = document.getElementById('load-conversations');
     const conversationsTableBody = document.getElementById('conversations-table-body');
+    const newSessionBtn = document.getElementById('new-session-btn');
+    const clearChatBtn = document.getElementById('clear-chat-btn');
+    
+    // Initialize session data
+    let sessionId = localStorage.getItem('staples_brain_session_id') || generateSessionId();
+    let conversationHistory = [];
+    
+    // Function to generate a new session ID
+    function generateSessionId() {
+        const sessionId = 'session_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9);
+        localStorage.setItem('staples_brain_session_id', sessionId);
+        return sessionId;
+    }
+    
+    // New session button click handler
+    newSessionBtn.addEventListener('click', function() {
+        // Generate a new session ID
+        sessionId = generateSessionId();
+        
+        // Clear conversation history
+        conversationHistory = [];
+        
+        // Clear chat display
+        chatContainer.innerHTML = `
+            <div class="welcome-message">
+                <div class="message-wrapper">
+                    <div class="avatar brain-avatar">
+                        <i class="fas fa-brain"></i>
+                    </div>
+                    <div class="message brain-message">
+                        <p>Hello! I'm Staples Brain, here to assist you with various Staples services. How can I help you today?</p>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // Clear input
+        userInput.value = '';
+        userInput.focus();
+    });
+    
+    // Clear chat button click handler
+    clearChatBtn.addEventListener('click', function() {
+        // Clear chat display but keep the session ID
+        chatContainer.innerHTML = `
+            <div class="welcome-message">
+                <div class="message-wrapper">
+                    <div class="avatar brain-avatar">
+                        <i class="fas fa-brain"></i>
+                    </div>
+                    <div class="message brain-message">
+                        <p>Chat cleared. How can I help you today?</p>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // Clear input
+        userInput.value = '';
+        userInput.focus();
+    });
+    
+    // Helper function to add a message to the chat
+    function addMessageToChat(content, isUser = false) {
+        const messageWrapper = document.createElement('div');
+        messageWrapper.classList.add('message-wrapper');
+        
+        if (isUser) {
+            messageWrapper.innerHTML = `
+                <div class="avatar user-avatar">
+                    <i class="fas fa-user"></i>
+                </div>
+                <div class="message user-message">
+                    <p>${content}</p>
+                </div>
+            `;
+        } else {
+            messageWrapper.innerHTML = `
+                <div class="avatar brain-avatar">
+                    <i class="fas fa-brain"></i>
+                </div>
+                <div class="message brain-message">
+                    <p>${content}</p>
+                </div>
+            `;
+        }
+        
+        chatContainer.appendChild(messageWrapper);
+        
+        // Auto scroll to bottom
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+        
+        return messageWrapper;
+    }
     
     // Initialize the brain form submission
     brainForm.addEventListener('submit', async function(e) {
@@ -318,9 +434,20 @@ document.addEventListener('DOMContentLoaded', function() {
         const input = userInput.value.trim();
         if (!input) return;
         
+        // Add user message to chat
+        addMessageToChat(input, true);
+        
+        // Store user message
+        conversationHistory.push({
+            role: 'user',
+            content: input
+        });
+        
+        // Clear input field
+        userInput.value = '';
+        
         // Show loading indicator
         loading.style.display = 'block';
-        responseContainer.innerHTML = '';
         
         try {
             const response = await fetch('/api/process', {
@@ -329,41 +456,32 @@ document.addEventListener('DOMContentLoaded', function() {
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
-                    input: input,
-                    context: {}
+                    user_input: input,
+                    session_id: sessionId
                 })
             });
             
             const data = await response.json();
             
-            // Format and display response
-            let html = '';
-            
-            if (data.success) {
-                html += `<div class="alert alert-info">
-                    <strong>Agent: ${data.agent}</strong>
-                    <div class="mt-2">${formatResponse(data.response)}</div>
-                </div>`;
+            // Handle response
+            if (data.response) {
+                // Add response to chat
+                const messageElement = addMessageToChat(data.response);
                 
+                // Add agent info if available
                 if (data.selected_agent) {
-                    html += `<div class="text-muted small">
-                        <em>Selected Agent: ${data.selected_agent} (Confidence: ${(data.confidence * 100).toFixed(1)}%)</em>
-                    </div>`;
+                    const agentInfo = document.createElement('div');
+                    agentInfo.classList.add('agent-info', 'mt-1', 'text-muted', 'small');
+                    agentInfo.innerHTML = `<em>Agent: ${data.selected_agent}</em>`;
+                    messageElement.querySelector('.message').appendChild(agentInfo);
                 }
                 
-                if (data.tracking_info && data.package_status) {
-                    html += `<div class="mt-3 small">
-                        <details>
-                            <summary>View Details</summary>
-                            <div class="mt-2">
-                                <h6>Tracking Info:</h6>
-                                <pre class="bg-dark p-2">${JSON.stringify(data.tracking_info, null, 2)}</pre>
-                                <h6>Package Status:</h6>
-                                <pre class="bg-dark p-2">${JSON.stringify(data.package_status, null, 2)}</pre>
-                            </div>
-                        </details>
-                    </div>`;
-                }
+                // Store response in history
+                conversationHistory.push({
+                    role: 'assistant',
+                    content: data.response,
+                    agent: data.selected_agent
+                });
                 
                 // Reload conversation history after successful conversation
                 if (loadConversationsBtn) {
@@ -371,20 +489,14 @@ document.addEventListener('DOMContentLoaded', function() {
                         loadConversationsBtn.click();
                     }, 1000);
                 }
-                
             } else {
-                html = `<div class="alert alert-danger">
-                    <strong>Error:</strong> ${data.error || 'Unknown error occurred'}
-                    <div class="mt-2">${data.response || ''}</div>
-                </div>`;
+                // Handle error response
+                addMessageToChat("I'm sorry, but I encountered an error processing your request. Please try again.");
             }
             
-            responseContainer.innerHTML = html;
-            
         } catch (error) {
-            responseContainer.innerHTML = `<div class="alert alert-danger">
-                <strong>Error:</strong> ${error.message}
-            </div>`;
+            console.error('Error:', error);
+            addMessageToChat("I'm sorry, but I couldn't process your request due to a technical issue. Please try again later.");
         } finally {
             // Hide loading indicator
             loading.style.display = 'none';

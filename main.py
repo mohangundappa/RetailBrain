@@ -14,6 +14,7 @@ import uuid
 import time
 import random
 import json
+import traceback
 from datetime import datetime, timedelta
 from flask import render_template, jsonify, request, session, Response, g, redirect, url_for
 from prometheus_client import CONTENT_TYPE_LATEST
@@ -416,10 +417,20 @@ def process_request():
                         # Try one more time to get custom agents
                         custom_agents = []
                         try:
-                            custom_agents = CustomAgent.query.filter_by(is_active=True, wizard_completed=True).all()
+                            # Using direct SQL for reliability
+                            from sqlalchemy import text
+                            result = db.session.execute(text("SELECT id, name, description FROM custom_agent WHERE is_active = TRUE AND wizard_completed = TRUE")).fetchall()
+                            for row in result:
+                                custom_agent = type('CustomAgent', (object,), {
+                                    'id': row[0],
+                                    'name': row[1],
+                                    'description': row[2]
+                                })
+                                custom_agents.append(custom_agent)
                             logger.info(f"Found {len(custom_agents)} custom agents in fallback handler")
                         except Exception as e:
                             logger.error(f"Error in fallback when getting custom agents: {str(e)}")
+                            logger.error(f"Stack trace: {traceback.format_exc()}")
                         
                         # Create the base response
                         welcome_text = "Hello! I'm Staples Brain, here to assist you with various Staples-related services. I can help you with:\n\n" + \
