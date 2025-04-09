@@ -158,8 +158,11 @@ class ResetPasswordAgent(BaseAgent):
         logger.debug(f"Processing password reset request: {user_input}")
         
         try:
-            # Initialize parent class context (for conversation memory)
-            await super().process(user_input, context)
+            # First, let the base class handle simple greetings
+            parent_response = await super().process(user_input, context)
+            if parent_response:
+                # If the parent class returned a response (e.g., for a greeting), use it
+                return parent_response
             
             # Extract account information from user input
             extraction_result = await self.extraction_chain.arun(user_input=user_input)

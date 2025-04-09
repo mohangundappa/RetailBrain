@@ -429,7 +429,30 @@ class BaseAgent(ABC):
         if context and 'conversation_memory' in context:
             self.conversation_memory = context['conversation_memory']
         
-        # Continue with implementation in subclasses
+        # Check for simple greetings (this is implemented in base agent to provide consistent behavior)
+        import re
+        greeting_patterns = [
+            r'^hi\b', r'^hello\b', r'^hey\b', r'^greetings\b', r'^howdy\b',
+            r'^good morning\b', r'^good afternoon\b', r'^good evening\b',
+            r'^how are you\b', r'^what\'s up\b', r'^welcome\b', r'^hola\b'
+        ]
+        
+        # Check if input is just a simple greeting
+        is_greeting = any(re.search(pattern, user_input.lower()) for pattern in greeting_patterns)
+        
+        if is_greeting and len(user_input.split()) <= 3:
+            # Return a friendly greeting specific to this agent's domain
+            greeting_response = f"Hello! I'm the {self.name}. {self.description} How can I help you today?"
+            
+            return {
+                "success": True,
+                "response": greeting_response,
+                "agent": self.name,
+                "confidence": 1.0,
+                "continue_with_same_agent": True
+            }
+        
+        # Continue with implementation in subclasses for non-greeting inputs
         pass
     
     @abstractmethod

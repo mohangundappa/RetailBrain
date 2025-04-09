@@ -239,8 +239,11 @@ class PackageTrackingAgent(BaseAgent):
         logger.debug(f"Processing order tracking request: {user_input}")
         
         try:
-            # Initialize parent class context (for conversation memory)
-            await super().process(user_input, context)
+            # First, let the base class handle simple greetings
+            parent_response = await super().process(user_input, context)
+            if parent_response:
+                # If the parent class returned a response (e.g., for a greeting), use it
+                return parent_response
             
             # Process entity collection first
             collection_complete, follow_up_prompt = await self.process_entity_collection(user_input, context)

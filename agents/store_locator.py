@@ -139,25 +139,11 @@ class StoreLocatorAgent(BaseAgent):
         """
         logger.info(f"Processing store locator query: {user_input}")
         
-        # Check for simple greetings or generic non-location queries
-        greeting_patterns = [
-            r'^hi\b', r'^hello\b', r'^hey\b', r'^greetings\b', r'^howdy\b',
-            r'^good morning\b', r'^good afternoon\b', r'^good evening\b',
-            r'^how are you\b', r'^what\'s up\b', r'^welcome\b', r'^hola\b'
-        ]
-        
-        # Check if input is just a simple greeting
-        is_greeting = any(re.search(pattern, user_input.lower()) for pattern in greeting_patterns)
-        
-        if is_greeting and len(user_input.split()) <= 3:
-            # Return a friendly greeting asking for location
-            return {
-                "success": True,
-                "response": "Hello! I'd be happy to help you find a Staples store. To get started, please provide a city, zip code, or address so I can locate stores near you.",
-                "intent": "store_locator",
-                "entities": {},
-                "continue_with_same_agent": True
-            }
+        # First, let the base class handle simple greetings
+        parent_response = await super().process(user_input, context)
+        if parent_response:
+            # If the parent class returned a response (e.g., for a greeting), use it
+            return parent_response
         
         try:
             # Extract location information from the query

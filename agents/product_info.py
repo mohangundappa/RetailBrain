@@ -144,6 +144,12 @@ class ProductInfoAgent(BaseAgent):
         logger.info(f"Processing product information query: {user_input}")
         
         try:
+            # First, let the base class handle simple greetings
+            parent_response = await super().process(user_input, context)
+            if parent_response:
+                # If the parent class returned a response (e.g., for a greeting), use it
+                return parent_response
+                
             # Extract product information from the query
             extraction_result = await self._extraction_chain.ainvoke({"query": user_input})
             product_query = json.loads(extraction_result["text"])
