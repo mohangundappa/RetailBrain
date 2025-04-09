@@ -20,13 +20,14 @@ agent_builder_bp = Blueprint('agent_builder_api', __name__)
 @agent_builder_bp.route('/agents', methods=['GET'])
 def list_agents():
     """
-    Get a list of all custom agents.
+    Get a list of all agents, both custom and built-in.
     
     Returns:
         JSON list of agents with their basic information
     """
     try:
-        agents = CustomAgent.query.all()
+        # Get custom agents from database
+        custom_agents = CustomAgent.query.all()
         result = [{
             'id': agent.id,
             'name': agent.name,
@@ -35,8 +36,36 @@ def list_agents():
             'updated_at': agent.updated_at.isoformat() if agent.updated_at else None,
             'is_active': agent.is_active,
             'creator': agent.creator,
-            'component_count': len(agent.components)
-        } for agent in agents]
+            'component_count': len(agent.components),
+            'is_custom': True,  # Flag to indicate this is a custom agent
+            'can_edit': True    # Custom agents can be edited
+        } for agent in custom_agents]
+        
+        # Get built-in agents from the brain
+        from brain.staples_brain import initialize_staples_brain
+        try:
+            brain = initialize_staples_brain()
+            builtin_agents = brain.agents
+            
+            # Add built-in agents to the result
+            for idx, agent in enumerate(builtin_agents):
+                # Use negative IDs to distinguish built-in agents
+                agent_id = -(idx + 1)
+                result.append({
+                    'id': agent_id,
+                    'name': agent.name,
+                    'description': getattr(agent, 'description', f"Built-in agent for {agent.name.lower()} functionality"),
+                    'created_at': None,
+                    'updated_at': None,
+                    'is_active': True,
+                    'creator': 'System',
+                    'component_count': 0,  # Built-in agents don't have components in the same way
+                    'is_custom': False,    # Flag to indicate this is a built-in agent
+                    'can_edit': False      # Built-in agents cannot be edited
+                })
+        except Exception as e:
+            logger.warning(f"Error loading built-in agents: {str(e)}")
+            # Continue with just the custom agents if we can't load built-in ones
         
         return jsonify(result), 200
     except Exception as e:

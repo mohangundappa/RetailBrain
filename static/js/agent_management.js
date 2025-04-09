@@ -57,6 +57,52 @@ function setupEventListeners() {
         showDeleteConfirmation(agentId, agentName);
         event.preventDefault();
       }
+      
+      // Handle view button click for built-in agents
+      if (target.classList.contains('view-agent-btn') || 
+          target.closest('.view-agent-btn')) {
+        const row = target.closest('tr');
+        const agentId = row.dataset.agentId;
+        const agentName = row.querySelector('td:first-child').textContent.trim();
+        
+        // Create modal to show built-in agent details
+        const modalHtml = `
+          <div class="modal fade" id="viewBuiltinAgentModal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+              <div class="modal-content">
+                <div class="modal-header">
+                  <h5 class="modal-title">${agentName.replace('<span class="badge bg-secondary ms-2">Built-in</span>', '')}</h5>
+                  <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                  <div class="alert alert-info">
+                    <i class="bi bi-info-circle-fill me-2"></i>
+                    This is a built-in agent that is defined in the code and cannot be edited through the Agent Builder interface.
+                  </div>
+                  <p>Built-in agents are specialized for specific tasks and are directly integrated with the Staples Brain architecture.</p>
+                  <p>To implement custom agent functionality, create a new agent using the Agent Builder.</p>
+                </div>
+                <div class="modal-footer">
+                  <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+        
+        // Add modal to document if it doesn't exist
+        if (!document.getElementById('viewBuiltinAgentModal')) {
+          document.body.insertAdjacentHTML('beforeend', modalHtml);
+        } else {
+          document.getElementById('viewBuiltinAgentModal').outerHTML = modalHtml;
+        }
+        
+        // Show the modal
+        const builtinModal = new bootstrap.Modal(document.getElementById('viewBuiltinAgentModal'));
+        builtinModal.show();
+        
+        event.preventDefault();
+      }
     });
   }
 
@@ -112,20 +158,32 @@ function loadAgentsList() {
       let html = '';
       agents.forEach(agent => {
         const updatedAt = agent.updated_at ? new Date(agent.updated_at).toLocaleString() : 'N/A';
+        const isCustom = agent.is_custom !== false;  // Default to true if not specified
+        const canEdit = agent.can_edit !== false;    // Default to true if not specified
+        
         html += `
-          <tr data-agent-id="${agent.id}">
-            <td>${agent.name}</td>
+          <tr data-agent-id="${agent.id}" class="${isCustom ? 'custom-agent' : 'builtin-agent'}">
+            <td>
+              ${agent.name}
+              ${!isCustom ? '<span class="badge bg-secondary ms-2">Built-in</span>' : ''}
+            </td>
             <td>${agent.description || 'No description'}</td>
-            <td>${agent.component_count}</td>
+            <td>${isCustom ? agent.component_count : '<i>Native</i>'}</td>
             <td>${updatedAt}</td>
             <td>
               <div class="btn-group btn-group-sm" role="group">
-                <button class="btn btn-outline-primary edit-agent-btn" title="Edit agent">
-                  <i class="bi bi-pencil"></i> Edit
-                </button>
-                <button class="btn btn-outline-danger delete-agent-btn" title="Delete agent">
-                  <i class="bi bi-trash"></i> Delete
-                </button>
+                ${canEdit ? `
+                  <button class="btn btn-outline-primary edit-agent-btn" title="Edit agent">
+                    <i class="bi bi-pencil"></i> Edit
+                  </button>
+                  <button class="btn btn-outline-danger delete-agent-btn" title="Delete agent">
+                    <i class="bi bi-trash"></i> Delete
+                  </button>
+                ` : `
+                  <button class="btn btn-outline-secondary view-agent-btn" title="View agent details">
+                    <i class="bi bi-eye"></i> View
+                  </button>
+                `}
               </div>
             </td>
           </tr>

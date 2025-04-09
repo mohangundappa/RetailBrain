@@ -167,3 +167,12 @@
   background-color: var(--bs-gray-900);
   color: var(--bs-light);
 }
+
+/* Style for built-in agents */
+tr.builtin-agent {
+  background-color: rgba(33, 37, 41, 0.03);
+}
+
+tr.builtin-agent td:first-child {
+  font-weight: 500;
+}
