@@ -2,11 +2,19 @@ from abc import ABC, abstractmethod
 import logging
 import re
 from datetime import datetime
-from typing import Dict, Any, List, Optional, Tuple, Set
+from typing import Dict, Any, List, Optional, Tuple, Set, Type, Union
 
 from langchain.schema import BaseMessage
 from langchain.chains import LLMChain
 from langchain.prompts import ChatPromptTemplate
+
+# Import constants for agent names
+from config.agent_constants import (
+    PACKAGE_TRACKING_AGENT,
+    RESET_PASSWORD_AGENT,
+    STORE_LOCATOR_AGENT,
+    PRODUCT_INFO_AGENT
+)
 
 logger = logging.getLogger(__name__)
 
@@ -739,3 +747,38 @@ Remember: Your goal is to provide excellent customer service while representing 
     def reset_entity_collection(self) -> None:
         """Reset the entity collection state."""
         self.entity_collection_state = EntityCollectionState()
+        
+    @classmethod
+    def create_agent(cls, agent_type: str, llm, **kwargs):
+        """
+        Factory method to create a standardized agent with proper naming.
+        
+        Args:
+            agent_type: The type of agent to create (package_tracking, store_locator, etc.)
+            llm: The language model to use
+            **kwargs: Additional arguments to pass to the agent constructor
+            
+        Returns:
+            An instance of the requested agent type
+        """
+        # Import agent types here to avoid circular imports
+        from agents.package_tracking import PackageTrackingAgent
+        from agents.store_locator import StoreLocatorAgent
+        from agents.reset_password import ResetPasswordAgent
+        from agents.product_info import ProductInfoAgent
+        
+        # Map agent types to their proper class
+        agent_map = {
+            "package_tracking": PackageTrackingAgent,
+            "store_locator": StoreLocatorAgent,
+            "reset_password": ResetPasswordAgent,
+            "product_info": ProductInfoAgent
+        }
+        
+        if agent_type not in agent_map:
+            raise ValueError(f"Unknown agent type: {agent_type}")
+            
+        agent_class = agent_map[agent_type]
+        
+        # Create and return the agent - agent already has the standardized name in its constructor
+        return agent_class(llm=llm)

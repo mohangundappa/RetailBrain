@@ -5,11 +5,14 @@ import json
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.outputs import ChatResult, ChatGenerationChunk
 from langchain_core.messages import AIMessageChunk
+from agents.base_agent import BaseAgent
+from brain.orchestrator import AgentOrchestrator
+
+# Import all agent classes for factory method access
 from agents.package_tracking import PackageTrackingAgent
 from agents.reset_password import ResetPasswordAgent
 from agents.store_locator import StoreLocatorAgent
 from agents.product_info import ProductInfoAgent
-from brain.orchestrator import AgentOrchestrator
 
 # Get OpenAI configuration from environment variables
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
@@ -106,28 +109,22 @@ class StaplesBrain:
         logger.info(f"Staples Brain initialized with {len(self.agents)} agents")
     
     def _initialize_agents(self):
-        """Initialize all required agents."""
+        """Initialize all required agents using the factory method for standardization."""
         try:
-            # Add Package Tracking Agent
-            package_agent = PackageTrackingAgent(self.llm)
-            self.agents.append(package_agent)
-            logger.info("Package Tracking Agent initialized")
+            # Define the agent types to initialize
+            agent_types = [
+                "package_tracking", 
+                "reset_password", 
+                "store_locator", 
+                "product_info"
+            ]
             
-            # Add Reset Password Agent
-            reset_agent = ResetPasswordAgent(self.llm)
-            self.agents.append(reset_agent)
-            logger.info("Reset Password Agent initialized")
-            
-            # Add Store Locator Agent
-            store_locator_agent = StoreLocatorAgent(self.llm)
-            self.agents.append(store_locator_agent)
-            logger.info("Store Locator Agent initialized")
-            
-            # Add Product Information Agent
-            product_info_agent = ProductInfoAgent(self.llm)
-            self.agents.append(product_info_agent)
-            logger.info("Product Information Agent initialized")
-            
+            # Create each agent using the factory method for standardized naming
+            for agent_type in agent_types:
+                agent = BaseAgent.create_agent(agent_type, self.llm)
+                self.agents.append(agent)
+                logger.info(f"{agent.name} initialized")
+                
         except Exception as e:
             logger.error(f"Error initializing agents: {str(e)}", exc_info=True)
             raise RuntimeError(f"Failed to initialize agents: {str(e)}")

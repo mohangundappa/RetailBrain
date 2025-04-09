@@ -28,7 +28,7 @@ class ProductInfoAgent(BaseAgent):
             llm: The language model to use for this agent
         """
         super().__init__(
-            name="Product Information",
+            name="Product Information Agent",
             description="I can help you find information about Staples products, check availability, provide details, and make recommendations.",
             llm=llm
         )

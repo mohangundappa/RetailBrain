@@ -32,6 +32,19 @@ def parse_args():
     )
     
     parser.add_argument(
+        "-g", "--agent",
+        action="store_true",
+        help="Run agent tests"
+    )
+    
+    parser.add_argument(
+        "--agent-type",
+        choices=["selection", "context", "flow", "routing", "all"],
+        default="all",
+        help="Specific agent test type to run"
+    )
+    
+    parser.add_argument(
         "-v", "--verbose",
         action="store_true",
         help="Show verbose output"
@@ -85,14 +98,54 @@ def run_frontend_tests(verbose=False):
             traceback.print_exc()
         return False
 
+def run_agent_tests(agent_type="all", verbose=False):
+    """Run agent tests"""
+    logger.info(f"Running agent tests (type: {agent_type})...")
+    
+    try:
+        # Import our agent testing module
+        from tests.test_agent_interactions import TestAgentSelection, TestAgentContextSwitching
+        from tests.test_conversation_flow import TestComplexConversationFlow
+        from tests.test_agent_routing import TestAgentRouting
+        
+        # Create test suite
+        suite = unittest.TestSuite()
+        
+        # Add tests based on agent_type
+        if agent_type == "selection" or agent_type == "all":
+            suite.addTest(unittest.TestLoader().loadTestsFromTestCase(TestAgentSelection))
+        
+        if agent_type == "context" or agent_type == "all":
+            suite.addTest(unittest.TestLoader().loadTestsFromTestCase(TestAgentContextSwitching))
+        
+        if agent_type == "flow" or agent_type == "all":
+            suite.addTest(unittest.TestLoader().loadTestsFromTestCase(TestComplexConversationFlow))
+        
+        if agent_type == "routing" or agent_type == "all":
+            suite.addTest(unittest.TestLoader().loadTestsFromTestCase(TestAgentRouting))
+        
+        # Run tests
+        runner = unittest.TextTestRunner(verbosity=2 if verbose else 1)
+        result = runner.run(suite)
+        
+        return result.wasSuccessful()
+    except Exception as e:
+        logger.error(f"Error running agent tests: {e}")
+        if verbose:
+            import traceback
+            traceback.print_exc()
+        return False
+
+
 def run_all_tests(verbose=False):
     """Run all available tests"""
     logger.info("Running all tests...")
     
     api_success = run_api_tests(verbose)
     frontend_success = run_frontend_tests(verbose)
+    agent_success = run_agent_tests("all", verbose)
     
-    return api_success and frontend_success
+    return api_success and frontend_success and agent_success
 
 def main():
     """Main entry point"""
@@ -104,6 +157,8 @@ def main():
         success = run_api_tests(args.verbose)
     elif args.frontend:
         success = run_frontend_tests(args.verbose)
+    elif args.agent:
+        success = run_agent_tests(args.agent_type, args.verbose)
     else:
         # Run all tests if no specific test is requested
         success = run_all_tests(args.verbose)

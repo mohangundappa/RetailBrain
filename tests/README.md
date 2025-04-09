@@ -1,104 +1,82 @@
-# Testing Framework for Staples Brain
+# Staples Brain Test Suite
 
-This directory contains tests for the Staples Brain application. The tests are designed to ensure that the application functions correctly and that new changes don't break existing functionality.
+This directory contains tests for the Staples Brain and its components.
 
-## Test Types
+## Test Organization
 
-1. **API Tests** - Tests the backend API endpoints
-2. **Frontend Tests** - Tests the frontend UI functionality using Selenium
+The tests are organized into several categories:
+
+1. **Import Tests** (`test_imports.py`): Verify that all required dependencies are available.
+2. **Agent Selection Tests** (`test_agent_interactions.py::TestAgentSelection`): Test basic agent selection capabilities.
+3. **Agent Context Switching Tests** (`test_agent_interactions.py::TestAgentContextSwitching`): Test context switching between agents.
+4. **Complex Conversation Flow Tests** (`test_conversation_flow.py`): Test complex, multi-turn conversations.
+5. **Agent Routing Tests** (`test_agent_routing.py`): Test the routing mechanisms that select appropriate agents.
 
 ## Running Tests
 
-You can run tests using the `run_tests.py` script in the root directory:
+To run all tests:
 
 ```bash
-# Run all tests
-python run_tests.py
-
-# Run only API tests
-python run_tests.py --api
-
-# Run only frontend tests
-python run_tests.py --frontend
-
-# Run tests with verbose output
-python run_tests.py --verbose
+python tests/run_agent_tests.py
 ```
 
-## Setup for Testing
+To run a specific category of tests:
 
-### Prerequisites
+```bash
+python tests/run_agent_tests.py -t [imports|selection|context|flow|routing]
+```
 
-1. Install test dependencies:
-   ```bash
-   pip install -r tests/requirements.txt
-   ```
+To run tests with more verbose output:
 
-2. For frontend tests, you need Chrome/Chromium and ChromeDriver installed:
-   - ChromeDriver should be available in your PATH
+```bash
+python tests/run_agent_tests.py -v
+```
 
-### Test Database
+## Testing Considerations
 
-The tests use the same database as configured in your environment variables (DATABASE_URL).
-Tests are designed to clean up after themselves, but be cautious when running tests in a production environment.
+### Mock LLM Implementation
 
-## Adding New Tests
+Testing LangChain components requires a proper mock for the BaseChatModel class. A simple 
+MagicMock is insufficient because LangChain expects methods with specific signatures and return types.
 
-### API Tests
+The `test_utils.py` module provides a `MockChatModel` class that extends `BaseChatModel` with 
+appropriate methods for testing. Key considerations:
 
-Add new test methods to `tests/test_api_routes.py` or create new test files as needed.
+1. **Standard LangChain Methods**: The mock must implement `_generate`, `_agenerate`, and `_llm_type` methods.
+2. **Message Structure**: Return values must have the proper message structure (AIMessageChunk, ChatGenerationChunk, ChatResult).
+3. **Confidence Scoring**: For `can_handle` tests, the mock should return a numeric confidence score.
+4. **Response Formats**: Regular responses may need to be in JSON format for entity extraction.
+5. **Async Safety**: Avoid using `asyncio.run()` inside `_generate` to prevent "asyncio.run() cannot be called from a running event loop" errors.
 
-Example:
+### Example Mocking
+
+To properly mock the LLM in a test:
 
 ```python
-def test_new_feature(self):
-    """Test a new feature"""
-    # Setup test data
-    # ...
-    
-    # Call API
-    response = self.client.get('/api/new-feature')
-    
-    # Assertions
-    self.assertEqual(response.status_code, 200)
-    # More assertions...
+from tests.test_utils import create_mock_chat_model, patch_llm_in_brain
+
+# Initialize the brain
+brain = initialize_staples_brain()
+
+# Create and patch the mock LLM
+mock_llm = create_mock_chat_model(responses=[
+    "0.9",  # Confidence score
+    '{"entity": "value"}',  # Entity extraction response
+    "Final human-readable response",  # Final response
+])
+patch_llm_in_brain(brain, mock_llm)
 ```
 
-### Frontend Tests
+### Common Testing Issues
 
-Add new test methods to `tests/test_frontend.py` or create new test files as needed.
+1. **Circular imports**: Import test utilities inside test methods to avoid circular imports.
+2. **AsyncIO conflicts**: Be careful when mixing asyncio calls with testing, avoid nested event loops.
+3. **Patching depth**: When patching, remember to patch deep enough to replace all instances of the LLM in chains.
 
-Example:
+## Test Data
 
-```python
-def test_new_ui_feature(self):
-    """Test a new UI feature"""
-    self.driver.get(f"{self.base_url}/feature-page")
-    
-    # Interact with UI
-    button = self.driver.find_element(By.ID, 'feature-button')
-    button.click()
-    
-    # Wait for result
-    self.wait.until(EC.presence_of_element_located((By.ID, 'result-element')))
-    
-    # Assertions
-    result = self.driver.find_element(By.ID, 'result-element')
-    self.assertEqual(result.text, 'Expected Value')
-```
+The test suite uses synthetic data for testing. In a production environment, consider:
 
-## Continuous Integration
-
-These tests can be integrated into a CI/CD pipeline to automatically test changes before deployment.
-
-## Troubleshooting
-
-If frontend tests fail:
-1. Check that ChromeDriver is installed and accessible
-2. Ensure the application is running at the expected URL
-3. Look for timing issues - you may need to adjust wait times
-
-If API tests fail:
-1. Ensure the application server is running
-2. Check database connectivity
-3. Look for schema changes that might require test updates
+1. Using sanitized, realistic data for more thorough testing
+2. Implementing integration tests with actual LLM services (with appropriate API keys)
+3. Setting up continuous monitoring to catch issues in production

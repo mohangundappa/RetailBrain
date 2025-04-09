@@ -28,7 +28,7 @@ class PackageTrackingAgent(BaseAgent):
             llm: The language model to use for this agent
         """
         super().__init__(
-            name="Order Tracking",
+            name="Package Tracking Agent",
             description="I can help track your orders, check package status, and provide delivery updates for Staples purchases.",
             llm=llm
         )
@@ -247,6 +247,12 @@ class PackageTrackingAgent(BaseAgent):
             
             # If we need to continue collecting entities, return a follow-up question
             if not collection_complete and follow_up_prompt:
+                # Add agent_name to context to ensure we stay with this agent during entity collection
+                if context and 'conversation_memory' in context:
+                    memory = context['conversation_memory']
+                    memory.update_working_memory('continue_with_same_agent', True)
+                    memory.update_working_memory('last_selected_agent', self.name)
+                
                 # Build a friendly response asking for the missing information
                 tracking_info = {
                     "order_number": None,

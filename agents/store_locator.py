@@ -27,7 +27,7 @@ class StoreLocatorAgent(BaseAgent):
             llm: The language model to use for this agent
         """
         super().__init__(
-            name="Store Locator",
+            name="Store Locator Agent",
             description="I can help you find Staples stores near you, check store hours, and provide information about store services.",
             llm=llm
         )
@@ -138,12 +138,44 @@ class StoreLocatorAgent(BaseAgent):
         """
         logger.info(f"Processing store locator query: {user_input}")
         
+        # Check for simple greetings or generic non-location queries
+        greeting_patterns = [
+            r'^hi\b', r'^hello\b', r'^hey\b', r'^greetings\b', r'^howdy\b',
+            r'^good morning\b', r'^good afternoon\b', r'^good evening\b',
+            r'^how are you\b', r'^what\'s up\b', r'^welcome\b', r'^hola\b'
+        ]
+        
+        # Check if input is just a simple greeting
+        is_greeting = any(re.search(pattern, user_input.lower()) for pattern in greeting_patterns)
+        
+        if is_greeting and len(user_input.split()) <= 3:
+            # Return a friendly greeting asking for location
+            return {
+                "success": True,
+                "response": "Hello! I'd be happy to help you find a Staples store. To get started, please provide a city, zip code, or address so I can locate stores near you.",
+                "intent": "store_locator",
+                "entities": {},
+                "continue_with_same_agent": True
+            }
+        
         try:
             # Extract location information from the query
             extraction_result = await self._extraction_chain.ainvoke({"query": user_input})
-            location_info = json.loads(extraction_result["text"])
             
-            logger.info(f"Extracted location information: {location_info}")
+            # Handle empty or invalid JSON responses
+            try:
+                location_info = json.loads(extraction_result["text"])
+                logger.info(f"Extracted location information: {location_info}")
+            except json.JSONDecodeError as json_err:
+                logger.warning(f"Failed to parse location JSON: {json_err}. Raw text: {extraction_result.get('text', '')}")
+                # Return a default response asking for location
+                return {
+                    "success": True,
+                    "response": "I'd be happy to help you find a Staples store. Could you please provide a specific location such as a city, zip code, or address?",
+                    "intent": "store_locator",
+                    "entities": {},
+                    "continue_with_same_agent": True
+                }
             
             # Get store information
             store_info = self._get_store_info(location_info, context)

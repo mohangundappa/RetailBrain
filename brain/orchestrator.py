@@ -6,6 +6,12 @@ import re
 from datetime import datetime, timedelta
 from agents.base_agent import BaseAgent
 from utils.memory import ConversationMemory
+from config.agent_constants import (
+    INTENT_AGENT_MAPPING,
+    DEFAULT_CONFIDENCE_THRESHOLD,
+    HIGH_CONFIDENCE_THRESHOLD,
+    CONTINUITY_BONUS
+)
 
 logger = logging.getLogger(__name__)
 
@@ -28,23 +34,13 @@ class AgentOrchestrator:
         self.agents = agents
         self.memories = {}  # Dictionary of session_id -> ConversationMemory
         self.agent_routing_history = {}  # Track routing history per session
-        self.confidence_threshold = 0.3  # Minimum confidence to select an agent
-        self.fallback_threshold = 0.2   # Fallback threshold for continuing with same agent
-        self.continuity_bonus = 0.15    # Bonus for same agent continuity
+        self.confidence_threshold = DEFAULT_CONFIDENCE_THRESHOLD
+        self.fallback_threshold = DEFAULT_CONFIDENCE_THRESHOLD * 0.7  # 70% of default threshold 
+        self.continuity_bonus = CONTINUITY_BONUS
         self.recency_window = 300       # Consider context from the last 5 minutes (in seconds)
         
-        # Mapping of intents to preferred agents
-        self.intent_routing = {
-            "package_tracking": "Package Tracking Agent",
-            "order_status": "Package Tracking Agent",
-            "shipping_inquiry": "Package Tracking Agent",
-            "delivery_status": "Package Tracking Agent",
-            "package_location": "Package Tracking Agent",
-            "password_reset": "Reset Password Agent",
-            "account_access": "Reset Password Agent",
-            "login_issue": "Reset Password Agent",
-            "forgot_password": "Reset Password Agent"
-        }
+        # Use intent to agent mapping from central constants
+        self.intent_routing = INTENT_AGENT_MAPPING
         
         logger.info(f"Initialized orchestrator with {len(agents)} agents")
     
@@ -335,7 +331,7 @@ class AgentOrchestrator:
         intent = context.get('intent') if context else None
         intent_confidence = context.get('intent_confidence', 0.0) if context else 0.0
         
-        if intent and intent_confidence > 0.6 and intent in self.intent_routing:
+        if intent and intent_confidence > HIGH_CONFIDENCE_THRESHOLD and intent in self.intent_routing:
             preferred_agent_name = self.intent_routing[intent]
             for agent in self.agents:
                 if agent.name.lower() == preferred_agent_name.lower():
@@ -353,7 +349,27 @@ class AgentOrchestrator:
             last_timestamp_str = memory.get_working_memory('timestamp')
             
             # Check if we have a recent conversation to continue
-            if last_agent_name and continue_with_same_agent and last_timestamp_str:
+            if last_agent_name and continue_with_same_agent:
+                logger.info(f"continue_with_same_agent flag is set to True for agent: {last_agent_name}")
+                # If the flag was specifically set in the context by an agent, prioritize continuity strongly
+                # This is especially important for maintaining context during entity collection
+                for agent in self.agents:
+                    if agent.name == last_agent_name:
+                        # Apply a high continuity bonus to ensure we stay with this agent 
+                        confidence = max(0.6, agent.can_handle(user_input, context))
+                        adjusted_confidence = min(0.99, confidence + CONTINUITY_BONUS * 2)  # Significant continuity bonus
+                        
+                        logger.info(f"Prioritizing continuity with agent: {agent.name} "
+                                  f"(base confidence: {confidence:.2f}, "
+                                  f"with high continuity bonus: {adjusted_confidence:.2f})")
+                        
+                        # Reset the continue_with_same_agent flag unless explicitly set again by the agent
+                        memory.update_working_memory('continue_with_same_agent', False)
+                        
+                        return agent, adjusted_confidence, True
+            
+            # Fall back to standard time-based continuity if explicit flag not set
+            elif last_agent_name and last_timestamp_str:
                 try:
                     last_timestamp = datetime.fromisoformat(last_timestamp_str)
                     # Only consider recent conversations (within last 5 minutes)

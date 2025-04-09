@@ -26,7 +26,7 @@ class ResetPasswordAgent(BaseAgent):
             llm: The language model to use for this agent
         """
         super().__init__(
-            name="Password Recovery",
+            name="Reset Password Agent",
             description="I can help you reset your password, recover your account, and resolve login issues.",
             llm=llm
         )
