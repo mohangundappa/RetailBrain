@@ -290,6 +290,16 @@ class EntityCollectionState:
                 return name
         return None
         
+    def get_missing_entities(self) -> List[str]:
+        """
+        Get a list of all required entities that haven't been collected.
+        
+        Returns:
+            A list of entity names
+        """
+        return [name for name, entity in self.entities.items() 
+                if entity.required and not entity.collected]
+        
     def are_all_required_entities_collected(self) -> bool:
         """
         Check if all required entities have been collected.
@@ -302,16 +312,6 @@ class EntityCollectionState:
                 return False
         return True
         
-    def get_missing_entities(self) -> List[str]:
-        """
-        Get a list of all required entities that haven't been collected.
-        
-        Returns:
-            A list of entity names
-        """
-        return [name for name, entity in self.entities.items() 
-                if entity.required and not entity.collected]
-                
     def get_collected_entities(self) -> Dict[str, Any]:
         """
         Get all collected entity values.
@@ -744,23 +744,107 @@ Remember: Your goal is to provide excellent customer service while representing 
         self.entity_collection_state.current_entity = next_entity_name
         current_entity = self.entity_collection_state.entities[next_entity_name]
         
-        # Generate a follow-up prompt for the missing entity
+        # Use LLM to generate a natural follow-up prompt for missing entities
+        return await self._generate_entity_collection_prompt(user_input, current_entity)
+        
+    async def _generate_entity_collection_prompt(self, user_input: str, current_entity: EntityDefinition) -> Tuple[bool, str]:
+        """
+        Use the LLM to generate a natural prompt for collecting missing entities.
+        
+        Args:
+            user_input: The user's input text
+            current_entity: The current entity being collected
+            
+        Returns:
+            Tuple of (collection_complete, follow_up_prompt)
+        """
+        # Prepare context for the LLM
         missing_entities = self.entity_collection_state.get_missing_entities()
-        if len(missing_entities) == 1:
-            # Only one entity missing, ask for it specifically
-            follow_up = f"Could you please provide your {next_entity_name.replace('_', ' ')}?"
+        collected_entities = self.entity_collection_state.get_collected_entities()
+        
+        # Create structured entity data for the LLM
+        entity_data = []
+        for entity_name in missing_entities:
+            # Get the entity object from the dictionary
+            entity = self.entity_collection_state.entities.get(entity_name)
+            if entity:
+                entity_info = {
+                    "name": entity.name,
+                    "description": entity.description,
+                    "examples": entity.examples,
+                    "validation_failed": entity.attempts > 0,
+                    "error_message": entity.error_message if entity.attempts > 0 else None
+                }
+                entity_data.append(entity_info)
+        
+        # Create the prompt template
+        template = """
+        You are a customer service representative for Staples, helping a customer with their request.
+        
+        Customer's latest message: "{user_input}"
+        
+        You need to collect the following information from the customer:
+        {entity_requirements}
+        
+        This is the context of already collected information:
+        {collected_info}
+        
+        Generate a polite, conversational follow-up message asking for ONLY the missing information.
+        The message should:
+        1. Be friendly and conversational in tone, like a helpful human service representative
+        2. Ask for all missing information at once if appropriate
+        3. Include examples if available
+        4. If validation has failed for an entity, politely mention the error and ask again
+        5. Make the customer feel like they're talking to a helpful person, not a form-filling robot
+        6. Be concise and to the point
+        
+        Your response:
+        """
+        
+        # Format entity requirements for prompt
+        entity_reqs = ""
+        for entity in entity_data:
+            entity_reqs += f"- {entity['name'].replace('_', ' ')}: {entity['description']}"
+            if entity['examples']:
+                entity_reqs += f" (example: {entity['examples'][0]})"
+            if entity['validation_failed']:
+                entity_reqs += f" [Validation error: {entity['error_message']}]"
+            entity_reqs += "\n"
+        
+        # Format collected information for prompt
+        collected_info = ""
+        if collected_entities:
+            for name, value in collected_entities.items():
+                collected_info += f"- {name.replace('_', ' ')}: {value}\n"
+        else:
+            collected_info = "- No information collected yet.\n"
+        
+        # Create an LLM chain for generating the prompt
+        prompt = ChatPromptTemplate.from_template(template)
+        prompt_chain = LLMChain(llm=self.llm, prompt=prompt)
+        
+        # Generate the follow-up prompt
+        try:
+            response = await prompt_chain.arun(
+                user_input=user_input,
+                entity_requirements=entity_reqs,
+                collected_info=collected_info
+            )
+            
+            # Clean up any excess whitespace or newlines
+            follow_up = response.strip()
+            
+            return False, follow_up
+        except Exception as e:
+            logger.error(f"Error generating entity collection prompt: {str(e)}")
+            
+            # Fall back to a basic prompt if LLM fails
+            follow_up = f"Could you please provide your {current_entity.name.replace('_', ' ')}?"
             if current_entity.examples:
                 example = current_entity.examples[0]
                 follow_up += f" For example: {example}"
-        else:
-            # Multiple entities missing, ask for the current one first
-            follow_up = f"To proceed, I need a few more details. Could you please provide your {next_entity_name.replace('_', ' ')}?"
-            
-        # If there have been validation failures, add the error message
-        if current_entity.attempts > 0:
-            follow_up += f" {current_entity.error_message}"
-            
-        return False, follow_up
+                
+            return False, follow_up
         
     def get_collected_entity_values(self) -> Dict[str, Any]:
         """
