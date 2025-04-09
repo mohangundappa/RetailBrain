@@ -1,4 +1,5 @@
 import os
+import json
 from datetime import datetime
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.orm import DeclarativeBase
@@ -129,12 +130,44 @@ class CustomAgent(db.Model):
     creator = db.Column(db.String(128), nullable=True)
     icon = db.Column(db.String(256), nullable=True)
     
-    # Configuration JSON
+    # Core configuration storage
     configuration = db.Column(db.Text, nullable=True)  # JSON with agent configuration
+    entity_definitions = db.Column(db.Text, nullable=True)  # JSON with entity definitions and validation rules
+    prompt_templates = db.Column(db.Text, nullable=True)  # JSON with all prompt templates
+    response_formats = db.Column(db.Text, nullable=True)  # JSON with response format definitions
+    business_rules = db.Column(db.Text, nullable=True)  # JSON with business rules
+    
+    # Wizard progress tracking
+    wizard_completed = db.Column(db.Boolean, default=False)
+    current_wizard_step = db.Column(db.Integer, default=1)
     
     # Relationships
     components = db.relationship('AgentComponent', back_populates='agent', cascade='all, delete-orphan')
     connections = db.relationship('ComponentConnection', back_populates='agent', cascade='all, delete-orphan')
+    
+    def get_entity_definitions(self):
+        """Get parsed entity definitions"""
+        if not self.entity_definitions:
+            return []
+        return json.loads(self.entity_definitions)
+        
+    def get_prompt_templates(self):
+        """Get parsed prompt templates"""
+        if not self.prompt_templates:
+            return {}
+        return json.loads(self.prompt_templates)
+        
+    def get_response_formats(self):
+        """Get parsed response formats"""
+        if not self.response_formats:
+            return {}
+        return json.loads(self.response_formats)
+        
+    def get_business_rules(self):
+        """Get parsed business rules"""
+        if not self.business_rules:
+            return []
+        return json.loads(self.business_rules)
 
 class AgentComponent(db.Model):
     """Model for individual components used in a custom agent"""

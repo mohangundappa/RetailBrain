@@ -4,13 +4,14 @@ import asyncio
 import uuid
 import time
 import random
+import json
 from datetime import datetime
-from flask import Flask, render_template, jsonify, request, session, Response, g
+from flask import Flask, render_template, jsonify, request, session, Response, g, redirect, url_for
 from flask_cors import CORS
 from prometheus_client import CONTENT_TYPE_LATEST
 from brain.intent_handler import IntentHandler
 from brain.planner import ExecutionPlanner
-from models import db, Conversation, Message, PackageTracking, PasswordReset, StoreLocator, ProductInfo, AgentConfig, AnalyticsData
+from models import db, Conversation, Message, PackageTracking, PasswordReset, StoreLocator, ProductInfo, AgentConfig, AnalyticsData, CustomAgent
 from utils.memory import ConversationMemory
 from utils.observability import (
     get_prometheus_metrics, 
@@ -1242,7 +1243,182 @@ def product_info():
 @app.route('/agent-builder', methods=["GET"])
 def agent_builder():
     """Render the agent builder interface."""
-    return render_template('agent_builder.html')
+    agent_id = request.args.get('id')
+    return render_template('agent_builder.html', agent_id=agent_id)
+
+@app.route('/agent-wizard', methods=["GET"])
+@app.route('/agent-wizard/<int:agent_id>', methods=["GET"])
+@app.route('/agent-wizard/<int:agent_id>/step/<int:step>', methods=["GET"])
+def agent_wizard(agent_id=None, step=1):
+    """Render the agent configuration wizard interface."""
+    if step < 1 or step > 5:
+        step = 1
+    
+    # If no agent_id, we're creating a new agent
+    if agent_id is None:
+        # Create a new agent with default values
+        new_agent = CustomAgent(
+            name="New Agent",
+            description="",
+            is_active=True,
+            configuration=json.dumps({"agent_type": "custom"}),
+            entity_definitions=json.dumps([]),
+            prompt_templates=json.dumps({
+                "system": "You are a helpful assistant.",
+                "entity_extraction": "Extract the following entities from the user query:",
+                "response_generation": "Generate a helpful response based on the extracted entities."
+            }),
+            response_formats=json.dumps({
+                "schema": '{\n  "response": "string",\n  "confidence": "number"\n}',
+                "enforce_schema": True,
+                "template": "{{ response }}"
+            }),
+            business_rules=json.dumps([])
+        )
+        
+        # Save to get an ID
+        db.session.add(new_agent)
+        db.session.commit()
+        
+        # Redirect to the wizard with the new agent ID
+        return redirect(url_for('agent_wizard', agent_id=new_agent.id, step=1))
+    
+    # Fetch existing agent
+    agent = CustomAgent.query.get_or_404(agent_id)
+    
+    # Prepare template variables based on the current step
+    entities = []
+    prompts = {}
+    response_format = {}
+    
+    if step == 2:
+        # Entity Definitions
+        entities = agent.get_entity_definitions()
+        # Add a default entity if none exist
+        if not entities:
+            entities = [{
+                "name": "entity1",
+                "description": "First required entity",
+                "validation_pattern": ".*",
+                "error_message": "Please provide a valid value",
+                "examples": ["example1", "example2"],
+                "required": True
+            }]
+    
+    elif step == 3:
+        # Prompt Templates
+        prompts = agent.get_prompt_templates()
+        if not prompts or not prompts.get("system"):
+            prompts = {
+                "system": "You are a helpful assistant.",
+                "entity_extraction": "Extract the following entities from the user query:",
+                "response_generation": "Generate a helpful response based on the extracted entities."
+            }
+    
+    elif step == 4:
+        # Response Format
+        response_format = agent.get_response_formats()
+        if not response_format or not response_format.get("schema"):
+            response_format = {
+                "schema": '{\n  "response": "string",\n  "confidence": "number"\n}',
+                "enforce_schema": True,
+                "template": "{{ response }}"
+            }
+    
+    # Parse configuration
+    try:
+        agent_config = json.loads(agent.configuration) if agent.configuration else {}
+    except:
+        agent_config = {}
+    
+    # Set agent.configuration for accessing in the template
+    agent.configuration = agent_config
+    
+    return render_template(
+        'agent_wizard.html', 
+        agent=agent,
+        current_step=step,
+        agent_id=agent_id,
+        entities=entities,
+        prompts=prompts,
+        response_format=response_format
+    )
+
+@app.route('/agent-wizard/<int:agent_id>/step/<int:step>', methods=['POST'])
+def agent_wizard_save(agent_id, step):
+    """Save the current step of the agent wizard and move to the next."""
+    agent = CustomAgent.query.get_or_404(agent_id)
+    
+    if step == 1:
+        # Save Basic Info
+        agent.name = request.form.get('name', 'New Agent')
+        agent.description = request.form.get('description', '')
+        agent.is_active = 'is_active' in request.form
+        
+        # Update configuration with agent type
+        config = json.loads(agent.configuration) if agent.configuration else {}
+        config['agent_type'] = request.form.get('agent_type', 'custom')
+        agent.configuration = json.dumps(config)
+        
+    elif step == 2:
+        # Save Entity Definitions
+        entities_data = []
+        entity_count = 0
+        
+        # Count how many entities are in the form
+        for key in request.form:
+            if key.startswith('entities[') and key.endswith('][name]'):
+                entity_count = max(entity_count, int(key.split('[')[1].split(']')[0]) + 1)
+        
+        # Process each entity
+        for i in range(entity_count):
+            name_key = f'entities[{i}][name]'
+            if name_key in request.form and request.form[name_key].strip():
+                # Get entity fields from form
+                entity = {
+                    'name': request.form.get(f'entities[{i}][name]', '').strip(),
+                    'description': request.form.get(f'entities[{i}][description]', '').strip(),
+                    'validation_pattern': request.form.get(f'entities[{i}][validation_pattern]', '.*').strip(),
+                    'error_message': request.form.get(f'entities[{i}][error_message]', '').strip(),
+                    'required': f'entities[{i}][required]' in request.form,
+                    'examples': [ex.strip() for ex in request.form.get(f'entities[{i}][examples]', '').split(',') if ex.strip()]
+                }
+                entities_data.append(entity)
+        
+        # Save to the database
+        agent.entity_definitions = json.dumps(entities_data)
+        
+    elif step == 3:
+        # Save Prompt Templates
+        prompts = {
+            'system': request.form.get('prompts[system]', '').strip(),
+            'entity_extraction': request.form.get('prompts[entity_extraction]', '').strip(),
+            'response_generation': request.form.get('prompts[response_generation]', '').strip()
+        }
+        agent.prompt_templates = json.dumps(prompts)
+        
+    elif step == 4:
+        # Save Response Format
+        response_format = {
+            'schema': request.form.get('response_format[schema]', '').strip(),
+            'enforce_schema': 'response_format[enforce_schema]' in request.form,
+            'template': request.form.get('response_format[template]', '').strip()
+        }
+        agent.response_formats = json.dumps(response_format)
+        
+    elif step == 5:
+        # Complete the wizard
+        agent.wizard_completed = True
+        # Redirect to the agent builder interface
+        db.session.commit()
+        return redirect(url_for('agent_builder', id=agent_id))
+    
+    # Update wizard progress
+    agent.current_wizard_step = step + 1
+    db.session.commit()
+    
+    # Redirect to the next step
+    return redirect(url_for('agent_wizard', agent_id=agent_id, step=step+1))
 
 @app.route('/dashboard', methods=["GET"])
 def dashboard():

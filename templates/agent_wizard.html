@@ -1,0 +1,703 @@
+{% extends "base.html" %}
+
+{% block title %}Agent Configuration Wizard{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+  <div class="row">
+    <div class="col-12">
+      <h1 class="mb-4">Agent Configuration Wizard</h1>
+      
+      <div class="card shadow-sm mb-4">
+        <div class="card-header bg-primary text-white">
+          <div class="d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">Configure Your Agent</h5>
+            <div>
+              <span class="badge bg-light text-dark">Step {{ current_step }} of 5</span>
+            </div>
+          </div>
+        </div>
+        <div class="card-body p-4">
+          <!-- Step Progress -->
+          <div class="mb-4">
+            <div class="progress">
+              <div class="progress-bar" role="progressbar" style="width: {{ (current_step / 5) * 100 }}%;" 
+                   aria-valuenow="{{ current_step }}" aria-valuemin="0" aria-valuemax="5">
+                Step {{ current_step }}
+              </div>
+            </div>
+            <div class="d-flex justify-content-between mt-2">
+              <small>Agent Basics</small>
+              <small>Entity Setup</small>
+              <small>Prompts</small>
+              <small>Response Format</small>
+              <small>Review</small>
+            </div>
+          </div>
+          
+          <form id="agent-wizard-form" method="post" action="{{ url_for('agent_wizard_save', agent_id=agent_id, step=current_step) }}">
+            <!-- Step 1: Agent Basics -->
+            {% if current_step == 1 %}
+            <div class="step-content" id="step-1">
+              <div class="mb-4">
+                <h4 class="mb-3">Agent Basics</h4>
+                <p class="text-muted">Let's start with the basic information about your agent.</p>
+              </div>
+              
+              <div class="mb-3">
+                <label for="agent-name" class="form-label">Agent Name</label>
+                <input type="text" class="form-control" id="agent-name" name="name" value="{{ agent.name }}" required>
+                <div class="form-text">Choose a clear, descriptive name for your agent.</div>
+              </div>
+              
+              <div class="mb-3">
+                <label for="agent-description" class="form-label">Description</label>
+                <textarea class="form-control" id="agent-description" name="description" rows="3">{{ agent.description }}</textarea>
+                <div class="form-text">Describe what your agent does and its primary purpose.</div>
+              </div>
+              
+              <div class="mb-3">
+                <label class="form-label">Agent Type</label>
+                <div class="form-text text-info mb-2">
+                  <i class="bi bi-info-circle"></i> Select the type of agent you are creating.
+                </div>
+                <select class="form-select" name="agent_type">
+                  <option value="customer_service" {% if agent.configuration and agent.configuration.agent_type == 'customer_service' %}selected{% endif %}>Customer Service</option>
+                  <option value="order_tracking" {% if agent.configuration and agent.configuration.agent_type == 'order_tracking' %}selected{% endif %}>Order Tracking</option>
+                  <option value="product_info" {% if agent.configuration and agent.configuration.agent_type == 'product_info' %}selected{% endif %}>Product Information</option>
+                  <option value="store_locator" {% if agent.configuration and agent.configuration.agent_type == 'store_locator' %}selected{% endif %}>Store Locator</option>
+                  <option value="password_reset" {% if agent.configuration and agent.configuration.agent_type == 'password_reset' %}selected{% endif %}>Password Reset</option>
+                  <option value="custom" {% if agent.configuration and agent.configuration.agent_type == 'custom' %}selected{% endif %}>Custom Agent</option>
+                </select>
+              </div>
+              
+              <div class="form-check form-switch mb-3">
+                <input class="form-check-input" type="checkbox" id="agent-active" name="is_active" {% if agent.is_active %}checked{% endif %}>
+                <label class="form-check-label" for="agent-active">Agent is active</label>
+                <div class="form-text">When active, this agent can be selected by the orchestrator.</div>
+              </div>
+            </div>
+            {% endif %}
+            
+            <!-- Step 2: Entity Definitions -->
+            {% if current_step == 2 %}
+            <div class="step-content" id="step-2">
+              <div class="mb-4">
+                <h4 class="mb-3">Entity Definitions</h4>
+                <p class="text-muted">Define the data points your agent needs to collect from users.</p>
+              </div>
+              
+              <div id="entity-container">
+                {% for entity in entities %}
+                <div class="card mb-3 entity-card" data-entity-index="{{ loop.index0 }}">
+                  <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Entity #{{ loop.index }}</h5>
+                    <button type="button" class="btn btn-sm btn-outline-danger remove-entity" data-index="{{ loop.index0 }}">
+                      <i class="bi bi-trash"></i>
+                    </button>
+                  </div>
+                  <div class="card-body">
+                    <div class="row">
+                      <div class="col-md-6 mb-3">
+                        <label class="form-label">Entity Name</label>
+                        <input type="text" class="form-control entity-name" name="entities[{{ loop.index0 }}][name]" value="{{ entity.name }}" required>
+                      </div>
+                      <div class="col-md-6 mb-3">
+                        <label class="form-label">Description</label>
+                        <input type="text" class="form-control" name="entities[{{ loop.index0 }}][description]" value="{{ entity.description }}">
+                      </div>
+                    </div>
+                    
+                    <div class="row">
+                      <div class="col-md-6 mb-3">
+                        <label class="form-label">Validation Pattern (Regex)</label>
+                        <input type="text" class="form-control font-monospace" name="entities[{{ loop.index0 }}][validation_pattern]" value="{{ entity.validation_pattern }}">
+                        <div class="form-text">Regular expression for validating user input</div>
+                      </div>
+                      <div class="col-md-6 mb-3">
+                        <label class="form-label">Error Message</label>
+                        <input type="text" class="form-control" name="entities[{{ loop.index0 }}][error_message]" value="{{ entity.error_message }}">
+                      </div>
+                    </div>
+                    
+                    <div class="row">
+                      <div class="col-md-12 mb-3">
+                        <label class="form-label">Examples</label>
+                        <input type="text" class="form-control" name="entities[{{ loop.index0 }}][examples]" value="{{ entity.examples|join(', ') }}" placeholder="Example1, Example2, Example3">
+                        <div class="form-text">Comma-separated list of examples</div>
+                      </div>
+                    </div>
+                    
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox" name="entities[{{ loop.index0 }}][required]" id="entity-required-{{ loop.index0 }}" {% if entity.required %}checked{% endif %}>
+                      <label class="form-check-label" for="entity-required-{{ loop.index0 }}">
+                        Required Entity
+                      </label>
+                    </div>
+                  </div>
+                </div>
+                {% endfor %}
+              </div>
+              
+              <button type="button" id="add-entity" class="btn btn-outline-primary mb-3">
+                <i class="bi bi-plus-circle"></i> Add New Entity
+              </button>
+              
+              <div class="alert alert-info">
+                <h5><i class="bi bi-lightbulb"></i> Tips for Entity Definitions</h5>
+                <ul class="mb-0">
+                  <li>Use precise validation patterns to ensure quality data collection</li>
+                  <li>Provide clear error messages to guide users when validation fails</li>
+                  <li>Include diverse examples to help the agent recognize variations</li>
+                </ul>
+              </div>
+            </div>
+            {% endif %}
+            
+            <!-- Step 3: Prompt Templates -->
+            {% if current_step == 3 %}
+            <div class="step-content" id="step-3">
+              <div class="mb-4">
+                <h4 class="mb-3">Prompt Templates</h4>
+                <p class="text-muted">Configure the prompts that guide your agent's behavior.</p>
+              </div>
+              
+              <div class="mb-3">
+                <label for="system-prompt" class="form-label">System Prompt</label>
+                <textarea class="form-control" id="system-prompt" name="prompts[system]" rows="6">{{ prompts.system }}</textarea>
+                <div class="form-text">
+                  Define the core personality and behavior of your agent. This prompt sets the overall tone and capabilities.
+                </div>
+              </div>
+              
+              <div class="mb-3">
+                <label for="entity-extraction-prompt" class="form-label">Entity Extraction Prompt</label>
+                <textarea class="form-control" id="entity-extraction-prompt" name="prompts[entity_extraction]" rows="5">{{ prompts.entity_extraction }}</textarea>
+                <div class="form-text">
+                  Guide how the agent should extract entities from user messages.
+                </div>
+              </div>
+              
+              <div class="mb-3">
+                <label for="response-generation-prompt" class="form-label">Response Generation Prompt</label>
+                <textarea class="form-control" id="response-generation-prompt" name="prompts[response_generation]" rows="5">{{ prompts.response_generation }}</textarea>
+                <div class="form-text">
+                  Set how the agent should structure and phrase its responses to users.
+                </div>
+              </div>
+              
+              <div class="alert alert-info">
+                <h5><i class="bi bi-lightbulb"></i> Prompt Engineering Tips</h5>
+                <ul class="mb-0">
+                  <li>Use placeholders like {entity_name} in prompts to dynamically insert values</li>
+                  <li>Be specific about the tone, style, and level of detail in responses</li>
+                  <li>Include example interactions to guide the agent's behavior</li>
+                </ul>
+              </div>
+            </div>
+            {% endif %}
+            
+            <!-- Step 4: Response Format -->
+            {% if current_step == 4 %}
+            <div class="step-content" id="step-4">
+              <div class="mb-4">
+                <h4 class="mb-3">Response Format</h4>
+                <p class="text-muted">Define how your agent's responses should be structured.</p>
+              </div>
+              
+              <div class="mb-3">
+                <label for="response-schema" class="form-label">Response Schema (JSON)</label>
+                <div class="form-text text-info mb-2">
+                  <i class="bi bi-info-circle"></i> Define the structure of your agent's response data
+                </div>
+                <textarea class="form-control font-monospace" id="response-schema" name="response_format[schema]" rows="8">{{ response_format.schema }}</textarea>
+              </div>
+              
+              <div class="form-check mb-3">
+                <input class="form-check-input" type="checkbox" id="enforce-schema" name="response_format[enforce_schema]" {% if response_format.enforce_schema %}checked{% endif %}>
+                <label class="form-check-label" for="enforce-schema">
+                  Strictly enforce schema
+                </label>
+                <div class="form-text text-info">
+                  <i class="bi bi-shield-check"></i> Recommended: Keep this checked to ensure consistent outputs
+                </div>
+              </div>
+              
+              <div class="mb-3">
+                <label for="output-format-template" class="form-label">Output Format Template</label>
+                <textarea class="form-control" id="output-format-template" name="response_format[template]" rows="6">{{ response_format.template }}</textarea>
+                <div class="form-text">
+                  Template with placeholders for structuring the final user-facing response
+                </div>
+              </div>
+              
+              <div class="alert alert-info">
+                <h5><i class="bi bi-lightbulb"></i> Response Format Tips</h5>
+                <ul class="mb-0">
+                  <li>Include a "response" field for customer-facing text</li>
+                  <li>Use separate fields for structured data that might need to be processed</li>
+                  <li>Consider including fields for next steps or follow-up actions</li>
+                </ul>
+              </div>
+            </div>
+            {% endif %}
+            
+            <!-- Step 5: Review -->
+            {% if current_step == 5 %}
+            <div class="step-content" id="step-5">
+              <div class="mb-4">
+                <h4 class="mb-3">Review Configuration</h4>
+                <p class="text-muted">Review your agent's configuration before completing the setup.</p>
+              </div>
+              
+              <div class="card mb-3">
+                <div class="card-header bg-light">
+                  <h5 class="mb-0">Agent Basics</h5>
+                </div>
+                <div class="card-body">
+                  <dl class="row mb-0">
+                    <dt class="col-sm-3">Name</dt>
+                    <dd class="col-sm-9">{{ agent.name }}</dd>
+                    
+                    <dt class="col-sm-3">Description</dt>
+                    <dd class="col-sm-9">{{ agent.description }}</dd>
+                    
+                    <dt class="col-sm-3">Agent Type</dt>
+                    <dd class="col-sm-9">{{ agent.configuration.agent_type|default('Custom') }}</dd>
+                    
+                    <dt class="col-sm-3">Status</dt>
+                    <dd class="col-sm-9">
+                      {% if agent.is_active %}
+                      <span class="badge bg-success">Active</span>
+                      {% else %}
+                      <span class="badge bg-secondary">Inactive</span>
+                      {% endif %}
+                    </dd>
+                  </dl>
+                </div>
+              </div>
+              
+              <div class="card mb-3">
+                <div class="card-header bg-light">
+                  <h5 class="mb-0">Entity Definitions</h5>
+                </div>
+                <div class="card-body">
+                  <div class="table-responsive">
+                    <table class="table table-sm">
+                      <thead>
+                        <tr>
+                          <th>Name</th>
+                          <th>Required</th>
+                          <th>Description</th>
+                          <th>Validation</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {% for entity in entities %}
+                        <tr>
+                          <td>{{ entity.name }}</td>
+                          <td>
+                            {% if entity.required %}
+                            <span class="badge bg-primary">Required</span>
+                            {% else %}
+                            <span class="badge bg-secondary">Optional</span>
+                            {% endif %}
+                          </td>
+                          <td>{{ entity.description }}</td>
+                          <td><code>{{ entity.validation_pattern }}</code></td>
+                        </tr>
+                        {% endfor %}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+              
+              <div class="card mb-3">
+                <div class="card-header bg-light">
+                  <h5 class="mb-0">Prompt Templates</h5>
+                </div>
+                <div class="card-body">
+                  <div class="accordion" id="promptAccordion">
+                    <div class="accordion-item">
+                      <h2 class="accordion-header">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#systemPrompt">
+                          System Prompt
+                        </button>
+                      </h2>
+                      <div id="systemPrompt" class="accordion-collapse collapse" data-bs-parent="#promptAccordion">
+                        <div class="accordion-body">
+                          <pre class="p-3 bg-dark text-light rounded">{{ prompts.system }}</pre>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div class="accordion-item">
+                      <h2 class="accordion-header">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#entityPrompt">
+                          Entity Extraction Prompt
+                        </button>
+                      </h2>
+                      <div id="entityPrompt" class="accordion-collapse collapse" data-bs-parent="#promptAccordion">
+                        <div class="accordion-body">
+                          <pre class="p-3 bg-dark text-light rounded">{{ prompts.entity_extraction }}</pre>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div class="accordion-item">
+                      <h2 class="accordion-header">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#responsePrompt">
+                          Response Generation Prompt
+                        </button>
+                      </h2>
+                      <div id="responsePrompt" class="accordion-collapse collapse" data-bs-parent="#promptAccordion">
+                        <div class="accordion-body">
+                          <pre class="p-3 bg-dark text-light rounded">{{ prompts.response_generation }}</pre>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <div class="card mb-3">
+                <div class="card-header bg-light">
+                  <h5 class="mb-0">Response Format</h5>
+                </div>
+                <div class="card-body">
+                  <div class="mb-3">
+                    <h6>Schema</h6>
+                    <pre class="p-3 bg-dark text-light rounded">{{ response_format.schema }}</pre>
+                  </div>
+                  
+                  <div>
+                    <h6>Output Template</h6>
+                    <pre class="p-3 bg-dark text-light rounded">{{ response_format.template }}</pre>
+                  </div>
+                </div>
+              </div>
+            </div>
+            {% endif %}
+            
+            <!-- Navigation Buttons -->
+            <div class="d-flex justify-content-between mt-4">
+              {% if current_step > 1 %}
+              <a href="{{ url_for('agent_wizard', agent_id=agent_id, step=current_step-1) }}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left"></i> Previous
+              </a>
+              {% else %}
+              <div></div>
+              {% endif %}
+              
+              <div>
+                {% if current_step < 5 %}
+                <button type="submit" class="btn btn-primary">
+                  Save & Continue <i class="bi bi-arrow-right"></i>
+                </button>
+                {% else %}
+                <button type="submit" class="btn btn-success">
+                  <i class="bi bi-check-circle"></i> Complete Setup
+                </button>
+                {% endif %}
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    {% if current_step == 2 %}
+    // Entity management for Step 2
+    const entityContainer = document.getElementById('entity-container');
+    const addEntityButton = document.getElementById('add-entity');
+    
+    let entityCount = {{ entities|length }};
+    
+    // Add a new entity form
+    addEntityButton.addEventListener('click', function() {
+      const entityIndex = entityCount;
+      const entityHtml = `
+        <div class="card mb-3 entity-card" data-entity-index="${entityIndex}">
+          <div class="card-header bg-light d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">Entity #${entityIndex + 1}</h5>
+            <button type="button" class="btn btn-sm btn-outline-danger remove-entity" data-index="${entityIndex}">
+              <i class="bi bi-trash"></i>
+            </button>
+          </div>
+          <div class="card-body">
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label class="form-label">Entity Name</label>
+                <input type="text" class="form-control entity-name" name="entities[${entityIndex}][name]" required>
+              </div>
+              <div class="col-md-6 mb-3">
+                <label class="form-label">Description</label>
+                <input type="text" class="form-control" name="entities[${entityIndex}][description]">
+              </div>
+            </div>
+            
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label class="form-label">Validation Pattern (Regex)</label>
+                <input type="text" class="form-control font-monospace" name="entities[${entityIndex}][validation_pattern]">
+                <div class="form-text">Regular expression for validating user input</div>
+              </div>
+              <div class="col-md-6 mb-3">
+                <label class="form-label">Error Message</label>
+                <input type="text" class="form-control" name="entities[${entityIndex}][error_message]">
+              </div>
+            </div>
+            
+            <div class="row">
+              <div class="col-md-12 mb-3">
+                <label class="form-label">Examples</label>
+                <input type="text" class="form-control" name="entities[${entityIndex}][examples]" placeholder="Example1, Example2, Example3">
+                <div class="form-text">Comma-separated list of examples</div>
+              </div>
+            </div>
+            
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" name="entities[${entityIndex}][required]" id="entity-required-${entityIndex}" checked>
+              <label class="form-check-label" for="entity-required-${entityIndex}">
+                Required Entity
+              </label>
+            </div>
+          </div>
+        </div>
+      `;
+      
+      // Append the new entity form
+      const tempDiv = document.createElement('div');
+      tempDiv.innerHTML = entityHtml;
+      entityContainer.appendChild(tempDiv.firstElementChild);
+      
+      // Add event listener to the new remove button
+      const newRemoveButton = entityContainer.querySelector(`.entity-card[data-entity-index="${entityIndex}"] .remove-entity`);
+      newRemoveButton.addEventListener('click', handleRemoveEntity);
+      
+      entityCount++;
+    });
+    
+    // Handle entity removal
+    function handleRemoveEntity(event) {
+      const index = event.currentTarget.dataset.index;
+      const entityCard = document.querySelector(`.entity-card[data-entity-index="${index}"]`);
+      
+      if (entityCard) {
+        entityCard.remove();
+      }
+    }
+    
+    // Add event listeners to existing remove buttons
+    document.querySelectorAll('.remove-entity').forEach(button => {
+      button.addEventListener('click', handleRemoveEntity);
+    });
+    {% endif %}
+    
+    // Suggestion templates for step 3
+    {% if current_step == 3 %}
+    const systemPromptTemplate = document.getElementById('system-prompt');
+    const entityExtractionTemplate = document.getElementById('entity-extraction-prompt');
+    const responseGenerationTemplate = document.getElementById('response-generation-prompt');
+    
+    // Add suggestion buttons
+    const systemPromptParent = systemPromptTemplate.parentElement;
+    const entityExtractionParent = entityExtractionTemplate.parentElement;
+    const responseGenerationParent = responseGenerationTemplate.parentElement;
+    
+    const systemPromptSuggestions = document.createElement('div');
+    systemPromptSuggestions.className = 'mt-2';
+    systemPromptSuggestions.innerHTML = `
+      <button type="button" class="btn btn-sm btn-outline-secondary me-2 prompt-suggestion" data-target="system-prompt" data-template="customer_service">Customer Service</button>
+      <button type="button" class="btn btn-sm btn-outline-secondary me-2 prompt-suggestion" data-target="system-prompt" data-template="order_tracking">Order Tracking</button>
+      <button type="button" class="btn btn-sm btn-outline-secondary prompt-suggestion" data-target="system-prompt" data-template="product_info">Product Info</button>
+    `;
+    systemPromptParent.appendChild(systemPromptSuggestions);
+    
+    const entityExtractionSuggestions = document.createElement('div');
+    entityExtractionSuggestions.className = 'mt-2';
+    entityExtractionSuggestions.innerHTML = `
+      <button type="button" class="btn btn-sm btn-outline-secondary me-2 prompt-suggestion" data-target="entity-extraction-prompt" data-template="standard">Standard Extraction</button>
+      <button type="button" class="btn btn-sm btn-outline-secondary prompt-suggestion" data-target="entity-extraction-prompt" data-template="detailed">Detailed Extraction</button>
+    `;
+    entityExtractionParent.appendChild(entityExtractionSuggestions);
+    
+    const responseGenerationSuggestions = document.createElement('div');
+    responseGenerationSuggestions.className = 'mt-2';
+    responseGenerationSuggestions.innerHTML = `
+      <button type="button" class="btn btn-sm btn-outline-secondary me-2 prompt-suggestion" data-target="response-generation-prompt" data-template="concise">Concise</button>
+      <button type="button" class="btn btn-sm btn-outline-secondary me-2 prompt-suggestion" data-target="response-generation-prompt" data-template="detailed">Detailed</button>
+      <button type="button" class="btn btn-sm btn-outline-secondary prompt-suggestion" data-target="response-generation-prompt" data-template="friendly">Friendly</button>
+    `;
+    responseGenerationParent.appendChild(responseGenerationSuggestions);
+    
+    // Template content
+    const promptTemplates = {
+      system: {
+        customer_service: `You are a helpful customer service assistant for Staples. Your goal is to provide clear, concise, and accurate information to customers. Be friendly and professional at all times. If you don't know the answer to a question, admit that and offer to connect the customer with a human agent.`,
+        order_tracking: `You are an order tracking specialist for Staples. Your role is to help customers find information about their orders and shipments. Focus on providing accurate tracking details and estimated delivery dates. Be efficient and precise in your responses.`,
+        product_info: `You are a Staples product information specialist. Your goal is to provide detailed and accurate information about Staples products, including specifications, pricing, availability, and compatibility. Offer helpful recommendations when appropriate.`
+      },
+      entity_extraction: {
+        standard: `Extract the following entities from the user's message:
+{entity_list}
+
+If an entity is not present in the user's message, mark it as "not provided".`,
+        detailed: `Carefully analyze the user's message and extract the following information:
+{entity_list}
+
+For each entity:
+1. Extract the exact value if present
+2. If multiple possible values exist, select the most likely one
+3. If the entity is not found, respond with "not provided"
+4. For ambiguous cases, choose the value that best matches the context`
+      },
+      response_generation: {
+        concise: `Create a concise response to the user based on the extracted information. Focus on addressing their primary need directly and efficiently.`,
+        detailed: `Create a comprehensive response that addresses all aspects of the user's query. Include all relevant details from the extracted information and explain any steps or processes clearly.`,
+        friendly: `Create a warm, friendly response that makes the customer feel valued. Use a conversational tone while still being professional and providing all necessary information. Include a greeting and a closing message.`
+      }
+    };
+    
+    // Add event listeners to suggestion buttons
+    document.querySelectorAll('.prompt-suggestion').forEach(button => {
+      button.addEventListener('click', function() {
+        const targetId = this.dataset.target;
+        const templateType = this.dataset.template;
+        const targetElement = document.getElementById(targetId);
+        
+        let template = '';
+        switch (targetId) {
+          case 'system-prompt':
+            template = promptTemplates.system[templateType];
+            break;
+          case 'entity-extraction-prompt':
+            template = promptTemplates.entity_extraction[templateType];
+            break;
+          case 'response-generation-prompt':
+            template = promptTemplates.response_generation[templateType];
+            break;
+        }
+        
+        targetElement.value = template;
+      });
+    });
+    {% endif %}
+    
+    // Response format templates for step 4
+    {% if current_step == 4 %}
+    const responseSchema = document.getElementById('response-schema');
+    const outputFormatTemplate = document.getElementById('output-format-template');
+    
+    const schemaParent = responseSchema.parentElement;
+    const templateParent = outputFormatTemplate.parentElement;
+    
+    const schemaSuggestions = document.createElement('div');
+    schemaSuggestions.className = 'mt-2';
+    schemaSuggestions.innerHTML = `
+      <button type="button" class="btn btn-sm btn-outline-secondary me-2 format-suggestion" data-target="response-schema" data-template="order_tracking">Order Tracking</button>
+      <button type="button" class="btn btn-sm btn-outline-secondary me-2 format-suggestion" data-target="response-schema" data-template="password_reset">Password Reset</button>
+      <button type="button" class="btn btn-sm btn-outline-secondary format-suggestion" data-target="response-schema" data-template="product_info">Product Info</button>
+    `;
+    schemaParent.appendChild(schemaSuggestions);
+    
+    const templateSuggestions = document.createElement('div');
+    templateSuggestions.className = 'mt-2';
+    templateSuggestions.innerHTML = `
+      <button type="button" class="btn btn-sm btn-outline-secondary me-2 format-suggestion" data-target="output-format-template" data-template="standard">Standard</button>
+      <button type="button" class="btn btn-sm btn-outline-secondary me-2 format-suggestion" data-target="output-format-template" data-template="detailed">Detailed</button>
+    `;
+    templateParent.appendChild(templateSuggestions);
+    
+    // Format templates
+    const formatTemplates = {
+      schema: {
+        order_tracking: `{
+  "response": "string",
+  "tracking_status": "string",
+  "estimated_delivery": "string",
+  "carrier": "string",
+  "current_location": "string",
+  "order_number": "string",
+  "last_updated": "string",
+  "next_steps": ["string"],
+  "requires_action": "boolean"
+}`,
+        password_reset: `{
+  "response": "string",
+  "email": "string",
+  "reset_link_sent": "boolean",
+  "account_found": "boolean",
+  "verification_required": "boolean",
+  "next_steps": ["string"]
+}`,
+        product_info: `{
+  "response": "string",
+  "product_name": "string",
+  "product_id": "string",
+  "price": "string",
+  "availability": "string",
+  "features": ["string"],
+  "category": "string",
+  "related_products": ["string"]
+}`
+      },
+      template: {
+        standard: `{{ response }}
+{% if next_steps %}
+Next steps:
+{% for step in next_steps %}
+- {{ step }}
+{% endfor %}
+{% endif %}`,
+        detailed: `# {{ title }}
+
+{{ response }}
+
+{% if tracking_status %}
+**Current Status:** {{ tracking_status }}
+**Estimated Delivery:** {{ estimated_delivery }}
+**Current Location:** {{ current_location }}
+{% endif %}
+
+{% if next_steps %}
+## Next Steps
+{% for step in next_steps %}
+{{ loop.index }}. {{ step }}
+{% endfor %}
+{% endif %}
+
+{% if requires_action %}
+**Action Required:** Please respond with additional information.
+{% endif %}`
+      }
+    };
+    
+    // Add event listeners to format suggestion buttons
+    document.querySelectorAll('.format-suggestion').forEach(button => {
+      button.addEventListener('click', function() {
+        const targetId = this.dataset.target;
+        const templateType = this.dataset.template;
+        const targetElement = document.getElementById(targetId);
+        
+        let template = '';
+        if (targetId === 'response-schema') {
+          template = formatTemplates.schema[templateType];
+        } else {
+          template = formatTemplates.template[templateType];
+        }
+        
+        targetElement.value = template;
+      });
+    });
+    {% endif %}
+  });
+</script>
+{% endblock %}
