@@ -1246,6 +1246,11 @@ def agent_builder():
     agent_id = request.args.get('id')
     return render_template('agent_builder.html', agent_id=agent_id)
 
+@app.route('/agent-management-docs', methods=["GET"])
+def agent_management_docs():
+    """Render the agent management documentation."""
+    return render_template('agent_management_doc.html')
+
 @app.route('/agent-wizard', methods=["GET"])
 @app.route('/agent-wizard/<int:agent_id>', methods=["GET"])
 @app.route('/agent-wizard/<int:agent_id>/step/<int:step>', methods=["GET"])

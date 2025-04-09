@@ -114,6 +114,12 @@ function initEventListeners() {
     currentAgent.description = event.target.value;
   });
   
+  // Create new agent button
+  document.getElementById('create-new-agent').addEventListener('click', createNewAgent);
+  
+  // Delete agent confirmation
+  document.getElementById('confirm-delete-agent').addEventListener('click', confirmDeleteAgent);
+  
   // Save connection button
   document.getElementById('save-connection').addEventListener('click', saveConnection);
   
@@ -558,6 +564,124 @@ function saveAgent() {
     console.error('Error saving agent:', error);
     alert('Error saving agent: ' + error.message);
   });
+}
+
+/**
+ * Create a new agent (reset the canvas)
+ */
+function createNewAgent() {
+  // If there are unsaved changes, confirm before resetting
+  if (currentAgent.components.length > 0 && !confirm('Any unsaved changes will be lost. Continue?')) {
+    return;
+  }
+  
+  resetToNewAgent();
+  
+  // Update URL to remove agent ID
+  history.pushState(null, '', '/agent-builder');
+}
+
+/**
+ * Show the delete confirmation dialog
+ */
+function showDeleteConfirmation(agentId, agentName) {
+  const modal = document.getElementById('deleteAgentModal');
+  document.getElementById('delete-agent-name').textContent = agentName;
+  modal.setAttribute('data-agent-id', agentId);
+  
+  // Show the modal
+  const modalInstance = new bootstrap.Modal(modal);
+  modalInstance.show();
+}
+
+/**
+ * Handle confirmation of agent deletion
+ */
+function confirmDeleteAgent() {
+  const modal = document.getElementById('deleteAgentModal');
+  const agentId = modal.getAttribute('data-agent-id');
+  
+  // Hide the modal
+  bootstrap.Modal.getInstance(modal).hide();
+  
+  // Delete the agent
+  fetch(`/api/builder/agents/${agentId}`, {
+    method: 'DELETE'
+  })
+    .then(response => {
+      if (!response.ok) {
+        throw new Error('Failed to delete agent');
+      }
+      return response.json();
+    })
+    .then(data => {
+      // If we're currently editing this agent, reset to a new agent
+      if (currentAgent && currentAgent.id === parseInt(agentId)) {
+        resetToNewAgent();
+      }
+      
+      // Show success message
+      alert('Agent deleted successfully!');
+    })
+    .catch(error => {
+      console.error('Error deleting agent:', error);
+      alert('Error deleting agent: ' + error.message);
+    });
+}
+
+/**
+ * Reset the canvas to start a new agent
+ */
+function resetToNewAgent() {
+  // Clear the canvas
+  jsPlumbInstance.reset();
+  document.getElementById('agent-canvas').innerHTML = `
+    <div id="canvas-help" class="text-center p-5 text-muted" style="pointer-events: none;">
+      <i class="bi bi-arrows-move" style="font-size: 3rem;"></i>
+      <h4>Getting Started</h4>
+      <p>Drag components from the left panel to this canvas</p>
+      <div class="row mt-4">
+        <div class="col">
+          <div class="border rounded p-2 mb-2">1. Start with Intent Classifier</div>
+          <i class="bi bi-arrow-down"></i>
+        </div>
+        <div class="col">
+          <div class="border rounded p-2 mb-2">2. Add Entity Extractor</div>
+          <i class="bi bi-arrow-down"></i>
+        </div>
+      </div>
+      <div class="row mt-2">
+        <div class="col">
+          <div class="border rounded p-2 mb-2">3. Connect to LLM Model</div>
+          <i class="bi bi-arrow-down"></i>
+        </div>
+        <div class="col">
+          <div class="border rounded p-2 mb-2">4. End with Response Formatter</div>
+        </div>
+      </div>
+    </div>
+  `;
+  
+  // Reset the current agent
+  currentAgent = {
+    id: null,
+    name: 'New Agent',
+    description: '',
+    components: [],
+    connections: []
+  };
+  
+  // Reset the form
+  document.getElementById('agent-name').value = '';
+  document.getElementById('agent-description').value = '';
+  document.getElementById('current-agent-name').textContent = 'New Agent';
+  
+  // Reset component counter
+  nextComponentId = 1;
+  
+  // Show agent properties, hide component properties
+  document.getElementById('agent-properties').classList.remove('d-none');
+  document.getElementById('component-properties').classList.add('d-none');
 }
 
 /**
