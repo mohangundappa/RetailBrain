@@ -117,3 +117,69 @@ class AnalyticsData(db.Model):
     date = db.Column(db.Date, nullable=False)
     
     __table_args__ = (db.UniqueConstraint('agent_name', 'date', name='unique_agent_day'),)
+
+class CustomAgent(db.Model):
+    """Model to store custom agent configurations created through the UI"""
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(64), nullable=False, unique=True)
+    description = db.Column(db.Text, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, onupdate=datetime.utcnow)
+    is_active = db.Column(db.Boolean, default=True)
+    creator = db.Column(db.String(128), nullable=True)
+    icon = db.Column(db.String(256), nullable=True)
+    
+    # Configuration JSON
+    configuration = db.Column(db.Text, nullable=True)  # JSON with agent configuration
+    
+    # Relationships
+    components = db.relationship('AgentComponent', back_populates='agent', cascade='all, delete-orphan')
+    connections = db.relationship('ComponentConnection', back_populates='agent', cascade='all, delete-orphan')
+
+class AgentComponent(db.Model):
+    """Model for individual components used in a custom agent"""
+    id = db.Column(db.Integer, primary_key=True)
+    agent_id = db.Column(db.Integer, db.ForeignKey('custom_agent.id'), nullable=False)
+    component_type = db.Column(db.String(64), nullable=False)  # 'prompt', 'llm', 'tool', 'api', etc.
+    name = db.Column(db.String(128), nullable=False)
+    position_x = db.Column(db.Integer, default=0)  # Position in UI canvas
+    position_y = db.Column(db.Integer, default=0)
+    configuration = db.Column(db.Text, nullable=True)  # JSON with component configuration
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Relationships
+    agent = db.relationship('CustomAgent', back_populates='components')
+    outgoing_connections = db.relationship('ComponentConnection', 
+                                           foreign_keys='ComponentConnection.source_id',
+                                           back_populates='source',
+                                           cascade='all, delete-orphan')
+    incoming_connections = db.relationship('ComponentConnection', 
+                                          foreign_keys='ComponentConnection.target_id',
+                                          back_populates='target',
+                                          cascade='all, delete-orphan')
+
+class ComponentConnection(db.Model):
+    """Model for connections between components in a custom agent"""
+    id = db.Column(db.Integer, primary_key=True)
+    agent_id = db.Column(db.Integer, db.ForeignKey('custom_agent.id'), nullable=False)
+    source_id = db.Column(db.Integer, db.ForeignKey('agent_component.id'), nullable=False)
+    target_id = db.Column(db.Integer, db.ForeignKey('agent_component.id'), nullable=False)
+    connection_type = db.Column(db.String(64), default='default')  # 'data', 'control', etc.
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Relationships
+    agent = db.relationship('CustomAgent', back_populates='connections')
+    source = db.relationship('AgentComponent', foreign_keys=[source_id], back_populates='outgoing_connections')
+    target = db.relationship('AgentComponent', foreign_keys=[target_id], back_populates='incoming_connections')
+
+class ComponentTemplate(db.Model):
+    """Model for predefined component templates that users can drag and drop"""
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(128), nullable=False)
+    description = db.Column(db.Text, nullable=True)
+    component_type = db.Column(db.String(64), nullable=False)  # 'prompt', 'llm', 'tool', 'api', etc.
+    icon = db.Column(db.String(256), nullable=True)
+    configuration_template = db.Column(db.Text, nullable=True)  # JSON template with default values
+    category = db.Column(db.String(64), nullable=True)  # For grouping components
+    is_system = db.Column(db.Boolean, default=False)  # If True, can't be deleted/modified by users
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)

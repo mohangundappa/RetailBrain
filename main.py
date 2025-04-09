@@ -53,6 +53,10 @@ db.init_app(app)
 # Apply metrics middleware
 MetricsMiddleware(app)
 
+# Import API routes
+from api.routes import api_bp
+app.register_blueprint(api_bp)
+
 # Create database tables
 with app.app_context():
     db.create_all()
@@ -1235,6 +1239,11 @@ def product_info():
     })
 
 # Dashboard route
+@app.route('/agent-builder', methods=["GET"])
+def agent_builder():
+    """Render the agent builder interface."""
+    return render_template('agent_builder.html')
+
 @app.route('/dashboard', methods=["GET"])
 def dashboard():
     """Render the observability dashboard."""

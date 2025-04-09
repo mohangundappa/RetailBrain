@@ -2,12 +2,16 @@ import logging
 import json
 from flask import Blueprint, request, jsonify, current_app
 from brain.staples_brain import initialize_staples_brain
+from api.agent_builder import agent_builder_bp
 import asyncio
 
 logger = logging.getLogger(__name__)
 
 # Create API blueprint
 api_bp = Blueprint("api", __name__, url_prefix="/api")
+
+# Register the agent builder blueprint
+api_bp.register_blueprint(agent_builder_bp, url_prefix="/builder")
 
 # Store brain instance
 _brain = None
