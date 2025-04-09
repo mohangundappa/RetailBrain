@@ -114,6 +114,106 @@ def list_agents():
             "success": False,
             "error": str(e)
         }), 500
+        
+@api_bp.route("/generate-entity-definitions", methods=["POST"])
+def generate_entity_definitions():
+    """
+    Generate entity definitions for the entity collection framework.
+    
+    This endpoint takes entity information and generates the code for
+    setting up entity definitions and validation in the BaseAgent framework.
+    
+    Request body:
+    {
+        "entities": [
+            {
+                "name": "order_number",
+                "required": true,
+                "validation_pattern": "^[A-Za-z0-9]{2,}-?[A-Za-z0-9]{2,}$",
+                "error_message": "Order numbers typically contain letters and numbers",
+                "description": "Your Staples order number",
+                "examples": ["OD1234567", "STB-987654"],
+                "alternate_names": ["order id", "confirmation number"]
+            }
+        ]
+    }
+    
+    Returns:
+        JSON with generated code and configuration
+    """
+    try:
+        data = request.json
+        
+        if not data or not data.get("entities"):
+            return jsonify({
+                "success": False,
+                "error": "No entities provided"
+            }), 400
+            
+        entities = data.get("entities", [])
+        
+        # Generate entity definition code
+        setup_code = "def setup_entity_definitions(self) -> None:\n"
+        setup_code += "    \"\"\"\n"
+        setup_code += "    Set up entity definitions for extraction with validation patterns and examples.\n"
+        setup_code += "    \"\"\"\n"
+        
+        entity_definitions = []
+        
+        for entity in entities:
+            name = entity.get("name", "unknown")
+            required = entity.get("required", True)
+            validation_pattern = entity.get("validation_pattern", ".*")
+            error_message = entity.get("error_message", f"Please provide a valid {name}")
+            description = entity.get("description", f"The {name} for this transaction")
+            examples = entity.get("examples", [])
+            alternate_names = entity.get("alternate_names", [])
+            
+            # Format the entity definition
+            entity_def = f"    # Define {name} entity\n"
+            entity_def += f"    {name}_entity = EntityDefinition(\n"
+            entity_def += f"        name=\"{name}\",\n"
+            entity_def += f"        required={str(required)},\n"
+            entity_def += f"        validation_pattern=r'{validation_pattern}',\n"
+            entity_def += f"        error_message=\"{error_message}\",\n"
+            entity_def += f"        description=\"{description}\",\n"
+            
+            # Format examples list
+            examples_str = ", ".join([f'"{ex}"' for ex in examples])
+            entity_def += f"        examples=[{examples_str}],\n"
+            
+            # Format alternate names list
+            alternate_names_str = ", ".join([f'"{name}"' for name in alternate_names])
+            entity_def += f"        alternate_names=[{alternate_names_str}]\n"
+            entity_def += "    )\n"
+            
+            entity_definitions.append(entity_def)
+        
+        # Add all entity definitions to the setup code
+        setup_code += "\n".join(entity_definitions)
+        
+        # Add the setup_entity_collection call
+        entity_vars = [f"{entity.get('name', 'unknown')}_entity" for entity in entities]
+        entity_vars_str = ", ".join(entity_vars)
+        setup_code += f"\n    # Set up entity collection with these entities\n"
+        setup_code += f"    self.setup_entity_collection([{entity_vars_str}])\n"
+        
+        # Create the response
+        result = {
+            "success": True,
+            "setup_code": setup_code,
+            "entity_count": len(entities),
+            "doc": "Insert this setup_entity_definitions method into your agent class and call it from the __init__ method."
+        }
+        
+        return jsonify(result), 200
+        
+    except Exception as e:
+        logger.error(f"Error generating entity definitions: {str(e)}", exc_info=True)
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
 
 @api_bp.route("/track-package", methods=["POST"])
 def track_package():

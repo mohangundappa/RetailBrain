@@ -138,3 +138,32 @@
 #connection-modal .modal-content {
   background-color: var(--bs-gray-800);
 }
+
+/* Entity Collection Framework styling */
+.entity-collection-card {
+  border-left: 4px solid var(--bs-info);
+}
+
+.entity-collection-card .card-header {
+  background-color: rgba(13, 202, 240, 0.2);
+}
+
+.validation-input {
+  font-family: monospace;
+  font-size: 0.85rem;
+}
+
+/* Toggle switch for entity collection framework */
+.form-check-input:checked {
+  background-color: var(--bs-info);
+  border-color: var(--bs-info);
+}
+
+/* JSON editor for validation patterns */
+.json-editor {
+  font-family: 'Consolas', 'Monaco', monospace;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  background-color: var(--bs-gray-900);
+  color: var(--bs-light);
+}

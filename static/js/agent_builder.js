@@ -268,7 +268,21 @@ function getDefaultConfiguration(templateName) {
     case 'entity_extractor':
       return {
         entity_types: 'tracking_number, email, location, product_name',
-        extraction_prompt: 'Extract the following entities from the user query based on the identified intent.'
+        extraction_prompt: 'Extract the following entities from the user query based on the identified intent.',
+        use_entity_collection_framework: true,
+        validation_patterns: JSON.stringify({
+          'tracking_number': '^[A-Za-z0-9]{2,}-?[A-Za-z0-9]{2,}$',
+          'email': '^[\\w-\\.]+@([\\w-]+\\.)+[\\w-]{2,4}$',
+          'location': '.{3,}',
+          'product_name': '.{2,}'
+        }, null, 2),
+        error_messages: JSON.stringify({
+          'tracking_number': 'Tracking numbers typically contain letters and numbers, like "TRK12345" or "SP-987654".',
+          'email': 'Please provide a valid email address (e.g., customer@example.com).',
+          'location': 'Please provide a valid location with city, state, or zip code.',
+          'product_name': 'Please provide a valid product name.'
+        }, null, 2),
+        max_attempts: 3
       };
     case 'openai_gpt4':
       return {
