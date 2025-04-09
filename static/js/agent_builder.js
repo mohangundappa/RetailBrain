@@ -20,6 +20,9 @@ let connectingFrom = null;
 
 // Initialize when document is ready
 document.addEventListener('DOMContentLoaded', function() {
+  // Make loadAgent function globally available 
+  window.loadAgent = loadAgent;
+  
   // Initialize jsPlumb
   jsPlumbInstance = jsPlumb.getInstance({
     Container: 'agent-canvas',
@@ -536,8 +539,13 @@ function saveAgent() {
     return;
   }
   
+  // Determine API endpoint based on whether we're creating or updating
+  const endpoint = currentAgent.id 
+    ? `/api/builder/agents/${currentAgent.id}` 
+    : '/api/builder/agents';
+  
   // Send to server
-  fetch('/api/builder/agents', {
+  fetch(endpoint, {
     method: currentAgent.id ? 'PUT' : 'POST',
     headers: {
       'Content-Type': 'application/json'
@@ -688,6 +696,8 @@ function resetToNewAgent() {
  * Load an existing agent
  */
 function loadAgent(agentId) {
+  // Make this function globally available
+  window.loadAgent = loadAgent;
   fetch(`/api/builder/agents/${agentId}`)
     .then(response => {
       if (!response.ok) {

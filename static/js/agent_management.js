@@ -36,7 +36,15 @@ function setupEventListeners() {
       if (target.classList.contains('edit-agent-btn') || 
           target.closest('.edit-agent-btn')) {
         const agentId = target.closest('tr').dataset.agentId;
-        loadAgent(agentId);
+        // Make sure we're using the loadAgent function from agent_builder.js
+        if (typeof window.loadAgent === 'function') {
+          window.loadAgent(agentId);
+        } else if (typeof loadAgent === 'function') {
+          loadAgent(agentId);
+        } else {
+          console.error('loadAgent function not found. Make sure agent_builder.js is loaded correctly.');
+          alert('Error: Could not load agent. Please refresh the page and try again.');
+        }
         event.preventDefault();
       }
       
