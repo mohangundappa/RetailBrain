@@ -136,6 +136,12 @@ function initEventListeners() {
 function addComponentToCanvas(componentType, templateName, x, y) {
   const componentId = `component-${nextComponentId++}`;
   
+  // Hide the canvas help overlay when components are added
+  const canvasHelp = document.getElementById('canvas-help');
+  if (canvasHelp) {
+    canvasHelp.style.display = 'none';
+  }
+  
   // Create component DOM element
   const componentElement = document.createElement('div');
   componentElement.id = componentId;
@@ -555,6 +561,12 @@ function loadAgent(agentId) {
       // Clear the canvas
       jsPlumbInstance.reset();
       document.getElementById('agent-canvas').innerHTML = '';
+      
+      // Hide the canvas help overlay when loading an existing agent
+      const canvasHelp = document.getElementById('canvas-help');
+      if (canvasHelp) {
+        canvasHelp.style.display = 'none';
+      }
       
       // Set agent data
       currentAgent = data;

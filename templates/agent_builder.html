@@ -8,6 +8,52 @@
 
 {% block content %}
 <div class="container-fluid">
+  <!-- Best Practices Guide -->
+  <div class="row mb-3">
+    <div class="col-12">
+      <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center bg-info text-white">
+          <h5 class="mb-0">Agent Builder Best Practices</h5>
+          <button class="btn btn-sm btn-outline-light" type="button" data-bs-toggle="collapse" data-bs-target="#bestPracticesGuide" aria-expanded="false">
+            <i class="bi bi-info-circle"></i> Show/Hide Guide
+          </button>
+        </div>
+        <div class="collapse" id="bestPracticesGuide">
+          <div class="card-body">
+            <div class="row">
+              <div class="col-md-4">
+                <h6><i class="bi bi-check-circle"></i> Intent Management</h6>
+                <ul class="small">
+                  <li><strong>Keep intents specific</strong> to this agent's domain</li>
+                  <li>Avoid overlap with other agents' intents</li>
+                  <li>Name intents clearly with action_object format (e.g., check_status)</li>
+                </ul>
+              </div>
+              <div class="col-md-4">
+                <h6><i class="bi bi-diagram-3"></i> Component Flow</h6>
+                <ul class="small">
+                  <li>Start with an <strong>Intent Classifier</strong> to categorize requests</li>
+                  <li>Add an <strong>Entity Extractor</strong> to identify key information</li>
+                  <li>Connect to an <strong>LLM Model</strong> for processing</li>
+                  <li>End with a <strong>Response Formatter</strong> for structured output</li>
+                </ul>
+              </div>
+              <div class="col-md-4">
+                <h6><i class="bi bi-gear"></i> Testing Tips</h6>
+                <ul class="small">
+                  <li>Test with varied customer inputs</li>
+                  <li>Include edge cases (missing info, complex requests)</li>
+                  <li>Verify response format and helpfulness</li>
+                  <li>Check how it handles out-of-scope requests</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
   <div class="row">
     <!-- Sidebar with component palette -->
     <div class="col-md-3 sidebar" id="component-palette">
@@ -123,6 +169,30 @@
         <div class="card-body">
           <div id="agent-canvas" class="agent-canvas">
             <!-- Canvas for drag and drop agent building -->
+            <div id="canvas-help" class="text-center p-5 text-muted" style="pointer-events: none;">
+              <i class="bi bi-arrows-move" style="font-size: 3rem;"></i>
+              <h4>Getting Started</h4>
+              <p>Drag components from the left panel to this canvas</p>
+              <div class="row mt-4">
+                <div class="col">
+                  <div class="border rounded p-2 mb-2">1. Start with Intent Classifier</div>
+                  <i class="bi bi-arrow-down"></i>
+                </div>
+                <div class="col">
+                  <div class="border rounded p-2 mb-2">2. Add Entity Extractor</div>
+                  <i class="bi bi-arrow-down"></i>
+                </div>
+              </div>
+              <div class="row mt-2">
+                <div class="col">
+                  <div class="border rounded p-2 mb-2">3. Connect to LLM Model</div>
+                  <i class="bi bi-arrow-down"></i>
+                </div>
+                <div class="col">
+                  <div class="border rounded p-2 mb-2">4. End with Response Formatter</div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -184,11 +254,29 @@
   <div id="template-intent_classifier">
     <div class="mb-3">
       <label class="form-label">Available Intents</label>
-      <textarea class="form-control component-config" data-config-key="available_intents" rows="4" placeholder="Enter comma-separated intent list"></textarea>
+      <div class="form-text text-info mb-2">
+        <i class="bi bi-info-circle"></i> Best Practice: Use specific, non-overlapping intents in action_object format
+      </div>
+      <textarea class="form-control component-config" data-config-key="available_intents" rows="4" placeholder="e.g., return_policy, initiate_return, check_status (comma-separated)"></textarea>
+      <div class="mt-2 p-2 border rounded bg-light">
+        <small class="text-muted">
+          <strong>Examples for Return Processing Agent:</strong><br>
+          return_policy, initiate_return, return_status, refund_timeline
+        </small>
+      </div>
     </div>
     <div class="mb-3">
       <label class="form-label">System Prompt</label>
-      <textarea class="form-control component-config" data-config-key="system_prompt" rows="6" placeholder="System instructions for intent classification"></textarea>
+      <div class="form-text text-info mb-2">
+        <i class="bi bi-info-circle"></i> Describe the agent's role and how to classify inputs
+      </div>
+      <textarea class="form-control component-config" data-config-key="system_prompt" rows="6" placeholder="You are a specialized agent that handles... Classify the input into one of these categories..."></textarea>
+      <div class="mt-2 p-2 border rounded bg-light">
+        <small class="text-muted">
+          <strong>Example:</strong><br>
+          You are a return processing assistant for Staples. Classify the customer's query into one of these categories...
+        </small>
+      </div>
     </div>
     <div class="mb-3">
       <label class="form-label">Temperature</label>
@@ -198,6 +286,9 @@
         <small id="temperature-value">0.3</small>
         <small>Creative (1)</small>
       </div>
+      <div class="form-text text-info">
+        <i class="bi bi-lightbulb"></i> Tip: Use lower temperature (0.1-0.3) for more predictable classification
+      </div>
     </div>
   </div>
   
@@ -205,11 +296,35 @@
   <div id="template-entity_extractor">
     <div class="mb-3">
       <label class="form-label">Entity Types</label>
-      <textarea class="form-control component-config" data-config-key="entity_types" rows="4" placeholder="Enter entity types to extract"></textarea>
+      <div class="form-text text-info mb-2">
+        <i class="bi bi-info-circle"></i> List all data points your agent needs to extract from user inputs
+      </div>
+      <textarea class="form-control component-config" data-config-key="entity_types" rows="4" placeholder="e.g., order_number, product_id, purchase_date"></textarea>
+      <div class="mt-2 p-2 border rounded bg-light">
+        <small class="text-muted">
+          <strong>Examples for Return Processing Agent:</strong><br>
+          order_number, product_id, purchase_date, reason_for_return, return_method, receipt_available
+        </small>
+      </div>
     </div>
     <div class="mb-3">
       <label class="form-label">Extraction Prompt</label>
-      <textarea class="form-control component-config" data-config-key="extraction_prompt" rows="6" placeholder="Instructions for entity extraction"></textarea>
+      <div class="form-text text-info mb-2">
+        <i class="bi bi-info-circle"></i> Guide the LLM on how to identify each entity
+      </div>
+      <textarea class="form-control component-config" data-config-key="extraction_prompt" rows="6" placeholder="Extract key information from the user input..."></textarea>
+      <div class="mt-2 p-2 border rounded bg-light">
+        <small class="text-muted">
+          <strong>Example:</strong><br>
+          Extract key information from the customer's return-related query:<br>
+          - order_number: The order number for the purchase<br>
+          - product_id: Any product identifiers mentioned<br>
+          - purchase_date: When the item was purchased
+        </small>
+      </div>
+    </div>
+    <div class="alert alert-warning mt-3">
+      <i class="bi bi-exclamation-triangle"></i> <strong>Important:</strong> Ensure entity types listed above match those in the extraction prompt
     </div>
   </div>
   
@@ -242,13 +357,34 @@
   <div id="template-json_formatter">
     <div class="mb-3">
       <label class="form-label">Output Schema</label>
-      <textarea class="form-control component-config" data-config-key="schema" rows="8" placeholder="Enter JSON schema for output formatting"></textarea>
+      <div class="form-text text-info mb-2">
+        <i class="bi bi-info-circle"></i> Define the structure of your agent's response data
+      </div>
+      <textarea class="form-control component-config" data-config-key="schema" rows="8" placeholder='{ "response": "string", "next_steps": ["string"], "data": { "key": "value" } }'></textarea>
+      <div class="mt-2 p-2 border rounded bg-light">
+        <small class="text-muted">
+          <strong>Example for Return Processing:</strong><br>
+          <code>{<br>
+            &nbsp;&nbsp;"response": "string",<br>
+            &nbsp;&nbsp;"next_steps": ["string"],<br>
+            &nbsp;&nbsp;"return_id": "string",<br>
+            &nbsp;&nbsp;"estimated_refund_days": "number",<br>
+            &nbsp;&nbsp;"requires_followup": "boolean"<br>
+          }</code>
+        </small>
+      </div>
     </div>
     <div class="form-check mb-3">
       <input class="form-check-input component-config" type="checkbox" data-config-key="enforce_schema" id="enforce-schema" checked>
       <label class="form-check-label" for="enforce-schema">
         Strictly enforce schema
       </label>
+      <div class="form-text text-info">
+        <i class="bi bi-shield-check"></i> Recommended: Keep this checked to ensure consistent outputs
+      </div>
+    </div>
+    <div class="alert alert-info mt-3">
+      <i class="bi bi-lightbulb"></i> <strong>Tip:</strong> Include a "response" field for customer-facing text and separate fields for structured data
     </div>
   </div>
 </div>
@@ -257,11 +393,18 @@
 <div class="modal fade" id="connection-modal" tabindex="-1" aria-labelledby="connectionModalLabel" aria-hidden="true">
   <div class="modal-dialog">
     <div class="modal-content">
-      <div class="modal-header">
+      <div class="modal-header bg-primary text-white">
         <h5 class="modal-title" id="connectionModalLabel">Configure Connection</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body">
+        <div class="alert alert-info mb-3">
+          <i class="bi bi-info-circle-fill"></i> <strong>Connection Guide:</strong>
+          <ul class="mb-0 small">
+            <li>Connect components in the order they should process data (usually top to bottom)</li>
+            <li>The standard flow is: Intent Classifier → Entity Extractor → LLM Model → Response Formatter</li>
+          </ul>
+        </div>
         <form id="connection-form">
           <div class="mb-3">
             <label for="connection-type" class="form-label">Connection Type</label>
@@ -269,16 +412,25 @@
               <option value="data">Data Flow</option>
               <option value="control">Control Flow</option>
             </select>
+            <div class="form-text">
+              <strong>Data Flow:</strong> Passes information between components<br>
+              <strong>Control Flow:</strong> Determines execution path based on conditions
+            </div>
           </div>
           <div class="mb-3">
             <label for="connection-description" class="form-label">Description</label>
-            <input type="text" class="form-control" id="connection-description" placeholder="Optional description">
+            <input type="text" class="form-control" id="connection-description" placeholder="E.g., Intent to Entity Flow">
+            <div class="form-text">
+              Adding a clear description helps understand the purpose of each connection
+            </div>
           </div>
         </form>
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-        <button type="button" class="btn btn-primary" id="save-connection">Save Connection</button>
+        <button type="button" class="btn btn-primary" id="save-connection">
+          <i class="bi bi-link"></i> Save Connection
+        </button>
       </div>
     </div>
   </div>
