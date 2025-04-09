@@ -147,22 +147,52 @@ class AgentOrchestrator:
             if best_agent is None:
                 logger.warning("No suitable agent found to handle the request")
                 
-                # Create a more friendly response with suggestions
+                # Get any custom agents from the database
+                custom_agents = []
+                try:
+                    # This import is inside the try block to avoid circular imports
+                    from models import CustomAgent
+                    custom_agents = CustomAgent.query.filter_by(is_active=True, wizard_completed=True).all()
+                except Exception as e:
+                    logger.warning(f"Could not fetch custom agents: {str(e)}")
+                
+                # Create the default suggested actions for built-in agents
+                suggested_actions = [
+                    {"id": "package-tracking", "name": "Track my package", "description": "Check the status of your order or package"},
+                    {"id": "reset-password", "name": "Reset my password", "description": "Get help with account access or password reset"},
+                    {"id": "store-locator", "name": "Find a store", "description": "Locate Staples stores near you"},
+                    {"id": "product-info", "name": "Product information", "description": "Get details about Staples products"}
+                ]
+                
+                # Add custom agents to the suggested actions
+                for agent in custom_agents:
+                    suggested_actions.append({
+                        "id": f"custom-{agent.id}", 
+                        "name": agent.name,
+                        "description": agent.description or f"Custom agent: {agent.name}"
+                    })
+                
+                # Build the response text including custom agents if available
+                response_text = "Hello! I'm Staples Brain, here to assist you with various Staples-related services. I can help you with:\n\n" + \
+                              "• Tracking your packages and orders\n" + \
+                              "• Resetting your password or account access\n" + \
+                              "• Finding Staples stores near you\n" + \
+                              "• Getting information about Staples products"
+                
+                # Add custom agent capabilities if any exist
+                if custom_agents:
+                    response_text += "\n• Working with custom agents: "
+                    response_text += ", ".join([agent.name for agent in custom_agents])
+                
+                response_text += "\n\nHow can I assist you today?"
+                
+                # Create a more friendly response with suggestions including custom agents
                 return {
                     "success": True,  # Not treating this as an error, just a redirection
                     "intent": "welcome",  # Mark this as a welcome/introduction 
-                    "response": "Hello! I'm Staples Brain, here to assist you with various Staples-related services. I can help you with:\n\n" +
-                              "• Tracking your packages and orders\n" +
-                              "• Resetting your password or account access\n" +
-                              "• Finding Staples stores near you\n" +
-                              "• Getting information about Staples products\n\n" +
-                              "How can I assist you today?",
-                    "suggested_actions": [
-                        {"id": "package-tracking", "name": "Track my package", "description": "Check the status of your order or package"},
-                        {"id": "reset-password", "name": "Reset my password", "description": "Get help with account access or password reset"},
-                        {"id": "store-locator", "name": "Find a store", "description": "Locate Staples stores near you"},
-                        {"id": "product-info", "name": "Product information", "description": "Get details about Staples products"}
-                    ]
+                    "response": response_text,
+                    "suggested_actions": suggested_actions,
+                    "agent": None  # Explicitly show there's no agent selected yet
                 }
             
             logger.info(f"Selected agent '{best_agent.name}' with confidence {confidence:.2f}")

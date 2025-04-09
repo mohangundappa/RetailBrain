@@ -416,7 +416,8 @@ def process_request():
                                 {"id": "reset-password", "name": "Reset my password", "description": "Get help with account access or password reset"},
                                 {"id": "store-locator", "name": "Find a store", "description": "Locate Staples stores near you"},
                                 {"id": "product-info", "name": "Product information", "description": "Get details about Staples products"}
-                            ]
+                            ],
+                            "agent": None  # Explicitly show there's no agent selected yet
                         }
             
             # Store the conversation
