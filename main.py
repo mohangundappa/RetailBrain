@@ -7,7 +7,29 @@ This version includes configuration for different environments (dev, qa, staging
 and follows best practices for deployment in enterprise environments.
 """
 
+# Load environment variables at the very beginning before any other imports
 import os
+import sys
+from pathlib import Path
+
+# Add explicit .env file loading
+try:
+    from dotenv import load_dotenv
+    
+    # Look for .env file in the current directory
+    dotenv_path = Path('.env')
+    if dotenv_path.exists():
+        print(f"Loading environment from {dotenv_path.absolute()}")
+        load_dotenv(dotenv_path=dotenv_path)
+    else:
+        print(f".env file not found at {dotenv_path.absolute()}")
+        print("Environment variables must be set manually or in a .env file")
+        print("For local development, copy .env.example to .env and edit as needed")
+except ImportError:
+    print("WARNING: python-dotenv package not installed. Environment variables may not load correctly.")
+    print("Install with: pip install python-dotenv")
+
+# Now import other modules
 import logging
 import asyncio
 import uuid

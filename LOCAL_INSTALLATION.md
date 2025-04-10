@@ -1,168 +1,154 @@
-# Local Installation Guide for Staples Brain
+# Staples Brain - Local Installation Guide
 
-This guide will help you set up the Staples Brain project locally on your system, specifically addressing compatibility with Python 3.12.
+This guide provides step-by-step instructions for setting up the Staples Brain project in your local development environment.
 
 ## Prerequisites
 
-- Python 3.12 installed
-- Virtual environment tool (venv, conda, etc.)
-- PostgreSQL database (optional, for full functionality)
-- OpenAI API key
+- Python 3.9+ installed
+- PostgreSQL (optional, SQLite will be used as fallback)
+- Git
 
-## Step 1: Create and activate a virtual environment
+## Installation Steps
+
+### 1. Clone the Repository
 
 ```bash
-# Create a virtual environment
+git clone https://github.com/your-organization/staples-brain.git
+cd staples-brain
+```
+
+### 2. Create and Activate a Virtual Environment
+
+#### For macOS/Linux:
+```bash
 python -m venv .venv
-
-# Activate it (macOS/Linux)
 source .venv/bin/activate
+```
 
-# Activate it (Windows)
+#### For Windows:
+```bash
+python -m venv .venv
 .venv\Scripts\activate
 ```
 
-## Step 2: Install dependencies (Option 1 - Using setup script - Recommended)
+### 3. Install Dependencies
 
-The easiest and most reliable way to install dependencies is using the provided setup script:
+Use our setup script which handles dependency conflicts properly:
 
 ```bash
-# Run the interactive setup script
 python setup_local_env.py
 ```
 
-This script will:
-- Check your Python version
-- Upgrade pip to the latest version
-- Install dependencies incrementally in the correct order
-- Create a template `.env` file for you
-- Verify the installation
-
-## Step 3: Install dependencies (Option 2 - Manual installation)
-
-If you prefer to install dependencies manually:
+Alternatively, you can install dependencies manually:
 
 ```bash
-# Install using the standardized requirements file
+pip install --upgrade pip
 pip install -r requirements-standard.txt
 ```
 
-## Step 4: Install dependencies (Option 3 - If other options fail)
+### 4. Configure Environment Variables
 
-If you encounter dependency resolution errors, try these alternative methods:
-
-```bash
-# First, upgrade pip
-pip install --upgrade pip
-
-# Install with more forgiving options
-pip install -r requirements-standard.txt --use-pep517
-
-# If that also fails, try installing without dependency resolution
-pip install --no-deps -r requirements-standard.txt
-
-# Then manually install core packages in the correct order
-pip install flask==2.3.3 werkzeug==2.3.7 sqlalchemy==2.0.27
-pip install langchain-core==0.1.19 langchain-community==0.0.18 langchain-openai==0.0.5 langchain==0.0.335
-pip install openai==1.6.1
-```
-
-## Step 5: Set up environment variables
-
-Create a `.env` file in the project root with the following variables:
-
-```
-# Required environment variables
-DATABASE_URL=postgresql://username:password@localhost:5432/staples_brain
-OPENAI_API_KEY=your_openai_api_key
-
-# Optional environment variables
-LANGSMITH_API_KEY=your_langsmith_api_key
-DATABRICKS_HOST=your_databricks_host
-DATABRICKS_TOKEN=your_databricks_token
-```
-
-## Step 6: Initialize the database (if using PostgreSQL)
+Copy the example environment file and edit it with your settings:
 
 ```bash
-# Log into PostgreSQL
-psql -U postgres
-
-# Create the database
-CREATE DATABASE staples_brain;
-
-# Create a user (optional)
-CREATE USER staples WITH PASSWORD 'your_password';
-
-# Grant privileges
-GRANT ALL PRIVILEGES ON DATABASE staples_brain TO staples;
+cp .env.example .env
 ```
 
-## Step 7: Run database setup scripts
+Then edit the `.env` file with your preferred text editor:
 
 ```bash
-# Navigate to the db_scripts directory
-cd db_scripts
-
-# Run the setup script
-python setup_database.py
+# Open with your editor
+vim .env  # or use any editor you prefer
 ```
 
-## Step 8: Start the application
+At minimum, you'll need to set:
+- `DATABASE_URL` - Your database connection string (or leave empty for SQLite)
+- `SECRET_KEY` - Set a secure random string
+- `OPENAI_API_KEY` - Your OpenAI API key for LLM functionality
+
+For details on all available environment variables, see [ENVIRONMENT_VARIABLES.md](ENVIRONMENT_VARIABLES.md).
+
+### 5. Set Up the Database
+
+#### Option A: Using PostgreSQL (Recommended for Production)
+
+If you're using PostgreSQL:
+
+1. Create a database:
+```bash
+createdb staples_brain_dev
+```
+
+2. Update your `.env` file with the connection string:
+```
+DATABASE_URL=postgresql://username:password@localhost:5432/staples_brain_dev
+```
+
+#### Option B: Using SQLite (Simplest for Development)
+
+If you prefer SQLite (or don't have PostgreSQL):
+
+1. Set an empty or SQLite connection string in your `.env` file:
+```
+DATABASE_URL=sqlite:///staples_brain_dev.db
+```
+
+2. The application will automatically create and set up the SQLite database file.
+
+### 6. Run the Application
+
+Start the application with:
 
 ```bash
-# Run with Python directly (development mode)
 python main.py
-
-# Or use Gunicorn (production-like environment)
-gunicorn --bind 0.0.0.0:5000 main:app
 ```
 
-The application should now be accessible at http://localhost:5000.
+The server will start at http://localhost:5000
 
 ## Troubleshooting
 
-### Dependency Conflicts
+### Environment Variables Not Loading
 
-If you still encounter dependency conflicts, try installing the packages one by one in order of their dependencies.
+If your environment variables aren't loading properly:
 
-```bash
-# Core packages first
-pip install flask flask-sqlalchemy flask-login psycopg2-binary
-
-# Then langchain - note the order is important to resolve dependencies correctly
-pip install langchain-core==0.1.19 langchain-community==0.0.18 langchain-openai==0.0.5 langchain==0.0.335
-
-# Then other packages
-pip install openai flask-cors gunicorn prometheus-client
-```
-
-### Import Errors
-
-If you encounter import errors, check that the correct package versions are installed:
-
-```bash
-pip list | grep langchain
-pip list | grep flask
-```
+1. Make sure your `.env` file exists in the project root
+2. Check the syntax of your `.env` file for any errors
+3. Try running with explicit environment variables:
+   ```bash
+   DATABASE_URL=sqlite:///staples_brain_dev.db python main.py
+   ```
 
 ### Database Connection Issues
 
-If you can't connect to the database, make sure:
-1. PostgreSQL is running
-2. The DATABASE_URL is correctly formatted 
-3. The user has proper permissions
+If you encounter database connection problems:
 
-### LangChain Warnings
+1. Make sure your database server is running
+2. Verify the connection string in your `.env` file
+3. Check that the database exists and your user has access to it
+4. For SQLite, ensure your application has write permission to the directory
 
-You may see warnings about deprecated LangChain methods, like warning about ChatOpenAI being imported from langchain_community rather than langchain_openai. This is due to LangChain's modular restructuring. Make sure to use the correct imports as follows:
+### OpenAI API Connection
 
-```python
-# Old/deprecated imports
-from langchain_community.chat_models import ChatOpenAI  # Will show deprecation warning
+If the LLM features aren't working:
 
-# New/recommended imports
-from langchain_openai import ChatOpenAI  # Correct import
-```
+1. Check that your `OPENAI_API_KEY` is set correctly in your `.env` file
+2. Verify your API key is valid and has not expired
+3. Check your internet connection
 
-These warnings are informational and don't affect functionality, but it's best to use the latest import patterns to future-proof your code.
+### Package Conflicts
+
+If you encounter package conflicts or import errors:
+
+1. Make sure you're using a clean virtual environment
+2. Use the `setup_local_env.py` script which handles dependencies properly
+3. Check if your Python version is compatible (Python 3.9+ recommended)
+
+## Next Steps
+
+Once your installation is complete:
+
+1. See the API documentation at http://localhost:5000/documentation
+2. Try the agent builder interface at http://localhost:5000/agent-builder
+3. Check out the dashboard at http://localhost:5000/dashboard
+
+For more details on using and extending the Staples Brain, refer to the other documentation files in this repository.
