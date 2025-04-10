@@ -1019,337 +1019,361 @@ Next steps:
   
   // AI Assist functionality
   document.addEventListener('DOMContentLoaded', function() {
-    // Create AI assist modal dynamically if it doesn't exist
+    console.log("Initializing AI Assist functionality");
+    
+    // Create the modal if it doesn't exist yet
     if (!document.getElementById('ai-assist-modal')) {
+      console.log("Creating AI assist modal");
       const modalHTML = `
-          <div class="modal fade" id="ai-assist-modal" tabindex="-1" aria-labelledby="aiAssistModalLabel" aria-hidden="true">
-            <div class="modal-dialog">
-              <div class="modal-content">
-                <div class="modal-header">
-                  <h5 class="modal-title" id="aiAssistModalLabel">AI Assistance</h5>
-                  <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        <div class="modal fade" id="ai-assist-modal" tabindex="-1" aria-labelledby="aiAssistModalLabel" aria-hidden="true">
+          <div class="modal-dialog">
+            <div class="modal-content">
+              <div class="modal-header">
+                <h5 class="modal-title" id="aiAssistModalLabel">AI Assistance</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+              </div>
+              <div class="modal-body">
+                <div class="mb-3">
+                  <label for="ai-assist-description" class="form-label">Describe what you need help with:</label>
+                  <textarea class="form-control" id="ai-assist-description" rows="4" 
+                            placeholder="Example: I need a system prompt for a customer service agent that helps with order tracking"></textarea>
                 </div>
-                <div class="modal-body">
-                  <div class="mb-3">
-                    <label for="ai-assist-description" class="form-label">Describe what you need help with:</label>
-                    <textarea class="form-control" id="ai-assist-description" rows="4" 
-                              placeholder="Example: I need a system prompt for a customer service agent that helps with order tracking"></textarea>
+                <div id="ai-assist-loading" class="d-none">
+                  <div class="d-flex align-items-center">
+                    <div class="spinner-border text-primary me-2" role="status">
+                      <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <span>Generating suggestions...</span>
                   </div>
-                  <div id="ai-assist-loading" class="d-none">
-                    <div class="d-flex align-items-center">
-                      <div class="spinner-border text-primary me-2" role="status">
-                        <span class="visually-hidden">Loading...</span>
-                      </div>
-                      <span>Generating suggestions...</span>
+                </div>
+                <div id="ai-assist-result" class="d-none">
+                  <div class="mb-3">
+                    <label class="form-label">AI Suggestion:</label>
+                    <div class="p-3 bg-light rounded border mb-2" id="ai-assist-content"></div>
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox" id="ai-assist-use-suggestion" checked>
+                      <label class="form-check-label" for="ai-assist-use-suggestion">
+                        Replace current content with suggestion
+                      </label>
                     </div>
                   </div>
-                  <div id="ai-assist-result" class="d-none">
-                    <div class="mb-3">
-                      <label class="form-label">AI Suggestion:</label>
-                      <div class="p-3 bg-light rounded border mb-2" id="ai-assist-content"></div>
+                </div>
+              </div>
+              <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="ai-assist-generate">Generate</button>
+                <button type="button" class="btn btn-success d-none" id="ai-assist-apply">Apply Suggestion</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+      
+      const modalContainer = document.createElement('div');
+      modalContainer.innerHTML = modalHTML;
+      document.body.appendChild(modalContainer.firstElementChild);
+    }
+    
+    // Add event handlers for the modal buttons
+    const generateButton = document.getElementById('ai-assist-generate');
+    if (generateButton) {
+      generateButton.addEventListener('click', function() {
+        console.log("Generate button clicked");
+        const description = document.getElementById('ai-assist-description').value;
+        if (!description) {
+          alert('Please provide a description of what you need help with.');
+          return;
+        }
+        
+        // Show loading state
+        document.getElementById('ai-assist-loading').classList.remove('d-none');
+        document.getElementById('ai-assist-result').classList.add('d-none');
+        document.getElementById('ai-assist-generate').classList.add('d-none');
+        
+        // Get current content from target field as context
+        const modal = document.getElementById('ai-assist-modal');
+        const currentTargetId = modal.getAttribute('data-target');
+        const currentAssistType = modal.getAttribute('data-type');
+        const currentTargetElement = document.getElementById(currentTargetId);
+        const existingContext = currentTargetElement ? currentTargetElement.value : '';
+        
+        // Get agent type from the form
+        let agentType = 'custom';
+        const agentTypeSelect = document.querySelector('select[name="agent_type"]');
+        if (agentTypeSelect) {
+          agentType = agentTypeSelect.value;
+        }
+        
+        // Call the AI assist API
+        fetch('/api/builder/llm-assist', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            assistance_type: currentAssistType,
+            description: description,
+            agent_type: agentType,
+            existing_context: existingContext ? { content: existingContext } : {}
+          })
+        })
+        .then(response => response.json())
+        .then(data => {
+          // Hide loading state
+          document.getElementById('ai-assist-loading').classList.add('d-none');
+          
+          // Show result and apply button
+          document.getElementById('ai-assist-result').classList.remove('d-none');
+          document.getElementById('ai-assist-apply').classList.remove('d-none');
+          
+          // Format and display the result
+          let resultContent = data.suggestion;
+          if (typeof resultContent === 'object') {
+            resultContent = JSON.stringify(resultContent, null, 2);
+          }
+          
+          const contentElement = document.getElementById('ai-assist-content');
+          if (currentAssistType === 'response_schema') {
+            contentElement.innerHTML = `<pre class="mb-0">${resultContent}</pre>`;
+          } else {
+            contentElement.textContent = resultContent;
+          }
+        })
+        .catch(error => {
+          console.error('Error generating AI assistance:', error);
+          document.getElementById('ai-assist-loading').classList.add('d-none');
+          document.getElementById('ai-assist-generate').classList.remove('d-none');
+          alert('Failed to generate suggestion. Please try again.');
+        });
+      });
+    }
+    
+    const applyButton = document.getElementById('ai-assist-apply');
+    if (applyButton) {
+      applyButton.addEventListener('click', function() {
+        console.log("Apply button clicked");
+        const modal = document.getElementById('ai-assist-modal');
+        const currentTargetId = modal.getAttribute('data-target');
+        const currentAssistType = modal.getAttribute('data-type');
+        const currentTargetElement = document.getElementById(currentTargetId);
+        
+        // Get content from AI suggestion
+        const contentElement = document.getElementById('ai-assist-content');
+        let content = '';
+        
+        // Get content based on whether it's a pre element or regular text
+        if (contentElement.querySelector('pre')) {
+          content = contentElement.querySelector('pre').textContent;
+        } else {
+          content = contentElement.textContent;
+        }
+        
+        // Special handling for entity-assistant
+        if (currentAssistType === 'entity_definition' && currentTargetId === 'entity-assistant' && 
+            document.getElementById('ai-assist-use-suggestion').checked) {
+          try {
+            // Parse the entity definitions
+            let entityDefinitions;
+            try {
+              entityDefinitions = JSON.parse(content);
+            } catch(e) {
+              // Try to extract JSON from the text
+              const jsonMatch = content.match(/```json\n([\s\S]*?)\n```/) || 
+                               content.match(/```\n([\s\S]*?)\n```/) || 
+                               content.match(/\{[\s\S]*\}/);
+              
+              if (jsonMatch) {
+                entityDefinitions = JSON.parse(jsonMatch[0]);
+              } else {
+                throw new Error("Could not parse JSON from content");
+              }
+            }
+            
+            // Process each entity and add it to the form
+            if (Array.isArray(entityDefinitions)) {
+              const entityContainer = document.getElementById('entity-container');
+              const entityCountField = document.getElementById('entity_count');
+              let entityCount = parseInt(entityCountField.value || '0');
+              
+              // Add each entity to the form
+              entityDefinitions.forEach(entity => {
+                const entityIndex = entityCount;
+                const entityHtml = `
+                  <div class="card mb-3 entity-card" data-entity-index="${entityIndex}">
+                    <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                      <h5 class="mb-0">Entity #${entityIndex + 1}</h5>
+                      <button type="button" class="btn btn-sm btn-outline-danger remove-entity" data-index="${entityIndex}">
+                        <i class="bi bi-trash"></i>
+                      </button>
+                    </div>
+                    <div class="card-body">
+                      <div class="row">
+                        <div class="col-md-6 mb-3">
+                          <label class="form-label">Entity Name</label>
+                          <input type="text" class="form-control entity-name" name="entities[${entityIndex}][name]" value="${entity.name || ''}" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                          <label class="form-label">Description</label>
+                          <input type="text" class="form-control" name="entities[${entityIndex}][description]" value="${entity.description || ''}">
+                        </div>
+                      </div>
+                      
+                      <div class="row">
+                        <div class="col-md-6 mb-3">
+                          <label class="form-label">Validation Pattern (Regex)</label>
+                          <input type="text" class="form-control font-monospace" name="entities[${entityIndex}][validation_pattern]" value="${entity.validation_pattern || ''}">
+                          <div class="form-text">Regular expression for validating user input</div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                          <label class="form-label">Error Message</label>
+                          <input type="text" class="form-control" name="entities[${entityIndex}][error_message]" value="${entity.error_message || ''}">
+                        </div>
+                      </div>
+                      
+                      <div class="row">
+                        <div class="col-md-12 mb-3">
+                          <label class="form-label">Examples</label>
+                          <input type="text" class="form-control" name="entities[${entityIndex}][examples]" value="${Array.isArray(entity.examples) ? entity.examples.join(', ') : ''}" placeholder="Example1, Example2, Example3">
+                          <div class="form-text">Comma-separated list of examples</div>
+                        </div>
+                      </div>
+                      
                       <div class="form-check">
-                        <input class="form-check-input" type="checkbox" id="ai-assist-use-suggestion" checked>
-                        <label class="form-check-label" for="ai-assist-use-suggestion">
-                          Replace current content with suggestion
+                        <input class="form-check-input" type="checkbox" name="entities[${entityIndex}][required]" id="entity-required-${entityIndex}" ${entity.required ? 'checked' : ''}>
+                        <label class="form-check-label" for="entity-required-${entityIndex}">
+                          Required Entity
                         </label>
                       </div>
                     </div>
                   </div>
-                </div>
-                <div class="modal-footer">
-                  <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                  <button type="button" class="btn btn-primary" id="ai-assist-generate">Generate</button>
-                  <button type="button" class="btn btn-success d-none" id="ai-assist-apply">Apply Suggestion</button>
-                </div>
-              </div>
-            </div>
-          </div>
-        `;
-        
-        const modalContainer = document.createElement('div');
-        modalContainer.innerHTML = modalHTML;
-        document.body.appendChild(modalContainer.firstElementChild);
-        
-        // Set up event handlers
-        document.getElementById('ai-assist-generate').addEventListener('click', function() {
-          const description = document.getElementById('ai-assist-description').value;
-          if (!description) {
-            alert('Please provide a description of what you need help with.');
-            return;
-          }
-          
-          // Show loading state
-          document.getElementById('ai-assist-loading').classList.remove('d-none');
-          document.getElementById('ai-assist-result').classList.add('d-none');
-          document.getElementById('ai-assist-generate').classList.add('d-none');
-          
-          // Get current content from target field as context
-          const currentTargetId = document.getElementById('ai-assist-modal').getAttribute('data-target');
-          const currentAssistType = document.getElementById('ai-assist-modal').getAttribute('data-type');
-          const currentTargetElement = document.getElementById(currentTargetId);
-          const existingContext = currentTargetElement ? currentTargetElement.value : '';
-          
-          // Call the AI assist API
-          fetch('/api/builder/llm-assist', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-              assistance_type: currentAssistType,
-              description: description,
-              agent_type: agentType,
-              existing_context: existingContext ? { content: existingContext } : {}
-            })
-          })
-          .then(response => response.json())
-          .then(data => {
-            // Hide loading state
-            document.getElementById('ai-assist-loading').classList.add('d-none');
-            
-            // Show result and apply button
-            document.getElementById('ai-assist-result').classList.remove('d-none');
-            document.getElementById('ai-assist-apply').classList.remove('d-none');
-            
-            // Format and display the result
-            let resultContent = data.suggestion;
-            if (typeof resultContent === 'object') {
-              resultContent = JSON.stringify(resultContent, null, 2);
-            }
-            
-            const contentElement = document.getElementById('ai-assist-content');
-            if (currentAssistType === 'response_schema') {
-              contentElement.innerHTML = `<pre class="mb-0">${resultContent}</pre>`;
-            } else {
-              contentElement.textContent = resultContent;
-            }
-          })
-          .catch(error => {
-            console.error('Error generating AI assistance:', error);
-            document.getElementById('ai-assist-loading').classList.add('d-none');
-            document.getElementById('ai-assist-generate').classList.remove('d-none');
-            alert('Failed to generate suggestion. Please try again.');
-          });
-        });
-        
-        document.getElementById('ai-assist-apply').addEventListener('click', function() {
-          const currentTargetId = document.getElementById('ai-assist-modal').getAttribute('data-target');
-          const currentAssistType = document.getElementById('ai-assist-modal').getAttribute('data-type');
-          const currentTargetElement = document.getElementById(currentTargetId);
-          
-          // Get content from AI suggestion
-          const contentElement = document.getElementById('ai-assist-content');
-          let content = '';
-          
-          // Get content based on whether it's a pre element or regular text
-          if (contentElement.querySelector('pre')) {
-            content = contentElement.querySelector('pre').textContent;
-          } else {
-            content = contentElement.textContent;
-          }
-          
-          // Special handling for entity-assistant
-          if (currentAssistType === 'entity_definition' && currentTargetId === 'entity-assistant' && 
-              document.getElementById('ai-assist-use-suggestion').checked) {
-            try {
-              // Parse the entity definitions
-              let entityDefinitions;
-              try {
-                entityDefinitions = JSON.parse(content);
-              } catch(e) {
-                // Try to extract JSON from the text
-                const jsonMatch = content.match(/```json\n([\s\S]*?)\n```/) || 
-                                 content.match(/```\n([\s\S]*?)\n```/) || 
-                                 content.match(/\{[\s\S]*\}/);
-                
-                if (jsonMatch) {
-                  entityDefinitions = JSON.parse(jsonMatch[0]);
-                } else {
-                  throw new Error("Could not parse JSON from content");
-                }
-              }
-              
-              // Process each entity and add it to the form
-              if (Array.isArray(entityDefinitions)) {
-                const entityContainer = document.getElementById('entity-container');
-                const entityCountField = document.getElementById('entity_count');
-                let entityCount = parseInt(entityCountField.value || '0');
-                
-                // Add each entity to the form
-                entityDefinitions.forEach(entity => {
-                  const entityIndex = entityCount;
-                  const entityHtml = `
-                    <div class="card mb-3 entity-card" data-entity-index="${entityIndex}">
-                      <div class="card-header bg-light d-flex justify-content-between align-items-center">
-                        <h5 class="mb-0">Entity #${entityIndex + 1}</h5>
-                        <button type="button" class="btn btn-sm btn-outline-danger remove-entity" data-index="${entityIndex}">
-                          <i class="bi bi-trash"></i>
-                        </button>
-                      </div>
-                      <div class="card-body">
-                        <div class="row">
-                          <div class="col-md-6 mb-3">
-                            <label class="form-label">Entity Name</label>
-                            <input type="text" class="form-control entity-name" name="entities[${entityIndex}][name]" value="${entity.name || ''}" required>
-                          </div>
-                          <div class="col-md-6 mb-3">
-                            <label class="form-label">Description</label>
-                            <input type="text" class="form-control" name="entities[${entityIndex}][description]" value="${entity.description || ''}">
-                          </div>
-                        </div>
-                        
-                        <div class="row">
-                          <div class="col-md-6 mb-3">
-                            <label class="form-label">Validation Pattern (Regex)</label>
-                            <input type="text" class="form-control font-monospace" name="entities[${entityIndex}][validation_pattern]" value="${entity.validation_pattern || ''}">
-                            <div class="form-text">Regular expression for validating user input</div>
-                          </div>
-                          <div class="col-md-6 mb-3">
-                            <label class="form-label">Error Message</label>
-                            <input type="text" class="form-control" name="entities[${entityIndex}][error_message]" value="${entity.error_message || ''}">
-                          </div>
-                        </div>
-                        
-                        <div class="row">
-                          <div class="col-md-12 mb-3">
-                            <label class="form-label">Examples</label>
-                            <input type="text" class="form-control" name="entities[${entityIndex}][examples]" value="${Array.isArray(entity.examples) ? entity.examples.join(', ') : ''}" placeholder="Example1, Example2, Example3">
-                            <div class="form-text">Comma-separated list of examples</div>
-                          </div>
-                        </div>
-                        
-                        <div class="form-check">
-                          <input class="form-check-input" type="checkbox" name="entities[${entityIndex}][required]" id="entity-required-${entityIndex}" ${entity.required ? 'checked' : ''}>
-                          <label class="form-check-label" for="entity-required-${entityIndex}">
-                            Required Entity
-                          </label>
-                        </div>
-                      </div>
-                    </div>
-                  `;
-                  
-                  // Append the new entity form
-                  const tempDiv = document.createElement('div');
-                  tempDiv.innerHTML = entityHtml;
-                  entityContainer.appendChild(tempDiv.firstElementChild);
-                  
-                  // Add event listener to the new remove button
-                  const newRemoveButton = entityContainer.querySelector(`.entity-card[data-entity-index="${entityIndex}"] .remove-entity`);
-                  if (newRemoveButton) {
-                    newRemoveButton.addEventListener('click', function() {
-                      const index = this.dataset.index;
-                      const entityCard = document.querySelector(`.entity-card[data-entity-index="${index}"]`);
-                      
-                      if (entityCard) {
-                        entityCard.remove();
-                        // Update entity count
-                        const newCount = document.querySelectorAll('.entity-card').length;
-                        entityCountField.value = newCount;
-                      }
-                    });
-                  }
-                  
-                  entityCount++;
-                });
-                
-                // Update the entity count
-                entityCountField.value = entityCount;
-                
-                // Hide modal
-                const modal = bootstrap.Modal.getInstance(document.getElementById('ai-assist-modal'));
-                modal.hide();
-                
-                // Show success message
-                const alertHtml = `
-                  <div class="alert alert-success alert-dismissible fade show mb-3" role="alert">
-                    Added ${entityDefinitions.length} AI-generated entities successfully!
-                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                  </div>
                 `;
-                entityContainer.parentElement.insertAdjacentHTML('beforebegin', alertHtml);
-              } else {
-                throw new Error("Entity definition must be an array");
-              }
-            } catch (error) {
-              console.error('Error processing entity definitions:', error);
-              alert('Failed to process entity definitions. Please make sure the AI generated content is in the correct format.');
+                
+                // Append the new entity form
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = entityHtml;
+                entityContainer.appendChild(tempDiv.firstElementChild);
+                
+                // Add event listener to the new remove button
+                const newRemoveButton = entityContainer.querySelector(`.entity-card[data-entity-index="${entityIndex}"] .remove-entity`);
+                if (newRemoveButton) {
+                  newRemoveButton.addEventListener('click', function() {
+                    const index = this.dataset.index;
+                    const entityCard = document.querySelector(`.entity-card[data-entity-index="${index}"]`);
+                    
+                    if (entityCard) {
+                      entityCard.remove();
+                      // Update entity count
+                      const newCount = document.querySelectorAll('.entity-card').length;
+                      entityCountField.value = newCount;
+                    }
+                  });
+                }
+                
+                entityCount++;
+              });
+              
+              // Update the entity count
+              entityCountField.value = entityCount;
+              
+              // Hide modal
+              const bsModal = bootstrap.Modal.getInstance(document.getElementById('ai-assist-modal'));
+              bsModal.hide();
+              
+              // Show success message
+              const alertHtml = `
+                <div class="alert alert-success alert-dismissible fade show mb-3" role="alert">
+                  Added ${entityDefinitions.length} AI-generated entities successfully!
+                  <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+              `;
+              entityContainer.parentElement.insertAdjacentHTML('beforebegin', alertHtml);
+            } else {
+              throw new Error("Entity definition must be an array");
             }
-          } else if (currentTargetElement && document.getElementById('ai-assist-use-suggestion').checked) {
-            // Set the content in the target field
-            currentTargetElement.value = content;
-            
-            // Hide modal
-            const modal = bootstrap.Modal.getInstance(document.getElementById('ai-assist-modal'));
-            modal.hide();
-            
-            // Show success message
-            const alertHtml = `
-              <div class="alert alert-success alert-dismissible fade show mb-3" role="alert">
-                AI-generated content applied successfully!
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-              </div>
-            `;
-            currentTargetElement.parentElement.insertAdjacentHTML('beforebegin', alertHtml);
+          } catch (error) {
+            console.error('Error processing entity definitions:', error);
+            alert('Failed to process entity definitions. Please make sure the AI generated content is in the correct format.');
           }
-        });
-      }
-      
-    // Initialize the AI Assist buttons
-    const aiAssistButtons = document.querySelectorAll('.ai-assist-btn');
-    if (aiAssistButtons.length > 0) {
-      aiAssistButtons.forEach(button => {
-        button.addEventListener('click', function() {
-          const targetId = this.getAttribute('data-target');
-          const assistType = this.getAttribute('data-type');
-          let targetElement = document.getElementById(targetId);
+        } else if (currentTargetElement && document.getElementById('ai-assist-use-suggestion').checked) {
+          // Set the content in the target field
+          currentTargetElement.value = content;
           
-          // Special handling for entity assistance
-          if (assistType === 'entity_definition' && targetId === 'entity-assistant') {
-            // No specific target, the result will be used to create new entities
-            targetElement = document.createElement('div');
-            targetElement.id = 'entity-assistant';
-          }
+          // Hide modal
+          const bsModal = bootstrap.Modal.getInstance(document.getElementById('ai-assist-modal'));
+          bsModal.hide();
           
-          if (!targetElement && targetId !== 'entity-assistant') {
-            console.error('Target element not found:', targetId);
-            return;
-          }
-          
-          // Get agent type from the form
-          let agentType = 'custom';
-          const agentTypeSelect = document.querySelector('select[name="agent_type"]');
-          if (agentTypeSelect) {
-            agentType = agentTypeSelect.value;
-          }
-          
-          // Set modal attributes for current context
-          const modal = document.getElementById('ai-assist-modal');
-          modal.setAttribute('data-target', targetId);
-          modal.setAttribute('data-type', assistType);
-          
-          // Reset modal state
-          document.getElementById('ai-assist-description').value = '';
-          document.getElementById('ai-assist-loading').classList.add('d-none');
-          document.getElementById('ai-assist-result').classList.add('d-none');
-          document.getElementById('ai-assist-generate').classList.remove('d-none');
-          document.getElementById('ai-assist-apply').classList.add('d-none');
-          
-          // Set modal title based on assist type
-          const modalTitle = document.getElementById('aiAssistModalLabel');
-          const assistTypeLabels = {
-            'system_prompt': 'System Prompt',
-            'entity_definition': 'Entity Definitions',
-            'response_schema': 'Response Schema',
-            'prompt_template': 'Prompt Template'
-          };
-          modalTitle.textContent = `AI Assist: ${assistTypeLabels[assistType] || 'Content Generation'}`;
-          
-          // Show modal
-          const bsModal = new bootstrap.Modal(modal);
-          bsModal.show();
-        });
+          // Show success message
+          const alertHtml = `
+            <div class="alert alert-success alert-dismissible fade show mb-3" role="alert">
+              AI-generated content applied successfully!
+              <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+          `;
+          currentTargetElement.parentElement.insertAdjacentHTML('beforebegin', alertHtml);
+        }
       });
     }
+    
+    // Initialize AI Assist buttons
+    const aiAssistButtons = document.querySelectorAll('.ai-assist-btn');
+    console.log(`Found ${aiAssistButtons.length} AI assist buttons`);
+    
+    aiAssistButtons.forEach(button => {
+      button.addEventListener('click', function() {
+        console.log("AI assist button clicked");
+        const targetId = this.getAttribute('data-target');
+        const assistType = this.getAttribute('data-type');
+        console.log(`Target: ${targetId}, Type: ${assistType}`);
+        
+        let targetElement = document.getElementById(targetId);
+        
+        // Special handling for entity assistance
+        if (assistType === 'entity_definition' && targetId === 'entity-assistant') {
+          // No specific target, the result will be used to create new entities
+          targetElement = document.createElement('div');
+          targetElement.id = 'entity-assistant';
+        }
+        
+        if (!targetElement && targetId !== 'entity-assistant') {
+          console.error('Target element not found:', targetId);
+          return;
+        }
+        
+        // Get agent type from the form
+        let agentType = 'custom';
+        const agentTypeSelect = document.querySelector('select[name="agent_type"]');
+        if (agentTypeSelect) {
+          agentType = agentTypeSelect.value;
+        }
+        
+        // Set modal attributes for current context
+        const modal = document.getElementById('ai-assist-modal');
+        modal.setAttribute('data-target', targetId);
+        modal.setAttribute('data-type', assistType);
+        
+        // Reset modal state
+        document.getElementById('ai-assist-description').value = '';
+        document.getElementById('ai-assist-loading').classList.add('d-none');
+        document.getElementById('ai-assist-result').classList.add('d-none');
+        document.getElementById('ai-assist-generate').classList.remove('d-none');
+        document.getElementById('ai-assist-apply').classList.add('d-none');
+        
+        // Set modal title based on assist type
+        const modalTitle = document.getElementById('aiAssistModalLabel');
+        const assistTypeLabels = {
+          'system_prompt': 'System Prompt',
+          'entity_definition': 'Entity Definitions',
+          'response_schema': 'Response Schema',
+          'prompt_template': 'Prompt Template'
+        };
+        modalTitle.textContent = `AI Assist: ${assistTypeLabels[assistType] || 'Content Generation'}`;
+        
+        // Show modal
+        const bsModal = new bootstrap.Modal(modal);
+        bsModal.show();
+      });
+    });
+  });
     });
   });
 </script>
