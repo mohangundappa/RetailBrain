@@ -6,9 +6,114 @@
 <div class="container py-4">
   <div class="row">
     <div class="col-12">
-      <h1 class="mb-4">Agent Configuration Wizard</h1>
+      <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="mb-0">Agent Configuration Wizard</h1>
+        <!-- Template Picker Button -->
+        <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#templateModal">
+          <i class="bi bi-lightning-fill"></i> Start from Template
+        </button>
+      </div>
       
-      <div class="card shadow-sm mb-4">
+      <!-- Template Modal -->
+      <div class="modal fade" id="templateModal" tabindex="-1" aria-labelledby="templateModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title" id="templateModalLabel">Choose a Template</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+              <p class="text-muted mb-3">Start with a pre-configured template to save time</p>
+              
+              <div class="row g-3" id="template-container">
+                <!-- Templates will be loaded here via JavaScript -->
+                <div class="col-md-6">
+                  <div class="card h-100 template-card border-primary">
+                    <div class="card-body">
+                      <div class="d-flex justify-content-between">
+                        <h5 class="card-title">
+                          <i class="bi bi-headset"></i> Customer Support Agent
+                        </h5>
+                        <span class="badge bg-primary">Popular</span>
+                      </div>
+                      <p class="card-text">General purpose customer support agent with FAQ capabilities</p>
+                      <div class="mt-auto pt-2">
+                        <button type="button" class="btn btn-sm btn-outline-primary template-select-btn" 
+                                data-template-id="customer-support">
+                          Use Template
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                <div class="col-md-6">
+                  <div class="card h-100 template-card">
+                    <div class="card-body">
+                      <div class="d-flex justify-content-between">
+                        <h5 class="card-title">
+                          <i class="bi bi-package"></i> Order Tracking Specialist
+                        </h5>
+                      </div>
+                      <p class="card-text">Specialized agent for order tracking and shipment inquiries</p>
+                      <div class="mt-auto pt-2">
+                        <button type="button" class="btn btn-sm btn-outline-primary template-select-btn" 
+                                data-template-id="order-tracking">
+                          Use Template
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                <div class="col-md-6">
+                  <div class="card h-100 template-card">
+                    <div class="card-body">
+                      <div class="d-flex justify-content-between">
+                        <h5 class="card-title">
+                          <i class="bi bi-map"></i> Store Finder
+                        </h5>
+                      </div>
+                      <p class="card-text">Agent that helps customers find nearby Staples stores</p>
+                      <div class="mt-auto pt-2">
+                        <button type="button" class="btn btn-sm btn-outline-primary template-select-btn" 
+                                data-template-id="store-finder">
+                          Use Template
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                <div class="col-md-6">
+                  <div class="card h-100 template-card">
+                    <div class="card-body">
+                      <div class="d-flex justify-content-between">
+                        <h5 class="card-title">
+                          <i class="bi bi-key"></i> Password Reset Agent
+                        </h5>
+                      </div>
+                      <p class="card-text">Specialized agent for securely handling password reset requests</p>
+                      <div class="mt-auto pt-2">
+                        <button type="button" class="btn btn-sm btn-outline-primary template-select-btn" 
+                                data-template-id="password-reset">
+                          Use Template
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+              <a href="/template-gallery" class="btn btn-primary">Browse All Templates</a>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="card shadow mb-4">
         <div class="card-header bg-primary text-white">
           <div class="d-flex justify-content-between align-items-center">
             <h5 class="mb-0">Configure Your Agent</h5>
@@ -18,20 +123,54 @@
           </div>
         </div>
         <div class="card-body p-4">
-          <!-- Step Progress -->
+          <!-- Step Progress with Icons -->
           <div class="mb-4">
-            <div class="progress">
+            <div class="progress" style="height: 4px;">
               <div class="progress-bar" role="progressbar" style="width: {{ (step / 5) * 100 }}%;" 
                    aria-valuenow="{{ step }}" aria-valuemin="0" aria-valuemax="5">
-                Step {{ step }}
               </div>
             </div>
-            <div class="d-flex justify-content-between mt-2">
-              <small>Agent Basics</small>
-              <small>Entity Setup</small>
-              <small>Prompts</small>
-              <small>Response Format</small>
-              <small>Review</small>
+            <div class="d-flex justify-content-between mt-3">
+              <div class="text-center" style="width: 20%;">
+                <div class="d-inline-block rounded-circle p-2 {{ 'bg-primary text-white' if step >= 1 else 'bg-light' }}" style="width: 40px; height: 40px;">
+                  <i class="bi bi-info-circle"></i>
+                </div>
+                <div class="mt-2">
+                  <small>Agent Basics</small>
+                </div>
+              </div>
+              <div class="text-center" style="width: 20%;">
+                <div class="d-inline-block rounded-circle p-2 {{ 'bg-primary text-white' if step >= 2 else 'bg-light' }}" style="width: 40px; height: 40px;">
+                  <i class="bi bi-database"></i>
+                </div>
+                <div class="mt-2">
+                  <small>Entity Setup</small>
+                </div>
+              </div>
+              <div class="text-center" style="width: 20%;">
+                <div class="d-inline-block rounded-circle p-2 {{ 'bg-primary text-white' if step >= 3 else 'bg-light' }}" style="width: 40px; height: 40px;">
+                  <i class="bi bi-chat-dots"></i>
+                </div>
+                <div class="mt-2">
+                  <small>Prompts</small>
+                </div>
+              </div>
+              <div class="text-center" style="width: 20%;">
+                <div class="d-inline-block rounded-circle p-2 {{ 'bg-primary text-white' if step >= 4 else 'bg-light' }}" style="width: 40px; height: 40px;">
+                  <i class="bi bi-file-text"></i>
+                </div>
+                <div class="mt-2">
+                  <small>Response Format</small>
+                </div>
+              </div>
+              <div class="text-center" style="width: 20%;">
+                <div class="d-inline-block rounded-circle p-2 {{ 'bg-primary text-white' if step >= 5 else 'bg-light' }}" style="width: 40px; height: 40px;">
+                  <i class="bi bi-check-circle"></i>
+                </div>
+                <div class="mt-2">
+                  <small>Review</small>
+                </div>
+              </div>
             </div>
           </div>
           
