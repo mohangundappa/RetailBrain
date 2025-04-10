@@ -250,7 +250,25 @@ class StoreLocatorAgent(BaseAgent):
                         query_location = f"{city.strip()}, {state.strip()}"
                         logger.info(f"Extracted city, state from input: {query_location}")
                     else:
-                        # Fall back to extraction chain
+                        # Check for common city names
+                        common_cities = {
+                            "natick": "Natick, MA",
+                            "boston": "Boston, MA",
+                            "cambridge": "Cambridge, MA",
+                            "somerville": "Somerville, MA",
+                            "framingham": "Framingham, MA",
+                            "brookline": "Brookline, MA",
+                            "newton": "Newton, MA",
+                            "wellesley": "Wellesley, MA"
+                        }
+                        
+                        for city_name, full_location in common_cities.items():
+                            if city_name in user_input.lower():
+                                query_location = full_location
+                                logger.info(f"Matched common city name: {query_location}")
+                                break
+                                
+                        # If still no match, fall back to extraction chain
                         try:
                             extraction_result = await self._extraction_chain.ainvoke({"query": user_input})
                             logger.info(f"Raw extraction result: {extraction_result}")
@@ -293,9 +311,6 @@ class StoreLocatorAgent(BaseAgent):
                 }
                 
             # The rest of the code will run when we have a valid location            
-            # Get store information
-            store_info = self._get_store_info(location_info, context)
-            
             # Get store information
             store_info = self._get_store_info(location_info, context)
             
@@ -444,10 +459,15 @@ class StoreLocatorAgent(BaseAgent):
                 confidence = max(confidence, 0.7)
                 
             # Check for common city names or state references
-            location_terms = ["natick", "boston", "new york", "chicago", "california", "ma", "ny", "il", "ca"]
+            location_terms = [
+                "natick", "boston", "new york", "chicago", "california", 
+                "ma", "ny", "il", "ca", "cambridge", "somerville", "brookline",
+                "newton", "framingham", "wellesley", "zip code", "postal code",
+                "area", "near me", "nearby", "closest"
+            ]
             for loc in location_terms:
                 if loc in user_input.lower():
-                    confidence = max(confidence, 0.9)
+                    confidence = max(confidence, 0.95)  # Higher confidence for explicit location terms
                     break
             
             logger.info(f"Store Locator Agent confidence: {confidence} for query: {user_input}")
