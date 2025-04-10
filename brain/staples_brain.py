@@ -14,6 +14,7 @@ from agents.package_tracking import PackageTrackingAgent
 from agents.reset_password import ResetPasswordAgent
 from agents.store_locator import StoreLocatorAgent
 from agents.product_info import ProductInfoAgent
+from agents.returns_processing import ReturnsProcessingAgent
 
 # Get OpenAI configuration from environment variables
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
@@ -179,7 +180,8 @@ class StaplesBrain:
                 "package_tracking", 
                 "reset_password", 
                 "store_locator", 
-                "product_info"
+                "product_info",
+                "returns_processing"
             ]
             
             # Create each agent using the factory method for standardized naming

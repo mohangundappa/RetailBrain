@@ -957,13 +957,15 @@ Remember: Your goal is to provide excellent customer service while representing 
         from agents.store_locator import StoreLocatorAgent
         from agents.reset_password import ResetPasswordAgent
         from agents.product_info import ProductInfoAgent
+        from agents.returns_processing import ReturnsProcessingAgent
         
         # Map agent types to their proper class
         agent_map = {
             "package_tracking": PackageTrackingAgent,
             "store_locator": StoreLocatorAgent,
             "reset_password": ResetPasswordAgent,
-            "product_info": ProductInfoAgent
+            "product_info": ProductInfoAgent,
+            "returns_processing": ReturnsProcessingAgent
         }
         
         if agent_type not in agent_map:
