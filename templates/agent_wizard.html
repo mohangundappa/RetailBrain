@@ -330,7 +330,13 @@
               </div>
               
               <div class="mb-3">
-                <label for="response-generation-prompt" class="form-label">Response Generation Prompt</label>
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                  <label for="response-generation-prompt" class="form-label mb-0">Response Generation Prompt</label>
+                  <button type="button" class="btn btn-sm btn-outline-primary ai-assist-btn" 
+                          data-target="response-generation-prompt" data-type="prompt_template">
+                    <i class="bi bi-magic"></i> AI Assist
+                  </button>
+                </div>
                 <textarea class="form-control" id="response-generation-prompt" name="prompts[response_generation]" rows="5">{{ prompts.response_generation }}</textarea>
                 <div class="form-text">
                   Set how the agent should structure and phrase its responses to users.
