@@ -28,15 +28,14 @@
                     <li class="nav-item">
                         <a class="nav-link" href="/">Home</a>
                     </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="/documentation">
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="documentationDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                             <i class="fas fa-book-open"></i> Documentation
                         </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="/architecture">
-                            <i class="fas fa-project-diagram"></i> Architecture
-                        </a>
+                        <ul class="dropdown-menu" aria-labelledby="documentationDropdown">
+                            <li><a class="dropdown-item" href="/documentation">User Guide</a></li>
+                            <li><a class="dropdown-item" href="/architecture">Architecture</a></li>
+                        </ul>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" href="/dashboard">
