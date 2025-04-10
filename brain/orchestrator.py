@@ -137,7 +137,45 @@ class AgentOrchestrator:
                     if value:  # Only store non-empty values
                         memory.update_working_memory(f'entity_{entity_type}', value)
             
-            # Determine which agent can best handle this request
+            # First, check if the query is out of scope for our virtual agents
+            is_out_of_scope = False
+            topic_category = None
+            
+            # Use the first agent's guardrails to check out-of-scope topics (all agents share the same guardrails config)
+            if self.agents:
+                is_out_of_scope, topic_category = self.agents[0].guardrails.is_out_of_scope(user_input)
+                # Ensure topic_category is not None for string operations
+                topic_category = topic_category or "unknown"
+            
+            if is_out_of_scope:
+                logger.warning(f"Query is out of scope: '{user_input}' (topic: {topic_category})")
+                
+                # Generate a helpful response explaining we can't assist with these topics
+                out_of_scope_responses = {
+                    "hiring": "I'm not able to assist with job applications or the hiring process. Please visit our careers page at staples.com/careers for current job openings and application information.",
+                    "hr_policies": "I don't have access to information about Staples HR policies or employee benefits. Please contact the Staples HR department directly for assistance.",
+                    "legal": "I'm not authorized to discuss legal matters or provide legal advice. Please contact Staples Customer Service at 1-800-STAPLES for assistance with your concern.",
+                    "executive": "I don't have information about Staples executive team or company financial matters. You may find this information on the Staples Investor Relations page.",
+                    "unrelated": "I'm designed to help with Staples-specific customer service matters like tracking orders, finding stores, or resetting passwords. For this topic, you might want to reach out to a different service.",
+                    "investments": "I can't provide investment advice or information about Staples stock or financial performance. Please contact Staples Investor Relations for those inquiries."
+                }
+                
+                # Get the appropriate response or use a generic one
+                response_text = out_of_scope_responses.get(
+                    topic_category, 
+                    "I'm designed to help with specific Staples customer service tasks like tracking orders, resetting passwords, or finding store locations. This question is outside my area of expertise. Please contact Staples Customer Service at 1-800-STAPLES for further assistance."
+                )
+                
+                return {
+                    "success": True,
+                    "response": response_text,
+                    "agent": "Out of Scope Handler",
+                    "confidence": 1.0,
+                    "is_out_of_scope": True,
+                    "topic_category": topic_category
+                }
+            
+            # If not out of scope, proceed with normal agent selection
             best_agent, confidence, context_used = self._select_agent(user_input, context)
             
             if best_agent is None:

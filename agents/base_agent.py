@@ -84,6 +84,41 @@ class Guardrails:
             "allowed": ["track order", "reset password", "account help", "order status", "store locator", "find store", "product information", "product details"],
             "not_allowed": ["refund processing", "cancel subscription", "create new account", "delete account", "file complaint"]
         }
+        
+        # Out of scope topics - topics that should be redirected to human agents
+        self.out_of_scope_topics = {
+            "hiring": ["job application", "hiring", "employment", "job opening", "career", "work at staples", "apply for job", "hiring process", "job interview", "resume"],
+            "hr_policies": ["sick leave", "vacation policy", "employee benefits", "hr policies", "work hours", "employee handbook", "company policy", "maternity leave", "paternity leave"],
+            "legal": ["lawsuit", "legal action", "settlement", "terms of service", "privacy policy", "gdpr", "ccpa", "data rights", "legal department"],
+            "executive": ["ceo", "cfo", "executive team", "board of directors", "leadership team", "company earnings", "quarterly results", "annual report", "investor relations"],
+            "unrelated": ["non-staples", "not related to staples", "other companies", "personal advice", "personal questions", "personal issues", "private matters"],
+            "investments": ["stock price", "investment advice", "market share", "shareholders", "dividend", "investor", "financial projection", "market cap", "ipo"]
+        }
+    
+    def is_out_of_scope(self, query_text: str) -> Tuple[bool, Optional[str]]:
+        """
+        Check if a user query is out of scope for the agent system.
+        
+        Args:
+            query_text: The user's query text
+            
+        Returns:
+            Tuple of (is_out_of_scope, topic_category)
+            - is_out_of_scope: True if the query is out of scope
+            - topic_category: The category of out of scope topic, or None if in scope
+        """
+        # Convert to lowercase for matching
+        query_lower = query_text.lower()
+        
+        # Check each out of scope topic
+        for topic, keywords in self.out_of_scope_topics.items():
+            # Check for exact keyword matches with word boundaries
+            for keyword in keywords:
+                if re.search(r'\b' + re.escape(keyword.lower()) + r'\b', query_lower):
+                    return True, topic
+        
+        # If no matches found, it's in scope
+        return False, None
     
     def check_response(self, response_text: str) -> List[GuardrailViolation]:
         """
