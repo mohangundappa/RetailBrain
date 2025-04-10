@@ -38,11 +38,38 @@ class StaplesBrain:
             if OPENAI_API_KEY:
                 # Use actual OpenAI if API key is available
                 from langchain_openai import ChatOpenAI
-                self.llm = ChatOpenAI(
-                    model_name=OPENAI_MODEL,
-                    openai_api_key=OPENAI_API_KEY,
-                    temperature=0.3
-                )
+                import importlib.metadata
+                
+                # Debug: Log version information
+                openai_version = importlib.metadata.version("openai")
+                langchain_openai_version = importlib.metadata.version("langchain-openai")
+                logger.info(f"Using OpenAI version: {openai_version}")
+                logger.info(f"Using langchain-openai version: {langchain_openai_version}")
+                
+                # Check if we have the compatibility issue with proxies parameter
+                try:
+                    # First attempt with only the core parameters
+                    self.llm = ChatOpenAI(
+                        model_name=OPENAI_MODEL,
+                        openai_api_key=OPENAI_API_KEY,
+                        temperature=0.3
+                    )
+                except TypeError as e:
+                    if "proxies" in str(e):
+                        # Handle the specific compatibility issue with older OpenAI client versions
+                        logger.warning("Detected version compatibility issue with ChatOpenAI. Updating client configuration.")
+                        from openai import OpenAI
+                        # Create a custom client without proxy settings
+                        openai_client = OpenAI(api_key=OPENAI_API_KEY)
+                        # Initialize with the custom client
+                        self.llm = ChatOpenAI(
+                            model_name=OPENAI_MODEL,
+                            client=openai_client,
+                            temperature=0.3
+                        )
+                    else:
+                        # If it's a different error, re-raise it
+                        raise
                 logger.info(f"Initialized LLM with model {OPENAI_MODEL}")
             else:
                 # Use a mock LLM for demonstration if no API key
