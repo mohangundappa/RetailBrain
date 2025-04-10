@@ -28,6 +28,8 @@ class MockClient:
                 
             async def create(self, model=None, messages=None, **kwargs):
                 """Async create method - returns the same result as sync version"""
+                # We need to make this truly awaitable
+                await asyncio.sleep(0)  # This makes the function awaitable
                 return self._create_response(model, messages, **kwargs)
                 
             def _create_response(self, model=None, messages=None, **kwargs):
@@ -97,10 +99,12 @@ class MockChatModel(BaseChatModel):
     Compatible with both older and newer OpenAI API versions.
     """
     
-    model_name: str = "gpt-4-mock"  # Define this as a class attribute for pydantic
-    
-    # Client access is now handled directly in __init__
-    # to avoid conflicts with the client assignment
+    # Define all required fields as class attributes for pydantic
+    model_name: str = "gpt-4-mock"
+    client: Any = None  # Define this as a field in the model
+    async_client: Any = None  # Define this as a field in the model
+    invoke: Any = None
+    ainvoke: Any = None
     
     def __init__(self, 
                  responses: Optional[List[str]] = None,
@@ -202,6 +206,9 @@ class MockChatModel(BaseChatModel):
     
     async def _agenerate(self, messages, stop=None, run_manager=None, **kwargs):
         """Generate a response asynchronously"""
+        # Add a small sleep to make this truly awaitable
+        await asyncio.sleep(0)
+        
         content = ""
         if self._is_can_handle_call(messages):
             content = str(self._confidence_score)  # Use configured confidence score
@@ -269,6 +276,8 @@ class MockChatModel(BaseChatModel):
                 
                 async def create(self, model=None, messages=None, **kwargs):
                     """Mock asynchronous create method for chat completions"""
+                    # We need to make this truly awaitable
+                    await asyncio.sleep(0)  # This makes the function awaitable
                     return self._create_response(model, messages, **kwargs)
                 
                 def _create_response(self, model=None, messages=None, **kwargs):
