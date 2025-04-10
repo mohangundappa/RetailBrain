@@ -1147,11 +1147,12 @@ def agent_wizard(agent_id=None, step=1):
             db.session.add(new_agent)
             db.session.commit()
             
-            # Redirect to the first step of the wizard with the new agent ID
-            return redirect(url_for('agent_wizard', agent_id=new_agent.id, step=1))
-        
-        # Get the existing agent
-        agent = CustomAgent.query.get_or_404(agent_id)
+            # Use the newly created agent for the rest of this function
+            agent_id = new_agent.id
+            agent = new_agent
+        else:
+            # Get the existing agent
+            agent = CustomAgent.query.get_or_404(agent_id)
         
         # Ensure valid step
         if step < 1:
