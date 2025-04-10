@@ -461,9 +461,14 @@ function handleConnectionPoint(componentId, pointType) {
     // Start connecting
     connectingFrom = componentId;
     connectingPointType = pointType;
-    document.getElementById(componentId)
-      .querySelector(`.connection-point[data-point-type="${pointType}"]`)
-      .classList.add('connecting');
+    
+    const element = document.getElementById(componentId);
+    if (element) {
+      const connectionPoint = element.querySelector(`.connection-point[data-point-type="${pointType}"]`);
+      if (connectionPoint) {
+        connectionPoint.classList.add('connecting');
+      }
+    }
   } else {
     // Complete connection if valid
     if (connectingFrom !== componentId && connectingPointType !== pointType) {
@@ -479,18 +484,25 @@ function handleConnectionPoint(componentId, pointType) {
       }
       
       // Show connection config modal
-      const modal = new bootstrap.Modal(document.getElementById('connection-modal'));
-      modal.show();
-      
-      // Store the connection info for when the modal is submitted
-      document.getElementById('connection-modal').dataset.sourceId = sourceId;
-      document.getElementById('connection-modal').dataset.targetId = targetId;
+      const modalElement = document.getElementById('connection-modal');
+      if (modalElement) {
+        const modal = new bootstrap.Modal(modalElement);
+        modal.show();
+        
+        // Store the connection info for when the modal is submitted
+        modalElement.dataset.sourceId = sourceId;
+        modalElement.dataset.targetId = targetId;
+      }
     }
     
     // Remove connecting class
-    document.getElementById(connectingFrom)
-      .querySelector(`.connection-point[data-point-type="${connectingPointType}"]`)
-      .classList.remove('connecting');
+    const element = document.getElementById(connectingFrom);
+    if (element) {
+      const connectionPoint = element.querySelector(`.connection-point[data-point-type="${connectingPointType}"]`);
+      if (connectionPoint) {
+        connectionPoint.classList.remove('connecting');
+      }
+    }
     
     // Reset connecting state
     connectingFrom = null;
