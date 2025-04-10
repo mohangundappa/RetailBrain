@@ -369,9 +369,16 @@ document.addEventListener('DOMContentLoaded', function() {
                                 </div>
                                 <div class="template-tags">
                                     <strong>Tags:</strong><br>
-                                    ${template.tags ? template.tags.split(',').map(tag => 
-                                      `<span class="badge bg-secondary me-1">${tag.trim()}</span>`
-                                    ).join('') : 'No tags'}
+                                    ${Array.isArray(template.tags) 
+                                      ? template.tags.map(tag => 
+                                        `<span class="badge bg-secondary me-1">${tag.trim()}</span>`
+                                      ).join('') 
+                                      : (typeof template.tags === 'string' && template.tags 
+                                        ? template.tags.split(',').map(tag => 
+                                            `<span class="badge bg-secondary me-1">${tag.trim()}</span>`
+                                          ).join('') 
+                                        : 'No tags')
+                                    }
                                 </div>
                             </div>
                             <div class="col-md-6">
@@ -394,6 +401,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
                 
             } catch (error) {
+                console.error("Template preview error:", error);
                 previewContent.innerHTML = `<div class="alert alert-danger">Error: ${error.message}</div>`;
             }
         });
@@ -422,9 +430,17 @@ document.addEventListener('DOMContentLoaded', function() {
         return stars;
     }
     
-    function formatEntityDefinitions(entityDefinitionsJson) {
+    function formatEntityDefinitions(entityDefinitionsData) {
         try {
-            const entities = JSON.parse(entityDefinitionsJson);
+            let entities;
+            if (typeof entityDefinitionsData === 'string') {
+                entities = JSON.parse(entityDefinitionsData);
+            } else if (Array.isArray(entityDefinitionsData)) {
+                entities = entityDefinitionsData;
+            } else {
+                return 'No entities defined';
+            }
+            
             if (!entities.length) return 'No entities defined';
             
             let html = '<div class="list-group">';
@@ -447,9 +463,45 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    function formatPromptTemplates(promptTemplatesJson) {
+    function formatPromptTemplates(promptTemplatesData) {
         try {
-            const templates = JSON.parse(promptTemplatesJson);
+            let templates;
+            if (typeof promptTemplatesData === 'string') {
+                templates = JSON.parse(promptTemplatesData);
+            } else if (Array.isArray(promptTemplatesData)) {
+                templates = promptTemplatesData;
+            } else if (typeof promptTemplatesData === 'object' && promptTemplatesData !== null) {
+                templates = promptTemplatesData;
+            } else {
+                return 'No prompt templates defined';
+            }
+            
+            if (Array.isArray(templates)) {
+                // Handle array format
+                if (templates.length === 0) return 'No prompt templates defined';
+                
+                let html = '<div class="accordion" id="promptAccordion">';
+                templates.forEach((template, index) => {
+                    html += `
+                        <div class="accordion-item bg-dark border-secondary">
+                            <h2 class="accordion-header" id="heading${index}">
+                                <button class="accordion-button bg-dark text-light collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse${index}" aria-expanded="false" aria-controls="collapse${index}">
+                                    ${template.name || `Template ${index + 1}`}
+                                </button>
+                            </h2>
+                            <div id="collapse${index}" class="accordion-collapse collapse" aria-labelledby="heading${index}" data-bs-parent="#promptAccordion">
+                                <div class="accordion-body">
+                                    <pre class="prompt-code">${template.content || template.prompt || JSON.stringify(template, null, 2)}</pre>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+                html += '</div>';
+                return html;
+            }
+            
+            // Handle object format (key-value pairs)
             if (Object.keys(templates).length === 0) return 'No prompt templates defined';
             
             let html = '<div class="accordion" id="promptAccordion">';
