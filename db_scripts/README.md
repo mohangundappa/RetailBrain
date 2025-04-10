@@ -87,6 +87,32 @@ The following scripts are provided for **local development environments only**:
   ./backup_restore.sh restore ./db_backups/staples_brain_20250409_123456.dump
   ```
 
+### Schema Updates
+
+- **update_schema.py**: Adds the wizard_completed column to the custom_agents table
+  ```bash
+  # Run the script to update the schema
+  python db_scripts/update_schema.py
+  ```
+
+- **add_icon_field.py**: Adds the icon field to the custom_agents table
+  ```bash
+  # Run the script to add the icon field
+  python db_scripts/add_icon_field.py
+  ```
+
+- **add_entity_definitions_column.py**: Adds the entity_definitions column to the custom_agents table
+  ```bash
+  # Run the script to add the entity_definitions column
+  python db_scripts/add_entity_definitions_column.py
+  ```
+
+- **add_template_fields.py**: Adds additional fields to the agent_templates table
+  ```bash
+  # Run the script to add template fields
+  python db_scripts/add_template_fields.py
+  ```
+
 ## Common Tasks
 
 ### First-Time Setup
