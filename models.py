@@ -264,6 +264,7 @@ class CustomAgent(db.Model):
     name = Column(String(100), nullable=False, unique=True)
     description = Column(Text, nullable=True)
     configuration = Column(Text, nullable=True)  # JSON string of the complete agent configuration
+    entity_definitions = Column(Text, nullable=True)  # JSON string of entity definitions
     is_active = Column(Boolean, default=True)
     wizard_completed = Column(Boolean, default=False)  # Whether the setup wizard has been completed
     creator = Column(String(100), nullable=True)

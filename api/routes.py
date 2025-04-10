@@ -1,9 +1,10 @@
 import logging
 import json
 import importlib
+import uuid
+import asyncio
 from flask import Blueprint, request, jsonify, current_app
 from api.agent_builder import agent_builder_bp
-import asyncio
 
 logger = logging.getLogger(__name__)
 
@@ -354,4 +355,68 @@ def reset_password():
             "success": False,
             "error": str(e),
             "response": "An error occurred while processing your password reset request"
+        }), 500
+        
+@api_bp.route("/chat", methods=["POST"])
+def chat():
+    """
+    Chat with Staples Brain using a unified interface.
+    
+    This endpoint handles chat messages and routes them to the appropriate agent
+    based on intent detection or explicit agent selection.
+    
+    Request body:
+    {
+        "message": "I need to track my order",
+        "session_id": "unique-session-id-123",
+        "agent_id": "optional-explicit-agent-id"
+    }
+    
+    Returns:
+        Chat response from the appropriate agent
+    """
+    try:
+        data = request.json
+        
+        if not data or not data.get("message"):
+            return jsonify({
+                "success": False,
+                "error": "Missing required field: message"
+            }), 400
+        
+        message = data.get("message")
+        session_id = data.get("session_id", str(uuid.uuid4()))
+        agent_id = data.get("agent_id")  # Optional explicit agent selection
+        
+        # Get brain instance
+        brain = get_brain()
+        
+        # Create context with session info
+        context = {
+            "session_id": session_id
+        }
+        
+        # If agent_id is specified, add it to context for direct routing
+        if agent_id:
+            context["agent_id"] = agent_id
+            
+        # Process request (async)
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        response = loop.run_until_complete(brain.process_request(message, context))
+        loop.close()
+        
+        return jsonify({
+            "success": True,
+            "response": response.get("response", "I'm sorry, I couldn't process your request."),
+            "agent": response.get("agent", "Unknown"),
+            "session_id": session_id
+        })
+        
+    except Exception as e:
+        logger.error(f"Error in chat endpoint: {str(e)}", exc_info=True)
+        return jsonify({
+            "success": False,
+            "error": str(e),
+            "response": "Sorry, I encountered an error. Please try again later."
         }), 500
