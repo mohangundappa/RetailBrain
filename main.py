@@ -183,10 +183,10 @@ def health_check():
 def db_is_healthy():
     """Check if the database connection is healthy."""
     try:
-        # Execute a simple query to check the database connection
-        with app.app_context():
-            from sqlalchemy import text
-            db.session.execute(text("SELECT 1")).fetchall()
+        # We're already in an app context when this function is called
+        # so don't need to create another one which causes the error
+        from sqlalchemy import text
+        db.session.execute(text("SELECT 1")).fetchall()
         return True
     except Exception as e:
         logger.error(f"Database health check failed: {e}")
