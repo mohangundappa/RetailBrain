@@ -10,6 +10,7 @@ from langchain_core.prompts import ChatPromptTemplate, PromptTemplate
 from langchain_core.runnables import RunnableSequence
 from langchain_core.output_parsers import StrOutputParser
 from agents.base_agent import BaseAgent, EntityDefinition
+from api_services.store_api import StoreApiClient
 
 logger = logging.getLogger(__name__)
 
@@ -33,6 +34,9 @@ class StoreLocatorAgent(BaseAgent):
             description="I can help you find Staples stores near you, check store hours, and provide information about store services.",
             llm=llm
         )
+        
+        # Initialize the Store API Client
+        self.store_api = StoreApiClient(mock_mode=True)
         
         # Customize the Staples Customer Service Representative persona for store locator
         self.persona = {
