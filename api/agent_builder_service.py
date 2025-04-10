@@ -16,8 +16,8 @@ from flask import jsonify, request, abort
 from brain.core_services.base_service import CoreService, service_registry
 from brain.core_services.tool_service import tool_service
 from agents.base_agent import BaseAgent
-from utils.observability import record_error, record_api_call
-from utils.langsmith_utils import langsmith_trace
+from utils.observability import _log_error
+from utils.langsmith_utils import langsmith_trace, _log_api_call, _log_error
 
 # Import database models
 from models import db, CustomAgent, AgentComponent, ComponentConnection, AgentTemplate
@@ -83,7 +83,7 @@ class AgentBuilderService(CoreService):
         except Exception as e:
             error_message = f"Failed to initialize agent builder service: {str(e)}"
             logger.error(error_message)
-            record_error("agent_builder_init", error_message)
+            _log_error("agent_builder_init", error_message)
             
             self.health_status["healthy"] = False
             self.health_status["last_check"] = datetime.now().isoformat()
@@ -118,7 +118,7 @@ class AgentBuilderService(CoreService):
             
         except Exception as e:
             logger.error(f"Error loading templates: {str(e)}")
-            record_error("template_loading", str(e))
+            _log_error("template_loading", str(e))
     
     def _create_default_templates(self) -> None:
         """Create default agent templates."""
@@ -189,7 +189,7 @@ class AgentBuilderService(CoreService):
         except Exception as e:
             db.session.rollback()
             logger.error(f"Error creating default templates: {str(e)}")
-            record_error("default_template_creation", str(e))
+            _log_error("default_template_creation", str(e))
     
     def _load_component_types(self) -> None:
         """Load available component types for custom agents."""
@@ -304,7 +304,7 @@ class AgentBuilderService(CoreService):
             
         except Exception as e:
             logger.error(f"Error loading component types: {str(e)}")
-            record_error("component_type_loading", str(e))
+            _log_error("component_type_loading", str(e))
     
     def _get_available_tool_options(self) -> List[Dict[str, str]]:
         """
@@ -337,7 +337,7 @@ class AgentBuilderService(CoreService):
         Returns:
             List of agent templates
         """
-        record_api_call(system="agent_builder", endpoint="get_templates")
+        _log_api_call(system="agent_builder", endpoint="get_templates")
         
         if not self.initialized:
             logger.error("Agent Builder Service not initialized")
@@ -349,7 +349,7 @@ class AgentBuilderService(CoreService):
             
         except Exception as e:
             logger.error(f"Error getting templates: {str(e)}")
-            record_error("get_templates", str(e))
+            _log_error("get_templates", str(e))
             return []
     
     @langsmith_trace(run_type="chain", name="get_template_by_id", tags=["agent_builder"])
@@ -363,7 +363,7 @@ class AgentBuilderService(CoreService):
         Returns:
             Template data or None if not found
         """
-        record_api_call(system="agent_builder", endpoint="get_template_by_id")
+        _log_api_call(system="agent_builder", endpoint="get_template_by_id")
         
         if not self.initialized:
             logger.error("Agent Builder Service not initialized")
@@ -375,7 +375,7 @@ class AgentBuilderService(CoreService):
             
         except Exception as e:
             logger.error(f"Error getting template {template_id}: {str(e)}")
-            record_error("get_template_by_id", str(e))
+            _log_error("get_template_by_id", str(e))
             return None
     
     @langsmith_trace(run_type="chain", name="get_component_types", tags=["agent_builder"])
@@ -386,7 +386,7 @@ class AgentBuilderService(CoreService):
         Returns:
             Dictionary of component types
         """
-        record_api_call(system="agent_builder", endpoint="get_component_types")
+        _log_api_call(system="agent_builder", endpoint="get_component_types")
         
         if not self.initialized:
             logger.error("Agent Builder Service not initialized")
@@ -398,7 +398,7 @@ class AgentBuilderService(CoreService):
             
         except Exception as e:
             logger.error(f"Error getting component types: {str(e)}")
-            record_error("get_component_types", str(e))
+            _log_error("get_component_types", str(e))
             return {}
     
     @langsmith_trace(run_type="chain", name="create_custom_agent", tags=["agent_builder"])
@@ -412,7 +412,7 @@ class AgentBuilderService(CoreService):
         Returns:
             Dictionary with result of creation
         """
-        record_api_call(system="agent_builder", endpoint="create_custom_agent")
+        _log_api_call(system="agent_builder", endpoint="create_custom_agent")
         
         if not self.initialized:
             logger.error("Agent Builder Service not initialized")
@@ -451,7 +451,7 @@ class AgentBuilderService(CoreService):
             db.session.rollback()
             error_message = f"Error creating custom agent: {str(e)}"
             logger.error(error_message)
-            record_error("create_custom_agent", error_message)
+            _log_error("create_custom_agent", error_message)
             
             return {"success": False, "error": error_message}
     
@@ -467,7 +467,7 @@ class AgentBuilderService(CoreService):
         Returns:
             Dictionary with result of update
         """
-        record_api_call(system="agent_builder", endpoint="update_custom_agent")
+        _log_api_call(system="agent_builder", endpoint="update_custom_agent")
         
         if not self.initialized:
             logger.error("Agent Builder Service not initialized")
@@ -512,7 +512,7 @@ class AgentBuilderService(CoreService):
             db.session.rollback()
             error_message = f"Error updating custom agent: {str(e)}"
             logger.error(error_message)
-            record_error("update_custom_agent", error_message)
+            _log_error("update_custom_agent", error_message)
             
             return {"success": False, "error": error_message}
     
@@ -527,7 +527,7 @@ class AgentBuilderService(CoreService):
         Returns:
             Dictionary with result of deletion
         """
-        record_api_call(system="agent_builder", endpoint="delete_custom_agent")
+        _log_api_call(system="agent_builder", endpoint="delete_custom_agent")
         
         if not self.initialized:
             logger.error("Agent Builder Service not initialized")
@@ -562,7 +562,7 @@ class AgentBuilderService(CoreService):
             db.session.rollback()
             error_message = f"Error deleting custom agent: {str(e)}"
             logger.error(error_message)
-            record_error("delete_custom_agent", error_message)
+            _log_error("delete_custom_agent", error_message)
             
             return {"success": False, "error": error_message}
     
@@ -574,7 +574,7 @@ class AgentBuilderService(CoreService):
         Returns:
             List of custom agents
         """
-        record_api_call(system="agent_builder", endpoint="get_custom_agents")
+        _log_api_call(system="agent_builder", endpoint="get_custom_agents")
         
         if not self.initialized:
             logger.error("Agent Builder Service not initialized")
@@ -603,7 +603,7 @@ class AgentBuilderService(CoreService):
         except Exception as e:
             error_message = f"Error getting custom agents: {str(e)}"
             logger.error(error_message)
-            record_error("get_custom_agents", error_message)
+            _log_error("get_custom_agents", error_message)
             
             return []
     
@@ -618,7 +618,7 @@ class AgentBuilderService(CoreService):
         Returns:
             Custom agent data or None if not found
         """
-        record_api_call(system="agent_builder", endpoint="get_custom_agent_by_id")
+        _log_api_call(system="agent_builder", endpoint="get_custom_agent_by_id")
         
         if not self.initialized:
             logger.error("Agent Builder Service not initialized")
@@ -673,7 +673,7 @@ class AgentBuilderService(CoreService):
         except Exception as e:
             error_message = f"Error getting custom agent {agent_id}: {str(e)}"
             logger.error(error_message)
-            record_error("get_custom_agent_by_id", error_message)
+            _log_error("get_custom_agent_by_id", error_message)
             
             return None
     

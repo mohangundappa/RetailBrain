@@ -126,7 +126,7 @@ class BrainCore(CoreService):
         except Exception as e:
             error_message = f"Failed to initialize brain core: {str(e)}"
             logger.error(error_message)
-            record_error("brain_core_init", error_message)
+            _log_error("brain_core_init", error_message)
             
             self.health_status["healthy"] = False
             self.health_status["last_check"] = datetime.now().isoformat()
@@ -164,7 +164,7 @@ class BrainCore(CoreService):
             
         except Exception as e:
             logger.error(f"Error initializing agents: {str(e)}")
-            record_error("agent_initialization", str(e))
+            _log_error("agent_initialization", str(e))
     
     @langsmith_trace(run_type="chain", name="process_request", tags=["brain_core", "request_processing"])
     async def process_request(self, user_input: str, session_id: str, source: Optional[str] = None, 
@@ -190,7 +190,7 @@ class BrainCore(CoreService):
         }
         
         # Record the API call for metrics
-        record_api_call(
+        _log_api_call(
             system="brain_core", 
             endpoint="process_request",
             status_code=200 if self.initialized else 500
@@ -263,7 +263,7 @@ class BrainCore(CoreService):
         except Exception as e:
             error_message = f"Error processing request: {str(e)}"
             logger.error(error_message)
-            record_error("request_processing", error_message)
+            _log_error("request_processing", error_message)
             
             return {
                 "error": str(e),
