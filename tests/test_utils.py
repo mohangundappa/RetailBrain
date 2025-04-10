@@ -15,6 +15,7 @@ class MockChatModel(BaseChatModel):
     """
     Mock chat model for testing.
     This model provides configurable responses for testing.
+    Compatible with both older and newer OpenAI API versions.
     """
 
     def __init__(self, 
@@ -38,6 +39,52 @@ class MockChatModel(BaseChatModel):
             "I've sent password reset instructions to your email address (user@example.com). Please check your inbox."
         ]
         self._response_counter = 0
+        # Add attributes needed for compatibility with newer API
+        self.model_name = "gpt-4-mock"
+        # Handle client attribute for testing
+        self.client = self  # Make self.client point to self for compatibility
+        
+        # Initialize the chat attribute for the client
+        class ChatCompletionsAPI:
+            """Mock completions API interface"""
+            
+            @staticmethod
+            def create(model=None, messages=None, **kwargs):
+                """Mock create method for chat completions"""
+                message_content = "0.9"  # Default confidence score
+                
+                # Handle case where messages is None or empty
+                if messages:
+                    for msg in messages:
+                        if isinstance(msg, dict) and msg.get("role") == "user" and isinstance(msg.get("content"), str):
+                            content = msg.get("content", "")
+                            if "confidence" in content.lower() or "can you handle" in content.lower():
+                                # This is a confidence check, return a high score
+                                message_content = "0.9"
+                                break
+                
+                # Mock response object with OpenAI-style structure
+                class MockChoice:
+                    class Message:
+                        def __init__(self, content):
+                            self.content = content
+                    
+                    def __init__(self, content):
+                        self.message = self.Message(content)
+                        
+                class MockResponse:
+                    def __init__(self, choices):
+                        self.choices = choices
+                        
+                return MockResponse([MockChoice(message_content)])
+                
+        # Create a chat namespace with completions API
+        class ChatNamespace:
+            def __init__(self):
+                self.completions = ChatCompletionsAPI()
+                
+        # Assign chat namespace to client 
+        self.chat = ChatNamespace()
     
     def _is_can_handle_call(self, messages: List[Any]) -> bool:
         """Check if this is a can_handle capability call"""
@@ -119,6 +166,50 @@ class MockChatModel(BaseChatModel):
         message = AIMessageChunk(content=content)
         chunk = ChatGenerationChunk(message=message)
         return ChatResult(generations=[chunk])
+        
+    # Adding newer OpenAI client compatibility
+    class chat:
+        """Mock chat namespace for newer OpenAI client interface"""
+        
+        def __init__(self, parent):
+            self.parent = parent
+            
+        class completions:
+            """Mock completions namespace for newer OpenAI client interface"""
+            
+            @staticmethod
+            def create(model=None, messages=None, **kwargs):
+                """
+                Mock implementation of chat.completions.create method for compatibility
+                with newer OpenAI client interface.
+                """
+                # Simple response object similar to new OpenAI style
+                message_content = "0.9"  # Default confidence score
+                
+                # Handle case where messages is None
+                if messages:
+                    for msg in messages:
+                        if isinstance(msg, dict) and msg.get("role") == "user" and isinstance(msg.get("content"), str):
+                            content = msg.get("content", "")
+                            if "confidence" in content.lower() or "can you handle" in content.lower():
+                                # This is a confidence check, return a high score
+                                message_content = "0.9"
+                                break
+                
+                # Mock response object with OpenAI-style structure
+                class MockChoice:
+                    class Message:
+                        def __init__(self, content):
+                            self.content = content
+                    
+                    def __init__(self, content):
+                        self.message = self.Message(content)
+                        
+                class MockResponse:
+                    def __init__(self, choices):
+                        self.choices = choices
+                        
+                return MockResponse([MockChoice(message_content)])
 
 
 def create_mock_chat_model(responses=None, confidence_score=0.9):
