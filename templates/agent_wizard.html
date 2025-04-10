@@ -595,8 +595,13 @@
 
 {% block scripts %}
 <script>
+  // Main initialization function for all dynamic behaviors
   document.addEventListener('DOMContentLoaded', function() {
+    console.log("Document loaded - initializing all components");
     // Initialize all elements with proper null checks
+    
+    // Initialize AI Assist functionality
+    initializeAIAssist();
     
     // Save as Template functionality
     const saveAsTemplateBtn = document.getElementById('save-as-template-btn');
@@ -1018,7 +1023,7 @@ Next steps:
   });
   
   // AI Assist functionality
-  document.addEventListener('DOMContentLoaded', function() {
+  function initializeAIAssist() {
     console.log("Initializing AI Assist functionality");
     
     // Create the modal if it doesn't exist yet
@@ -1373,8 +1378,6 @@ Next steps:
         bsModal.show();
       });
     });
-  });
-    });
-  });
+  }
 </script>
 {% endblock %}
