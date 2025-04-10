@@ -1,0 +1,240 @@
+{% extends 'base.html' %}
+
+{% block title %}Staples Brain Architecture{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+  <h1 class="mb-4">Staples Brain - Architecture Documentation</h1>
+  
+  <div class="alert alert-info">
+    <strong>Note:</strong> This document provides an overview of the Staples Brain architecture, showing the relationships between different components and systems.
+  </div>
+  
+  <section class="mb-5">
+    <h2>High-Level Architecture</h2>
+    <p>
+      The high-level architecture diagram illustrates the major components of the Staples Brain system and their interactions. This includes the core system, external integrations, agent framework, and supporting infrastructure.
+    </p>
+    <div class="text-center p-3 bg-light rounded">
+      <img src="/static/architecture_diagrams/high_level_architecture.svg" alt="High-Level Architecture" class="img-fluid" style="max-width: 100%;">
+    </div>
+    
+    <div class="mt-3">
+      <h5>Key Components:</h5>
+      <ul>
+        <li><strong>External Systems:</strong> Kore.ai, Salesforce, and other external APIs that interact with Staples Brain.</li>
+        <li><strong>Core System:</strong> The central processing unit containing the Intent Handler, Orchestrator, and Memory System.</li>
+        <li><strong>Agents:</strong> Specialized modules for Package Tracking, Password Reset, Store Locator, and custom user-defined agents.</li>
+        <li><strong>Database:</strong> PostgreSQL database for persistent storage of conversations and agent configurations.</li>
+        <li><strong>Observability:</strong> Monitoring and telemetry systems for tracking performance and diagnosing issues.</li>
+      </ul>
+    </div>
+  </section>
+  
+  <section class="mb-5">
+    <h2>Component Architecture</h2>
+    <p>
+      This diagram shows the internal structure of the major components within Staples Brain, including the layered design and inheritance patterns used across the system.
+    </p>
+    <div class="text-center p-3 bg-light rounded">
+      <img src="/static/architecture_diagrams/component_architecture.svg" alt="Component Architecture" class="img-fluid" style="max-width: 100%;">
+    </div>
+    
+    <div class="mt-3">
+      <h5>Key Layers:</h5>
+      <ul>
+        <li><strong>Core Components:</strong> The Intent Handler analyzes user input, the Orchestrator routes requests to appropriate agents, and the Memory System maintains conversation context.</li>
+        <li><strong>Agent Layer:</strong> Includes the Base Agent abstract class that defines common behavior, and specialized agents that handle specific tasks.</li>
+        <li><strong>Integration Layer:</strong> Interfaces with external systems and technologies like LangChain/LangGraph, LangSmith for observability, and other external API clients.</li>
+      </ul>
+    </div>
+  </section>
+  
+  <section class="mb-5">
+    <h2>Data Flow Architecture</h2>
+    <p>
+      The data flow architecture illustrates how data moves through the system from user input to response, including interactions with the database and observability systems.
+    </p>
+    <div class="text-center p-3 bg-light rounded">
+      <img src="/static/architecture_diagrams/data_flow_architecture.svg" alt="Data Flow Architecture" class="img-fluid" style="max-width: 100%;">
+    </div>
+    
+    <div class="mt-3">
+      <h5>Key Flows:</h5>
+      <ul>
+        <li><strong>User Input Flow:</strong> The path from user request through intent recognition, agent selection, processing, to final response.</li>
+        <li><strong>Database Integration:</strong> How the system interacts with various database tables through the SQLAlchemy ORM layer.</li>
+        <li><strong>Observability & Telemetry:</strong> The collection and processing of logs, metrics, and telemetry data through unified collection systems.</li>
+      </ul>
+    </div>
+  </section>
+  
+  <section class="mb-5">
+    <h2>Agent Builder Architecture</h2>
+    <p>
+      The Agent Builder architecture shows the components that allow users to create and configure custom agents through a visual interface.
+    </p>
+    <div class="text-center p-3 bg-light rounded">
+      <img src="/static/architecture_diagrams/agent_builder_architecture.svg" alt="Agent Builder Architecture" class="img-fluid" style="max-width: 100%;">
+    </div>
+    
+    <div class="mt-3">
+      <h5>Key Layers:</h5>
+      <ul>
+        <li><strong>User Interface Layer:</strong> Visual designer for creating agent workflows and configuration UI for setting agent properties.</li>
+        <li><strong>API Layer:</strong> Backend services that handle agent CRUD operations, component templates, and configuration wizards.</li>
+        <li><strong>Database Layer:</strong> Storage for custom agents, components, connections, and templates.</li>
+        <li><strong>Runtime Layer:</strong> System for dynamically loading and running custom agents within the orchestration framework.</li>
+      </ul>
+    </div>
+  </section>
+  
+  <section class="mb-5">
+    <h2>Technical Details</h2>
+    
+    <div class="accordion" id="architectureAccordion">
+      <div class="accordion-item">
+        <h2 class="accordion-header" id="headingTech">
+          <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTech" aria-expanded="false" aria-controls="collapseTech">
+            Technology Stack
+          </button>
+        </h2>
+        <div id="collapseTech" class="accordion-collapse collapse" aria-labelledby="headingTech" data-bs-parent="#architectureAccordion">
+          <div class="accordion-body">
+            <ul>
+              <li><strong>Backend:</strong> Python, Flask, SQLAlchemy</li>
+              <li><strong>Database:</strong> PostgreSQL</li>
+              <li><strong>AI/ML:</strong> LangChain, LangGraph, OpenAI GPT models</li>
+              <li><strong>Observability:</strong> LangSmith, Prometheus, custom logging</li>
+              <li><strong>Frontend:</strong> HTML, CSS, JavaScript, Bootstrap</li>
+              <li><strong>Runtime:</strong> Gunicorn, WSGI</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      
+      <div class="accordion-item">
+        <h2 class="accordion-header" id="headingDesign">
+          <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseDesign" aria-expanded="false" aria-controls="collapseDesign">
+            Design Patterns
+          </button>
+        </h2>
+        <div id="collapseDesign" class="accordion-collapse collapse" aria-labelledby="headingDesign" data-bs-parent="#architectureAccordion">
+          <div class="accordion-body">
+            <ul>
+              <li><strong>Factory Pattern:</strong> For creating different types of agents dynamically</li>
+              <li><strong>Strategy Pattern:</strong> For implementing different processing strategies per agent type</li>
+              <li><strong>Facade Pattern:</strong> Provides simplified interface for complex subsystems</li>
+              <li><strong>Observer Pattern:</strong> For event handling and notification in the orchestration system</li>
+              <li><strong>Chain of Responsibility:</strong> For processing conversation flows through multiple handlers</li>
+              <li><strong>Decorator Pattern:</strong> For adding observability and telemetry to agents</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      
+      <div class="accordion-item">
+        <h2 class="accordion-header" id="headingScaling">
+          <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseScaling" aria-expanded="false" aria-controls="collapseScaling">
+            Scaling & Deployment
+          </button>
+        </h2>
+        <div id="collapseScaling" class="accordion-collapse collapse" aria-labelledby="headingScaling" data-bs-parent="#architectureAccordion">
+          <div class="accordion-body">
+            <ul>
+              <li><strong>Multi-Environment Support:</strong> Development, QA, Staging, and Production</li>
+              <li><strong>Database Scaling:</strong> Connection pooling, optimized queries, and database maintenance</li>
+              <li><strong>Horizontal Scaling:</strong> Stateless design allows multiple instances behind load balancer</li>
+              <li><strong>Caching Strategy:</strong> Memory caching for frequently accessed data</li>
+              <li><strong>Deployment:</strong> Containerized deployment with health checks and automated testing</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+  
+  <section class="mb-5">
+    <h2>Environment Variables</h2>
+    <p>
+      The system relies on several environment variables for configuration across different environments:
+    </p>
+    <div class="table-responsive">
+      <table class="table table-bordered">
+        <thead class="table-light">
+          <tr>
+            <th>Variable</th>
+            <th>Purpose</th>
+            <th>Required</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>DATABASE_URL</code></td>
+            <td>PostgreSQL connection string</td>
+            <td>Yes</td>
+          </tr>
+          <tr>
+            <td><code>OPENAI_API_KEY</code></td>
+            <td>API key for OpenAI services</td>
+            <td>Yes</td>
+          </tr>
+          <tr>
+            <td><code>LANGSMITH_API_KEY</code></td>
+            <td>API key for LangSmith telemetry</td>
+            <td>Yes</td>
+          </tr>
+          <tr>
+            <td><code>DATABRICKS_HOST</code>, <code>DATABRICKS_TOKEN</code></td>
+            <td>Databricks integration (optional)</td>
+            <td>No</td>
+          </tr>
+          <tr>
+            <td><code>ENV</code></td>
+            <td>Environment name (dev, qa, staging, prod)</td>
+            <td>Yes</td>
+          </tr>
+          <tr>
+            <td><code>LOG_LEVEL</code></td>
+            <td>Logging verbosity</td>
+            <td>No (defaults to INFO)</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+  
+  <section class="mb-5">
+    <h2>Further Documentation</h2>
+    <div class="row">
+      <div class="col-md-4 mb-3">
+        <div class="card h-100">
+          <div class="card-body">
+            <h5 class="card-title">Agent Development Guide</h5>
+            <p class="card-text">Guidelines for creating and extending specialized agents.</p>
+            <a href="/documentation" class="btn btn-primary">View Guide</a>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-4 mb-3">
+        <div class="card h-100">
+          <div class="card-body">
+            <h5 class="card-title">Setup Instructions</h5>
+            <p class="card-text">Instructions for setting up a development environment.</p>
+            <a href="/setup-guide" class="btn btn-primary">View Setup</a>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-4 mb-3">
+        <div class="card h-100">
+          <div class="card-body">
+            <h5 class="card-title">Agent Builder Tutorial</h5>
+            <p class="card-text">Step-by-step guide to creating custom agents.</p>
+            <a href="/agent-management-docs" class="btn btn-primary">View Tutorial</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+{% endblock %}
