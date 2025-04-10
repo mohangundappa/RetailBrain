@@ -36,15 +36,8 @@ function setupEventListeners() {
       if (target.classList.contains('edit-agent-btn') || 
           target.closest('.edit-agent-btn')) {
         const agentId = target.closest('tr').dataset.agentId;
-        // Make sure we're using the loadAgent function from agent_builder.js
-        if (typeof window.loadAgent === 'function') {
-          window.loadAgent(agentId);
-        } else if (typeof loadAgent === 'function') {
-          loadAgent(agentId);
-        } else {
-          console.error('loadAgent function not found. Make sure agent_builder.js is loaded correctly.');
-          alert('Error: Could not load agent. Please refresh the page and try again.');
-        }
+        // Redirect to the agent builder page with the agent ID
+        window.location.href = `/agent-builder?id=${agentId}`;
         event.preventDefault();
       }
       
@@ -268,50 +261,11 @@ function confirmDeleteAgent() {
 }
 
 /**
- * Create a new agent (reset the canvas)
+ * Create a new agent (redirect to builder page)
  */
 function createNewAgent() {
-  // Clear any existing agent ID from the canvas
-  if (window.currentAgentId) {
-    window.currentAgentId = null;
-  }
-  
-  // Reset form fields
-  document.getElementById('agent-name').value = 'New Agent';
-  document.getElementById('agent-description').value = '';
-  
-  // Clear the canvas
-  const canvas = document.getElementById('agent-canvas');
-  const canvasHelp = document.getElementById('canvas-help');
-  
-  if (canvas) {
-    // Remove all components except the help overlay
-    Array.from(canvas.children).forEach(child => {
-      if (child !== canvasHelp) {
-        canvas.removeChild(child);
-      }
-    });
-    
-    // Show the help overlay
-    if (canvasHelp) {
-      canvasHelp.style.display = 'block';
-    }
-  }
-  
-  // Update canvas title
-  const currentAgentName = document.getElementById('current-agent-name');
-  if (currentAgentName) {
-    currentAgentName.textContent = 'New Agent';
-  }
-  
-  // Ensure the test console is hidden
-  const testConsole = document.getElementById('test-console');
-  if (testConsole) {
-    testConsole.classList.add('d-none');
-  }
-  
-  // Notify user
-  showNotification('info', 'Started creating a new agent. Drag components to the canvas to begin.');
+  // Redirect to the agent builder page without an ID
+  window.location.href = '/agent-builder';
 }
 
 /**
