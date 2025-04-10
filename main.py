@@ -54,7 +54,7 @@ from app import app
 from db import db
 
 # Import other required modules
-from models import Conversation, Message, PackageTracking, PasswordReset, StoreLocator, ProductInfo, AgentConfig, AnalyticsData, CustomAgent, AgentTemplate
+from models import Conversation, Message, PackageTracking, PasswordReset, StoreLocator, ProductInfo, AnalyticsData, CustomAgent, AgentTemplate
 from utils.memory import ConversationMemory
 from utils.observability import (
     get_prometheus_metrics, 

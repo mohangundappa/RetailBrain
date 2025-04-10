@@ -1,285 +1,253 @@
-import os
+"""
+Database models for the Staples Brain application.
+"""
 import json
 from datetime import datetime
+from sqlalchemy import Column, Integer, String, Text, Boolean, DateTime, ForeignKey, Float, JSON
+from sqlalchemy.orm import relationship
 from app import db
 
-
 class Conversation(db.Model):
-    """Model to store user conversations with the brain"""
-    id = db.Column(db.Integer, primary_key=True)
-    session_id = db.Column(db.String(64), index=True, nullable=False)
-    user_input = db.Column(db.Text, nullable=False)
-    brain_response = db.Column(db.Text, nullable=False)
-    intent = db.Column(db.String(64), nullable=True)
-    confidence = db.Column(db.Float, nullable=True)
-    selected_agent = db.Column(db.String(64), nullable=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    """Model representing a conversation with the Staples Brain."""
+    __tablename__ = 'conversations'
     
-    messages = db.relationship('Message', back_populates='conversation', cascade='all, delete-orphan')
-    tracking_data = db.relationship('PackageTracking', back_populates='conversation', cascade='all, delete-orphan')
-    password_reset_data = db.relationship('PasswordReset', back_populates='conversation', cascade='all, delete-orphan')
-    store_locator_data = db.relationship('StoreLocator', back_populates='conversation', cascade='all, delete-orphan')
-    product_info_data = db.relationship('ProductInfo', back_populates='conversation', cascade='all, delete-orphan')
-
+    id = Column(Integer, primary_key=True)
+    session_id = Column(String(64), nullable=False, index=True)
+    user_input = Column(Text, nullable=False)
+    brain_response = Column(Text, nullable=True)
+    intent = Column(String(64), nullable=True)
+    confidence = Column(Float, nullable=True)
+    selected_agent = Column(String(64), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relationships
+    messages = relationship("Message", back_populates="conversation", cascade="all, delete-orphan")
+    tracking_data = relationship("PackageTracking", back_populates="conversation", cascade="all, delete-orphan")
+    password_reset_data = relationship("PasswordReset", back_populates="conversation", cascade="all, delete-orphan")
+    store_locator_data = relationship("StoreLocator", back_populates="conversation", cascade="all, delete-orphan")
+    product_info_data = relationship("ProductInfo", back_populates="conversation", cascade="all, delete-orphan")
+    
+    def __repr__(self):
+        return f"<Conversation {self.id}: {self.intent}>"
 
 class Message(db.Model):
-    """Model to store individual messages in a conversation"""
-    id = db.Column(db.Integer, primary_key=True)
-    conversation_id = db.Column(db.Integer, db.ForeignKey('conversation.id'), nullable=False)
-    role = db.Column(db.String(32), nullable=False)  # 'user', 'assistant', 'system'
-    content = db.Column(db.Text, nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    """Model representing a message in a conversation."""
+    __tablename__ = 'messages'
     
-    conversation = db.relationship('Conversation', back_populates='messages')
-
+    id = Column(Integer, primary_key=True)
+    conversation_id = Column(Integer, ForeignKey('conversations.id'), nullable=False)
+    role = Column(String(20), nullable=False)  # 'user', 'assistant', 'system', etc.
+    content = Column(Text, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    
+    # Relationships
+    conversation = relationship("Conversation", back_populates="messages")
+    
+    def __repr__(self):
+        return f"<Message {self.id}: {self.role}>"
 
 class PackageTracking(db.Model):
-    """Model to store package tracking information"""
-    id = db.Column(db.Integer, primary_key=True)
-    conversation_id = db.Column(db.Integer, db.ForeignKey('conversation.id'), nullable=False)
-    tracking_number = db.Column(db.String(128), nullable=False)
-    shipping_carrier = db.Column(db.String(64), nullable=True)
-    order_number = db.Column(db.String(128), nullable=True)
-    status = db.Column(db.String(64), nullable=True)
-    estimated_delivery = db.Column(db.String(64), nullable=True)
-    current_location = db.Column(db.String(128), nullable=True)
-    last_updated = db.Column(db.DateTime, nullable=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    """Model for package tracking data."""
+    __tablename__ = 'package_tracking'
     
-    conversation = db.relationship('Conversation', back_populates='tracking_data')
-
+    id = Column(Integer, primary_key=True)
+    conversation_id = Column(Integer, ForeignKey('conversations.id'), nullable=False)
+    tracking_number = Column(String(100), nullable=True)
+    shipping_carrier = Column(String(100), nullable=True)
+    order_number = Column(String(100), nullable=True)
+    status = Column(String(50), nullable=True)
+    estimated_delivery = Column(String(50), nullable=True)
+    current_location = Column(String(200), nullable=True)
+    last_updated = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    
+    # Relationships
+    conversation = relationship("Conversation", back_populates="tracking_data")
+    
+    def __repr__(self):
+        return f"<PackageTracking {self.id}: {self.tracking_number}>"
 
 class PasswordReset(db.Model):
-    """Model to store password reset information"""
-    id = db.Column(db.Integer, primary_key=True)
-    conversation_id = db.Column(db.Integer, db.ForeignKey('conversation.id'), nullable=False)
-    email = db.Column(db.String(128), nullable=True)
-    username = db.Column(db.String(128), nullable=True)
-    account_type = db.Column(db.String(64), nullable=True)
-    issue = db.Column(db.String(128), nullable=True)
-    reset_link_sent = db.Column(db.Boolean, default=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    """Model for password reset data."""
+    __tablename__ = 'password_reset'
     
-    conversation = db.relationship('Conversation', back_populates='password_reset_data')
-
-
-class AgentConfig(db.Model):
-    """Model to store agent configuration settings"""
-    id = db.Column(db.Integer, primary_key=True)
-    agent_name = db.Column(db.String(64), nullable=False, unique=True)
-    is_active = db.Column(db.Boolean, default=True)
-    confidence_threshold = db.Column(db.Float, default=0.3)
-    description = db.Column(db.Text, nullable=True)
-    prompt_template = db.Column(db.Text, nullable=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, onupdate=datetime.utcnow)
-
+    id = Column(Integer, primary_key=True)
+    conversation_id = Column(Integer, ForeignKey('conversations.id'), nullable=False)
+    email = Column(String(100), nullable=True)
+    username = Column(String(100), nullable=True)
+    account_type = Column(String(50), nullable=True)
+    issue = Column(String(100), nullable=True)
+    reset_link_sent = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    
+    # Relationships
+    conversation = relationship("Conversation", back_populates="password_reset_data")
+    
+    def __repr__(self):
+        return f"<PasswordReset {self.id}: {self.email}>"
 
 class StoreLocator(db.Model):
-    """Model to store store locator information"""
-    id = db.Column(db.Integer, primary_key=True)
-    conversation_id = db.Column(db.Integer, db.ForeignKey('conversation.id'), nullable=False)
-    location = db.Column(db.String(128), nullable=True)
-    radius = db.Column(db.Integer, default=10)
-    service = db.Column(db.String(128), nullable=True)
-    store_id = db.Column(db.String(64), nullable=True)
-    store_name = db.Column(db.String(128), nullable=True)
-    store_address = db.Column(db.String(256), nullable=True)
-    store_phone = db.Column(db.String(64), nullable=True)
-    store_hours = db.Column(db.Text, nullable=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    """Model for store locator data."""
+    __tablename__ = 'store_locator'
     
-    conversation = db.relationship('Conversation', back_populates='store_locator_data')
-
+    id = Column(Integer, primary_key=True)
+    conversation_id = Column(Integer, ForeignKey('conversations.id'), nullable=False)
+    location = Column(String(100), nullable=True)
+    radius = Column(Float, nullable=True)
+    service = Column(String(100), nullable=True)
+    store_id = Column(String(20), nullable=True)
+    store_name = Column(String(100), nullable=True)
+    store_address = Column(String(200), nullable=True)
+    store_phone = Column(String(20), nullable=True)
+    store_hours = Column(String(200), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    
+    # Relationships
+    conversation = relationship("Conversation", back_populates="store_locator_data")
+    
+    def __repr__(self):
+        return f"<StoreLocator {self.id}: {self.store_name}>"
 
 class ProductInfo(db.Model):
-    """Model to store product information"""
-    id = db.Column(db.Integer, primary_key=True)
-    conversation_id = db.Column(db.Integer, db.ForeignKey('conversation.id'), nullable=False)
-    product_name = db.Column(db.String(256), nullable=True)
-    product_id = db.Column(db.String(128), nullable=True)
-    category = db.Column(db.String(128), nullable=True)
-    price = db.Column(db.String(64), nullable=True)
-    availability = db.Column(db.String(64), nullable=True)
-    description = db.Column(db.Text, nullable=True)
-    specifications = db.Column(db.Text, nullable=True)
-    search_query = db.Column(db.String(256), nullable=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    """Model for product information data."""
+    __tablename__ = 'product_info'
     
-    conversation = db.relationship('Conversation', back_populates='product_info_data')
-
+    id = Column(Integer, primary_key=True)
+    conversation_id = Column(Integer, ForeignKey('conversations.id'), nullable=False)
+    product_name = Column(String(200), nullable=True)
+    product_id = Column(String(50), nullable=True)
+    category = Column(String(100), nullable=True)
+    price = Column(String(50), nullable=True)
+    availability = Column(String(50), nullable=True)
+    description = Column(Text, nullable=True)
+    specifications = Column(Text, nullable=True)
+    search_query = Column(String(200), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    
+    # Relationships
+    conversation = relationship("Conversation", back_populates="product_info_data")
+    
+    def __repr__(self):
+        return f"<ProductInfo {self.id}: {self.product_name}>"
 
 class AnalyticsData(db.Model):
-    """Model to store analytics data about agent usage"""
-    id = db.Column(db.Integer, primary_key=True)
-    agent_name = db.Column(db.String(64), nullable=False)
-    request_count = db.Column(db.Integer, default=0)
-    success_count = db.Column(db.Integer, default=0)
-    avg_confidence = db.Column(db.Float, default=0)
-    avg_response_time = db.Column(db.Float, default=0)
-    date = db.Column(db.Date, nullable=False)
+    """Model for analytics data."""
+    __tablename__ = 'analytics_data'
     
-    __table_args__ = (db.UniqueConstraint('agent_name', 'date', name='unique_agent_day'),)
-
+    id = Column(Integer, primary_key=True)
+    metric_name = Column(String(100), nullable=False)
+    metric_value = Column(Float, nullable=False)
+    dimensions = Column(Text, nullable=True)  # JSON string of dimension key/values
+    timestamp = Column(DateTime, default=datetime.utcnow)
+    
+    def get_dimensions(self):
+        """Get dimensions as a dictionary."""
+        if self.dimensions:
+            return json.loads(self.dimensions)
+        return {}
+    
+    def set_dimensions(self, dimensions_dict):
+        """Set dimensions from a dictionary."""
+        self.dimensions = json.dumps(dimensions_dict)
+    
+    def __repr__(self):
+        return f"<AnalyticsData {self.id}: {self.metric_name}={self.metric_value}>"
 
 class CustomAgent(db.Model):
-    """Model to store custom agent configurations created through the UI"""
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(64), nullable=False, unique=True)
-    description = db.Column(db.Text, nullable=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, onupdate=datetime.utcnow)
-    is_active = db.Column(db.Boolean, default=True)
-    creator = db.Column(db.String(128), nullable=True)
-    icon = db.Column(db.String(256), nullable=True)
+    """Model for custom agents created through the builder interface."""
+    __tablename__ = 'custom_agents'
     
-    # Core configuration storage
-    configuration = db.Column(db.Text, nullable=True)  # JSON with agent configuration
-    entity_definitions = db.Column(db.Text, nullable=True)  # JSON with entity definitions and validation rules
-    prompt_templates = db.Column(db.Text, nullable=True)  # JSON with all prompt templates
-    response_formats = db.Column(db.Text, nullable=True)  # JSON with response format definitions
-    business_rules = db.Column(db.Text, nullable=True)  # JSON with business rules
-    
-    # Wizard progress tracking
-    wizard_completed = db.Column(db.Boolean, default=False)
-    current_wizard_step = db.Column(db.Integer, default=1)
+    id = Column(Integer, primary_key=True)
+    name = Column(String(100), nullable=False, unique=True)
+    description = Column(Text, nullable=True)
+    configuration = Column(Text, nullable=True)  # JSON string of the complete agent configuration
+    is_active = Column(Boolean, default=True)
+    wizard_completed = Column(Boolean, default=False)  # Whether the setup wizard has been completed
+    creator = Column(String(100), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     # Relationships
-    components = db.relationship('AgentComponent', back_populates='agent', cascade='all, delete-orphan')
-    connections = db.relationship('ComponentConnection', back_populates='agent', cascade='all, delete-orphan')
+    components = relationship("AgentComponent", back_populates="agent", cascade="all, delete-orphan")
+    connections = relationship("ComponentConnection", back_populates="agent", cascade="all, delete-orphan")
     
-    def get_entity_definitions(self):
-        """Get parsed entity definitions"""
-        if not self.entity_definitions:
-            return []
-        return json.loads(self.entity_definitions)
-        
-    def get_prompt_templates(self):
-        """Get parsed prompt templates"""
-        if not self.prompt_templates:
-            return {}
-        return json.loads(self.prompt_templates)
-        
-    def get_response_formats(self):
-        """Get parsed response formats"""
-        if not self.response_formats:
-            return {}
-        return json.loads(self.response_formats)
-        
-    def get_business_rules(self):
-        """Get parsed business rules"""
-        if not self.business_rules:
-            return []
-        return json.loads(self.business_rules)
-
+    def __repr__(self):
+        return f"<CustomAgent {self.id}: {self.name}>"
 
 class AgentComponent(db.Model):
-    """Model for individual components used in a custom agent"""
-    id = db.Column(db.Integer, primary_key=True)
-    agent_id = db.Column(db.Integer, db.ForeignKey('custom_agent.id'), nullable=False)
-    component_type = db.Column(db.String(64), nullable=False)  # 'prompt', 'llm', 'tool', 'api', etc.
-    name = db.Column(db.String(128), nullable=False)
-    position_x = db.Column(db.Integer, default=0)  # Position in UI canvas
-    position_y = db.Column(db.Integer, default=0)
-    configuration = db.Column(db.Text, nullable=True)  # JSON with component configuration
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    """Model for components of a custom agent."""
+    __tablename__ = 'agent_components'
+    
+    id = Column(Integer, primary_key=True)
+    agent_id = Column(Integer, ForeignKey('custom_agents.id'), nullable=False)
+    component_type = Column(String(50), nullable=False)  # 'prompt', 'llm', 'output_parser', etc.
+    name = Column(String(100), nullable=False)
+    position_x = Column(Float, nullable=True)
+    position_y = Column(Float, nullable=True)
+    configuration = Column(Text, nullable=True)  # JSON string of component-specific configuration
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     # Relationships
-    agent = db.relationship('CustomAgent', back_populates='components')
-    outgoing_connections = db.relationship('ComponentConnection', 
-                                       foreign_keys='ComponentConnection.source_id',
-                                       back_populates='source',
-                                       cascade='all, delete-orphan')
-    incoming_connections = db.relationship('ComponentConnection', 
-                                      foreign_keys='ComponentConnection.target_id',
-                                      back_populates='target',
-                                      cascade='all, delete-orphan')
-
+    agent = relationship("CustomAgent", back_populates="components")
+    outgoing_connections = relationship("ComponentConnection", foreign_keys="ComponentConnection.source_id", 
+                                       back_populates="source_component", cascade="all, delete-orphan")
+    incoming_connections = relationship("ComponentConnection", foreign_keys="ComponentConnection.target_id", 
+                                       back_populates="target_component", cascade="all, delete-orphan")
+    
+    def __repr__(self):
+        return f"<AgentComponent {self.id}: {self.name} ({self.component_type})>"
 
 class ComponentConnection(db.Model):
-    """Model for connections between components in a custom agent"""
-    id = db.Column(db.Integer, primary_key=True)
-    agent_id = db.Column(db.Integer, db.ForeignKey('custom_agent.id'), nullable=False)
-    source_id = db.Column(db.Integer, db.ForeignKey('agent_component.id'), nullable=False)
-    target_id = db.Column(db.Integer, db.ForeignKey('agent_component.id'), nullable=False)
-    connection_type = db.Column(db.String(64), default='default')  # 'data', 'control', etc.
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    """Model for connections between components in a custom agent."""
+    __tablename__ = 'component_connections'
+    
+    id = Column(Integer, primary_key=True)
+    agent_id = Column(Integer, ForeignKey('custom_agents.id'), nullable=False)
+    source_id = Column(Integer, ForeignKey('agent_components.id'), nullable=False)
+    target_id = Column(Integer, ForeignKey('agent_components.id'), nullable=False)
+    connection_type = Column(String(50), default='default')
+    created_at = Column(DateTime, default=datetime.utcnow)
     
     # Relationships
-    agent = db.relationship('CustomAgent', back_populates='connections')
-    source = db.relationship('AgentComponent', foreign_keys=[source_id], back_populates='outgoing_connections')
-    target = db.relationship('AgentComponent', foreign_keys=[target_id], back_populates='incoming_connections')
-
+    agent = relationship("CustomAgent", back_populates="connections")
+    source_component = relationship("AgentComponent", foreign_keys=[source_id], back_populates="outgoing_connections")
+    target_component = relationship("AgentComponent", foreign_keys=[target_id], back_populates="incoming_connections")
+    
+    def __repr__(self):
+        return f"<ComponentConnection {self.id}: {self.source_id} -> {self.target_id}>"
 
 class ComponentTemplate(db.Model):
-    """Model for predefined component templates that users can drag and drop"""
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(128), nullable=False)
-    description = db.Column(db.Text, nullable=True)
-    component_type = db.Column(db.String(64), nullable=False)  # 'prompt', 'llm', 'tool', 'api', etc.
-    icon = db.Column(db.String(256), nullable=True)
-    configuration_template = db.Column(db.Text, nullable=True)  # JSON template with default values
-    category = db.Column(db.String(64), nullable=True)  # For grouping components
-    is_system = db.Column(db.Boolean, default=False)  # If True, can't be deleted/modified by users
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    """Model for predefined component templates that can be used in the agent builder."""
+    __tablename__ = 'component_templates'
     
+    id = Column(Integer, primary_key=True)
+    template_type = Column(String(50), nullable=False)  # 'prompt', 'llm', 'output_parser', etc.
+    name = Column(String(100), nullable=False)
+    description = Column(Text, nullable=True)
+    configuration = Column(Text, nullable=False)  # JSON string of template configuration
+    icon = Column(String(100), nullable=True)
+    is_system = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    def __repr__(self):
+        return f"<ComponentTemplate {self.id}: {self.name} ({self.template_type})>"
 
 class AgentTemplate(db.Model):
-    """Model for complete agent templates that users can use as starting points"""
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(128), nullable=False)
-    description = db.Column(db.Text, nullable=True)
-    category = db.Column(db.String(64), nullable=True)  # e.g., 'customer-service', 'sales', 'support'
-    icon = db.Column(db.String(256), nullable=True)
-    screenshot = db.Column(db.String(256), nullable=True)  # URL/path to template screenshot
-    is_featured = db.Column(db.Boolean, default=False)  # Featured templates appear first
-    is_system = db.Column(db.Boolean, default=False)  # If True, can't be deleted/modified by users
+    """Model for predefined agent templates."""
+    __tablename__ = 'agent_templates'
     
-    # Template configuration (stored as JSON)
-    configuration = db.Column(db.Text, nullable=True)  # JSON with agent configuration
-    entity_definitions = db.Column(db.Text, nullable=True)  # JSON with entity definitions and validation rules
-    prompt_templates = db.Column(db.Text, nullable=True)  # JSON with all prompt templates
-    response_formats = db.Column(db.Text, nullable=True)  # JSON with response format definitions
-    business_rules = db.Column(db.Text, nullable=True)  # JSON with business rules
+    id = Column(Integer, primary_key=True)
+    name = Column(String(100), nullable=False)
+    description = Column(Text, nullable=True)
+    configuration = Column(Text, nullable=False)  # JSON string of complete agent configuration
+    category = Column(String(50), nullable=True)
+    icon = Column(String(100), nullable=True)
+    is_system = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
-    # Author information
-    author = db.Column(db.String(128), nullable=True)
-    author_email = db.Column(db.String(256), nullable=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, onupdate=datetime.utcnow)
-    downloads = db.Column(db.Integer, default=0)  # Number of times this template has been used
-    rating = db.Column(db.Float, default=0)  # Average rating (0-5)
-    rating_count = db.Column(db.Integer, default=0)  # Number of ratings
-    
-    # Tags for template (comma-separated)
-    tags = db.Column(db.String(512), nullable=True)
-    
-    def get_entity_definitions(self):
-        """Get parsed entity definitions"""
-        if not self.entity_definitions:
-            return []
-        return json.loads(self.entity_definitions)
-        
-    def get_prompt_templates(self):
-        """Get parsed prompt templates"""
-        if not self.prompt_templates:
-            return {}
-        return json.loads(self.prompt_templates)
-        
-    def get_response_formats(self):
-        """Get parsed response formats"""
-        if not self.response_formats:
-            return {}
-        return json.loads(self.response_formats)
-        
-    def get_business_rules(self):
-        """Get parsed business rules"""
-        if not self.business_rules:
-            return []
-        return json.loads(self.business_rules)
-        
-    def get_tags_list(self):
-        """Get tags as a list"""
-        if not self.tags:
-            return []
-        return [tag.strip() for tag in self.tags.split(',') if tag.strip()]
+    def __repr__(self):
+        return f"<AgentTemplate {self.id}: {self.name}>"

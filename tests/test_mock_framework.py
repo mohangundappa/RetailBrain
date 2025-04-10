@@ -3,7 +3,15 @@ Simple test file to verify our mock framework is working correctly
 """
 import pytest
 import asyncio
-from tests.test_utils import create_mock_chat_model, create_async_chain_mock
+import sys
+import os
+from pathlib import Path
+
+# Add the project root to path
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
+# Import directly from test_utils in the same directory
+from test_utils import create_mock_chat_model, create_async_chain_mock
 
 class TestMockFramework:
     """Test the mock framework for LLMs and chains"""
