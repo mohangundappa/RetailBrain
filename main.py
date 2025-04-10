@@ -185,7 +185,8 @@ def db_is_healthy():
     try:
         # Execute a simple query to check the database connection
         with app.app_context():
-            db.session.execute("SELECT 1").fetchall()
+            from sqlalchemy import text
+            db.session.execute(text("SELECT 1")).fetchall()
         return True
     except Exception as e:
         logger.error(f"Database health check failed: {e}")
