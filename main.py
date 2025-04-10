@@ -140,12 +140,21 @@ PRODUCT_INFO_SAMPLE = {
 def index():
     """Render the main page with application statistics."""
     try:
+        # Check database and LLM connectivity
+        database_connected = db_is_healthy()
+        llm_integration = llm_is_healthy()
+        
         # Get application statistics
         stats = {
-            "total_conversations": Conversation.query.count(),
-            "total_agents": 4 + CustomAgent.query.filter_by(is_active=True).count(),
+            "total_conversations": Conversation.query.count() if database_connected else 0,
+            "conversation_count": Conversation.query.count() if database_connected else 0,
+            "total_agents": 4 + CustomAgent.query.filter_by(is_active=True).count() if database_connected else 4,
             "uptime": time.time() - app.config.get("START_TIME", time.time()),
-            "environment": os.environ.get("APP_ENV", "development")
+            "environment": os.environ.get("APP_ENV", "development"),
+            "database_connected": database_connected,
+            "llm_integration": llm_integration,
+            "available_agents": ["Package Tracking Agent", "Reset Password Agent", 
+                              "Store Locator Agent", "Product Information Agent"]
         }
         
         # Update metrics for active conversations
