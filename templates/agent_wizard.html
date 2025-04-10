@@ -722,111 +722,144 @@
       });
     }
     {% if step == 2 %}
-    // Entity management for Step 2
-    const entityContainer = document.getElementById('entity-container');
-    const addEntityButton = document.getElementById('add-entity');
-    const entityCountField = document.getElementById('entity_count');
-    
-    console.log("Entity management - container:", entityContainer ? "found" : "missing", 
-                "button:", addEntityButton ? "found" : "missing", 
-                "count field:", entityCountField ? "found" : "missing");
-    
-    if (entityContainer && addEntityButton && entityCountField) {
-      let entityCount = {{ entities|length if entities is defined else 0 }};
-      console.log(`Starting with ${entityCount} entities`);
+    // Entity management for Step 2 - COMPLETELY REWRITTEN FOR ROBUSTNESS
+    try {
+      console.log("Setting up entity management for Step 2");
+      const entityContainer = document.getElementById('entity-container');
+      const addEntityButton = document.getElementById('add-entity');
+      const entityCountField = document.getElementById('entity_count');
       
-      // Update entity count in the hidden field
-      const updateEntityCount = () => {
-        entityCountField.value = entityCount;
-        console.log(`Updated entity count to ${entityCount}`);
-      };
+      console.log("Entity management - container:", entityContainer ? "found" : "missing", 
+                  "button:", addEntityButton ? "found" : "missing", 
+                  "count field:", entityCountField ? "found" : "missing");
       
-      // Initialize the entity count field
-      updateEntityCount();
-      
-      // Add a new entity form
-      addEntityButton.addEventListener('click', function() {
-      console.log("Add Entity button clicked");
-      const entityIndex = entityCount;
-      const entityHtml = `
-        <div class="card mb-3 entity-card" data-entity-index="${entityIndex}">
-          <div class="card-header bg-light d-flex justify-content-between align-items-center">
-            <h5 class="mb-0">Entity #${entityIndex + 1}</h5>
-            <button type="button" class="btn btn-sm btn-outline-danger remove-entity" data-index="${entityIndex}">
-              <i class="bi bi-trash"></i>
-            </button>
-          </div>
-          <div class="card-body">
-            <div class="row">
-              <div class="col-md-6 mb-3">
-                <label class="form-label">Entity Name</label>
-                <input type="text" class="form-control entity-name" name="entities[${entityIndex}][name]" required>
+      if (entityContainer && addEntityButton && entityCountField) {
+        let entityCount = {{ entities|length if entities is defined else 0 }};
+        console.log(`Starting with ${entityCount} entities`);
+        
+        // Update entity count in the hidden field
+        const updateEntityCount = () => {
+          entityCountField.value = entityCount;
+          console.log(`Updated entity count to ${entityCount}`);
+        };
+        
+        // Initialize the entity count field
+        updateEntityCount();
+        
+        // Function to create an entity card
+        function createEntityCard(entityIndex) {
+          console.log(`Creating entity card with index ${entityIndex}`);
+          const entityHtml = `
+            <div class="card mb-3 entity-card" data-entity-index="${entityIndex}">
+              <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Entity #${entityIndex + 1}</h5>
+                <button type="button" class="btn btn-sm btn-outline-danger remove-entity" data-index="${entityIndex}">
+                  <i class="bi bi-trash"></i>
+                </button>
               </div>
-              <div class="col-md-6 mb-3">
-                <label class="form-label">Description</label>
-                <input type="text" class="form-control" name="entities[${entityIndex}][description]">
+              <div class="card-body">
+                <div class="row">
+                  <div class="col-md-6 mb-3">
+                    <label class="form-label">Entity Name</label>
+                    <input type="text" class="form-control entity-name" name="entities[${entityIndex}][name]" required>
+                  </div>
+                  <div class="col-md-6 mb-3">
+                    <label class="form-label">Description</label>
+                    <input type="text" class="form-control" name="entities[${entityIndex}][description]">
+                  </div>
+                </div>
+                
+                <div class="row">
+                  <div class="col-md-6 mb-3">
+                    <label class="form-label">Validation Pattern (Regex)</label>
+                    <input type="text" class="form-control font-monospace" name="entities[${entityIndex}][validation_pattern]">
+                    <div class="form-text">Regular expression for validating user input</div>
+                  </div>
+                  <div class="col-md-6 mb-3">
+                    <label class="form-label">Error Message</label>
+                    <input type="text" class="form-control" name="entities[${entityIndex}][error_message]">
+                  </div>
+                </div>
+                
+                <div class="row">
+                  <div class="col-md-12 mb-3">
+                    <label class="form-label">Examples</label>
+                    <input type="text" class="form-control" name="entities[${entityIndex}][examples]" placeholder="Example1, Example2, Example3">
+                    <div class="form-text">Comma-separated list of examples</div>
+                  </div>
+                </div>
+                
+                <div class="form-check">
+                  <input class="form-check-input" type="checkbox" name="entities[${entityIndex}][required]" id="entity-required-${entityIndex}" checked>
+                  <label class="form-check-label" for="entity-required-${entityIndex}">
+                    Required Entity
+                  </label>
+                </div>
               </div>
             </div>
+          `;
+          
+          // Create a container for the entity card
+          const tempDiv = document.createElement('div');
+          tempDiv.innerHTML = entityHtml;
+          return tempDiv.firstElementChild;
+        }
+        
+        // Handle entity removal
+        function handleRemoveEntity(event) {
+          try {
+            console.log("Remove entity button clicked");
+            const index = event.currentTarget.dataset.index;
+            console.log(`Removing entity with index ${index}`);
+            const entityCard = document.querySelector(`.entity-card[data-entity-index="${index}"]`);
             
-            <div class="row">
-              <div class="col-md-6 mb-3">
-                <label class="form-label">Validation Pattern (Regex)</label>
-                <input type="text" class="form-control font-monospace" name="entities[${entityIndex}][validation_pattern]">
-                <div class="form-text">Regular expression for validating user input</div>
-              </div>
-              <div class="col-md-6 mb-3">
-                <label class="form-label">Error Message</label>
-                <input type="text" class="form-control" name="entities[${entityIndex}][error_message]">
-              </div>
-            </div>
+            if (entityCard) {
+              entityCard.remove();
+              entityCount--; // Decrease entity count
+              updateEntityCount(); // Update hidden field
+              console.log(`Entity removed, count is now ${entityCount}`);
+            } else {
+              console.error(`Entity card with index ${index} not found`);
+            }
+          } catch (e) {
+            console.error("Error removing entity:", e);
+          }
+        }
+        
+        // Add event listeners to existing remove buttons
+        document.querySelectorAll('.remove-entity').forEach(button => {
+          button.addEventListener('click', handleRemoveEntity);
+        });
+        
+        // Add a new entity form
+        addEntityButton.addEventListener('click', function() {
+          try {
+            console.log("Add Entity button clicked");
+            // Create and add the new entity card
+            const entityCard = createEntityCard(entityCount);
+            entityContainer.appendChild(entityCard);
             
-            <div class="row">
-              <div class="col-md-12 mb-3">
-                <label class="form-label">Examples</label>
-                <input type="text" class="form-control" name="entities[${entityIndex}][examples]" placeholder="Example1, Example2, Example3">
-                <div class="form-text">Comma-separated list of examples</div>
-              </div>
-            </div>
+            // Add event listener to the new remove button
+            const newRemoveButton = entityCard.querySelector('.remove-entity');
+            if (newRemoveButton) {
+              newRemoveButton.addEventListener('click', handleRemoveEntity);
+            } else {
+              console.error("Remove button not found in newly created entity card");
+            }
             
-            <div class="form-check">
-              <input class="form-check-input" type="checkbox" name="entities[${entityIndex}][required]" id="entity-required-${entityIndex}" checked>
-              <label class="form-check-label" for="entity-required-${entityIndex}">
-                Required Entity
-              </label>
-            </div>
-          </div>
-        </div>
-      `;
-      
-      // Append the new entity form
-      const tempDiv = document.createElement('div');
-      tempDiv.innerHTML = entityHtml;
-      entityContainer.appendChild(tempDiv.firstElementChild);
-      
-      // Add event listener to the new remove button
-      const newRemoveButton = entityContainer.querySelector(`.entity-card[data-entity-index="${entityIndex}"] .remove-entity`);
-      newRemoveButton.addEventListener('click', handleRemoveEntity);
-      
-      entityCount++;
-      updateEntityCount(); // Update the hidden field
-    });
-    
-    // Handle entity removal
-    function handleRemoveEntity(event) {
-      const index = event.currentTarget.dataset.index;
-      const entityCard = document.querySelector(`.entity-card[data-entity-index="${index}"]`);
-      
-      if (entityCard) {
-        entityCard.remove();
-        entityCount--; // Decrease entity count
-        updateEntityCount(); // Update hidden field
+            // Increment count and update the field
+            entityCount++;
+            updateEntityCount();
+            console.log(`Added new entity, count is now ${entityCount}`);
+          } catch (e) {
+            console.error("Error adding entity:", e);
+          }
+        });
+      } else {
+        console.error("Missing required elements for entity management");
       }
-    }
-    
-    // Add event listeners to existing remove buttons
-    document.querySelectorAll('.remove-entity').forEach(button => {
-      button.addEventListener('click', handleRemoveEntity);
-    });
+    } catch (e) {
+      console.error("Error setting up entity management:", e);
     }
     {% endif %}
     
@@ -1326,55 +1359,83 @@ Next steps:
       });
     }
     
-    // Initialize AI Assist buttons
-    const aiAssistButtons = document.querySelectorAll('.ai-assist-btn');
-    console.log(`Found ${aiAssistButtons.length} AI assist buttons`);
-    
-    if (aiAssistButtons.length > 0) {
-      aiAssistButtons.forEach(button => {
-        if (button) {
-          console.log(`Adding click listener to button: ${button.id}`);
-          button.addEventListener('click', function() {
-        console.log("AI assist button clicked");
-        const targetId = this.getAttribute('data-target');
-        const assistType = this.getAttribute('data-type');
-        console.log(`Target: ${targetId}, Type: ${assistType}`);
-        
-        let targetElement = document.getElementById(targetId);
-        
-        // Special handling for entity assistance
-        if (assistType === 'entity_definition' && targetId === 'entity-assistant') {
-          // No specific target, the result will be used to create new entities
-          targetElement = document.createElement('div');
-          targetElement.id = 'entity-assistant';
-        }
-        
-        if (!targetElement && targetId !== 'entity-assistant') {
-          console.error('Target element not found:', targetId);
-          return;
-        }
-        
-        // Get agent type from the form
-        let agentType = 'custom';
-        const agentTypeSelect = document.querySelector('select[name="agent_type"]');
-        if (agentTypeSelect) {
-          agentType = agentTypeSelect.value;
-        }
-        
-        // Set modal attributes for current context
-        const modal = document.getElementById('ai-assist-modal');
-        modal.setAttribute('data-target', targetId);
-        modal.setAttribute('data-type', assistType);
-        
-        // Reset modal state
-        document.getElementById('ai-assist-description').value = '';
-        document.getElementById('ai-assist-loading').classList.add('d-none');
-        document.getElementById('ai-assist-result').classList.add('d-none');
-        document.getElementById('ai-assist-generate').classList.remove('d-none');
-        document.getElementById('ai-assist-apply').classList.add('d-none');
-        
-        // Set modal title based on assist type
-        const modalTitle = document.getElementById('aiAssistModalLabel');
+    // Initialize AI Assist buttons - REWRITTEN FOR ROBUSTNESS
+    try {
+      console.log("Setting up AI Assist buttons");
+      const aiAssistButtons = document.querySelectorAll('.ai-assist-btn');
+      console.log(`Found ${aiAssistButtons.length} AI assist buttons`);
+      
+      if (aiAssistButtons && aiAssistButtons.length > 0) {
+        aiAssistButtons.forEach(button => {
+          if (button) {
+            console.log(`Adding click listener to button: ${button.id || 'unnamed button'}`);
+            button.addEventListener('click', handleAiAssistButtonClick);
+          }
+        });
+      }
+    } catch (e) {
+      console.error("Error setting up AI Assist buttons:", e);
+    }
+  }
+  
+  // Separate handler function for AI Assist button clicks
+  function handleAiAssistButtonClick() {
+    try {
+      console.log("AI assist button clicked");
+      const targetId = this.getAttribute('data-target');
+      const assistType = this.getAttribute('data-type');
+      console.log(`Target: ${targetId}, Type: ${assistType}`);
+      
+      let targetElement = null;
+      // Special handling for entity assistance
+      if (assistType === 'entity_definition' && targetId === 'entity-assistant') {
+        // No specific target, the result will be used to create new entities
+        targetElement = document.createElement('div');
+        targetElement.id = 'entity-assistant';
+      } else {
+        targetElement = document.getElementById(targetId);
+      }
+      
+      if (!targetElement && targetId !== 'entity-assistant') {
+        console.error('Target element not found:', targetId);
+        return;
+      }
+      
+      // Get agent type from the form
+      let agentType = 'custom';
+      const agentTypeSelect = document.querySelector('select[name="agent_type"]');
+      if (agentTypeSelect) {
+        agentType = agentTypeSelect.value;
+      }
+      
+      // Get the modal
+      const modal = document.getElementById('ai-assist-modal');
+      if (!modal) {
+        console.error('AI assist modal not found');
+        return;
+      }
+      
+      // Set modal attributes for current context
+      modal.setAttribute('data-target', targetId);
+      modal.setAttribute('data-type', assistType);
+      
+      // Get all the relevant elements
+      const descriptionField = document.getElementById('ai-assist-description');
+      const loadingDiv = document.getElementById('ai-assist-loading');
+      const resultDiv = document.getElementById('ai-assist-result');
+      const generateButton = document.getElementById('ai-assist-generate');
+      const applyButton = document.getElementById('ai-assist-apply');
+      const modalTitle = document.getElementById('aiAssistModalLabel');
+      
+      // Reset modal state
+      if (descriptionField) descriptionField.value = '';
+      if (loadingDiv) loadingDiv.classList.add('d-none');
+      if (resultDiv) resultDiv.classList.add('d-none');
+      if (generateButton) generateButton.classList.remove('d-none');
+      if (applyButton) applyButton.classList.add('d-none');
+      
+      // Set modal title based on assist type
+      if (modalTitle) {
         const assistTypeLabels = {
           'system_prompt': 'System Prompt',
           'entity_definition': 'Entity Definitions',
@@ -1382,12 +1443,19 @@ Next steps:
           'prompt_template': 'Prompt Template'
         };
         modalTitle.textContent = `AI Assist: ${assistTypeLabels[assistType] || 'Content Generation'}`;
-        
-        // Show modal
+      }
+      
+      // Show modal
+      try {
         const bsModal = new bootstrap.Modal(modal);
         bsModal.show();
-      });
-    });
+      } catch (e) {
+        console.error("Error showing modal:", e);
+        alert("Could not open AI Assist modal. Please try again.");
+      }
+    } catch (e) {
+      console.error("Error in AI assist button handler:", e);
+    }
   }
 </script>
 {% endblock %}
