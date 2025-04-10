@@ -7,6 +7,108 @@ from sqlalchemy import Column, Integer, String, Text, Boolean, DateTime, Foreign
 from sqlalchemy.orm import relationship
 from app import db
 
+# Core Service models
+
+class ServiceRegistry(db.Model):
+    """Model for the service registry of registered core services."""
+    __tablename__ = 'service_registry'
+    
+    id = Column(Integer, primary_key=True)
+    service_name = Column(String(100), nullable=False, unique=True)
+    service_type = Column(String(50), nullable=False)  # 'core', 'integration', 'api', etc.
+    configuration = Column(Text, nullable=True)  # JSON string of service configuration
+    is_active = Column(Boolean, default=True)
+    last_active = Column(DateTime, nullable=True)
+    last_health_check = Column(DateTime, nullable=True)
+    health_status = Column(Text, nullable=True)  # JSON string of the last health check result
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    def __repr__(self):
+        return f"<ServiceRegistry {self.id}: {self.service_name}>"
+
+class ServiceDependency(db.Model):
+    """Model for dependencies between services in the registry."""
+    __tablename__ = 'service_dependencies'
+    
+    id = Column(Integer, primary_key=True)
+    service_id = Column(Integer, ForeignKey('service_registry.id'), nullable=False)
+    dependency_id = Column(Integer, ForeignKey('service_registry.id'), nullable=False)
+    dependency_type = Column(String(50), nullable=False)  # 'required', 'optional'
+    created_at = Column(DateTime, default=datetime.utcnow)
+    
+    # Relationships
+    service = relationship("ServiceRegistry", foreign_keys=[service_id])
+    dependency = relationship("ServiceRegistry", foreign_keys=[dependency_id])
+    
+    def __repr__(self):
+        return f"<ServiceDependency {self.id}: {self.service_id} -> {self.dependency_id}>"
+
+class Tool(db.Model):
+    """Model for tools that can be used by agents."""
+    __tablename__ = 'tools'
+    
+    id = Column(Integer, primary_key=True)
+    name = Column(String(100), nullable=False, unique=True)
+    description = Column(Text, nullable=True)
+    tool_type = Column(String(50), nullable=False)  # 'api', 'function', 'database', etc.
+    integration_id = Column(Integer, ForeignKey('service_registry.id'), nullable=True)
+    parameters = Column(Text, nullable=True)  # JSON string of parameters
+    response_schema = Column(Text, nullable=True)  # JSON string of response schema
+    is_active = Column(Boolean, default=True)
+    is_system = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relationships
+    integration = relationship("ServiceRegistry")
+    usage_stats = relationship("ToolUsageStats", back_populates="tool", cascade="all, delete-orphan")
+    
+    def __repr__(self):
+        return f"<Tool {self.id}: {self.name}>"
+
+class ToolUsageStats(db.Model):
+    """Model for tracking tool usage statistics."""
+    __tablename__ = 'tool_usage_stats'
+    
+    id = Column(Integer, primary_key=True)
+    tool_id = Column(Integer, ForeignKey('tools.id'), nullable=False)
+    agent_id = Column(Integer, ForeignKey('custom_agents.id'), nullable=True)
+    call_count = Column(Integer, default=0)
+    error_count = Column(Integer, default=0)
+    avg_latency_ms = Column(Float, default=0.0)
+    last_used = Column(DateTime, nullable=True)
+    
+    # Relationships
+    tool = relationship("Tool", back_populates="usage_stats")
+    agent = relationship("CustomAgent")
+    
+    def __repr__(self):
+        return f"<ToolUsageStats {self.id}: {self.tool_id} ({self.call_count} calls)>"
+
+class ToolCall(db.Model):
+    """Model for individual tool calls."""
+    __tablename__ = 'tool_calls'
+    
+    id = Column(Integer, primary_key=True)
+    tool_id = Column(Integer, ForeignKey('tools.id'), nullable=False)
+    agent_id = Column(Integer, ForeignKey('custom_agents.id'), nullable=True)
+    conversation_id = Column(Integer, ForeignKey('conversations.id'), nullable=True)
+    session_id = Column(String(64), nullable=True)
+    parameters = Column(Text, nullable=True)  # JSON string of call parameters
+    result = Column(Text, nullable=True)  # JSON string of call result
+    error = Column(Text, nullable=True)
+    latency_ms = Column(Float, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    
+    # Relationships
+    tool = relationship("Tool")
+    agent = relationship("CustomAgent")
+    conversation = relationship("Conversation")
+    
+    def __repr__(self):
+        return f"<ToolCall {self.id}: {self.tool_id}>"
+
 class Conversation(db.Model):
     """Model representing a conversation with the Staples Brain."""
     __tablename__ = 'conversations'

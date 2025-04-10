@@ -1,6 +1,8 @@
 from abc import ABC, abstractmethod
 import logging
 import re
+import json
+import asyncio
 from datetime import datetime
 from typing import Dict, Any, List, Optional, Tuple, Set, Type, Union
 
@@ -16,6 +18,14 @@ from config.agent_constants import (
     STORE_LOCATOR_AGENT,
     PRODUCT_INFO_AGENT
 )
+
+# Import tool service for tool calling
+try:
+    from brain.core_services.tool_service import tool_service
+except ImportError:
+    # This allows the module to be imported even if tool_service is not available
+    # We'll handle this case in the BaseAgent class
+    tool_service = None
 
 logger = logging.getLogger(__name__)
 
@@ -416,6 +426,149 @@ class BaseAgent(ABC):
         }
         
         logger.info(f"Initialized agent: {name} with guardrails and customer service persona")
+        
+    async def call_tool(self, tool_name: str, **tool_args) -> Dict[str, Any]:
+        """
+        Call a tool using the tool service.
+        
+        Args:
+            tool_name: Name of the tool to call
+            **tool_args: Arguments for the tool
+            
+        Returns:
+            Tool execution result
+        """
+        try:
+            # Check if tool service is available
+            if tool_service is None:
+                return {
+                    "status": "error",
+                    "error": "Tool service is not initialized"
+                }
+            
+            # Call the tool via the tool service
+            return await tool_service.call_tool(tool_name, **tool_args)
+            
+        except Exception as e:
+            logger.error(f"Error calling tool {tool_name}: {str(e)}")
+            return {
+                "status": "error",
+                "error": f"Error calling tool {tool_name}: {str(e)}"
+            }
+            
+    async def detect_tool_calls(self, text: str) -> List[Dict[str, Any]]:
+        """
+        Detect tool calls in a text response from an LLM.
+        This handles two formats:
+        1. JSON structured tool calls with "tool_name" and "tool_args" keys
+        2. Natural language requests that match known tool patterns
+        
+        Args:
+            text: The text to detect tool calls in
+            
+        Returns:
+            List of detected tool calls, each containing tool_name and tool_args
+        """
+        tool_calls = []
+        
+        # Try to detect JSON-structured tool calls
+        try:
+            # Look for JSON blocks in the text that might contain tool calls
+            json_pattern = r'\{[\s\S]*?"tool_name"[\s\S]*?\}'
+            json_matches = re.findall(json_pattern, text)
+            
+            for json_str in json_matches:
+                try:
+                    tool_call = json.loads(json_str)
+                    if "tool_name" in tool_call and "tool_args" in tool_call:
+                        tool_calls.append({
+                            "tool_name": tool_call["tool_name"],
+                            "tool_args": tool_call["tool_args"]
+                        })
+                except json.JSONDecodeError:
+                    continue
+        except Exception as e:
+            logger.error(f"Error parsing JSON tool calls: {str(e)}")
+        
+        # If no structured tool calls found, check for natural language tool patterns
+        if not tool_calls and tool_service is not None:
+            # Get all available tools and their schemas
+            available_tools = tool_service.list_tools()
+            
+            # Create pattern matching for each tool
+            for tool in available_tools:
+                tool_name = tool["name"]
+                
+                # Create patterns based on tool name and parameters
+                # Example: "find stores near <location>" for store_locator tool
+                param_patterns = {}
+                for param_name, param_info in tool.get("parameters", {}).items():
+                    # Create pattern that looks for parameter values after certain keywords
+                    if param_info.get("description"):
+                        desc = param_info["description"].lower()
+                        param_patterns[param_name] = [
+                            fr'{param_name}\s*(?:is|=|:)\s*(["\']?)([^"\']+)\1',
+                            fr'(?:{desc.split()[0]}|{param_name})[:\s]+(["\']?)([^"\']+)\1'
+                        ]
+                
+                # Look for mentions of the tool function in text
+                tool_name_pattern = fr'\b{tool_name.replace("_", " ")}\b'
+                if re.search(tool_name_pattern, text.lower()):
+                    # Tool name found, extract parameters
+                    tool_args = {}
+                    for param_name, patterns in param_patterns.items():
+                        for pattern in patterns:
+                            match = re.search(pattern, text, re.IGNORECASE)
+                            if match:
+                                # Group 2 contains the actual value if quoted, otherwise it's in group 1
+                                tool_args[param_name] = match.group(2) if len(match.groups()) > 1 else match.group(1)
+                                break
+                    
+                    if tool_args:
+                        tool_calls.append({
+                            "tool_name": tool_name,
+                            "tool_args": tool_args
+                        })
+        
+        return tool_calls
+            
+    async def execute_detected_tool_calls(self, text: str) -> Tuple[List[Dict[str, Any]], str]:
+        """
+        Execute tool calls detected in text.
+        
+        Args:
+            text: Text that may contain tool calls
+            
+        Returns:
+            Tuple of (tool_results, updated_text)
+            where updated_text has tool calls replaced with their results
+        """
+        # Detect tool calls in the text
+        tool_calls = await self.detect_tool_calls(text)
+        
+        if not tool_calls:
+            return [], text
+            
+        # Execute detected tool calls
+        tool_results = []
+        updated_text = text
+        
+        for tool_call in tool_calls:
+            tool_name = tool_call["tool_name"]
+            tool_args = tool_call["tool_args"]
+            
+            # Execute the tool call
+            result = await self.call_tool(tool_name, **tool_args)
+            tool_results.append(result)
+            
+            # Update text to include tool results
+            # This replaces the tool call JSON with the result, if it exists
+            json_str = json.dumps(tool_call)
+            if json_str in updated_text:
+                result_str = json.dumps(result, indent=2)
+                updated_text = updated_text.replace(json_str, f"Tool Result: {result_str}")
+            
+        return tool_results, updated_text
         
     @abstractmethod
     async def process(self, user_input: str, context: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:

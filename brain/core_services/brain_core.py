@@ -7,6 +7,7 @@ and provides the main interface for the application to interact with the brain.
 import os
 import logging
 import asyncio
+import json
 from typing import Dict, Any, List, Optional, Tuple
 from datetime import datetime
 
@@ -15,6 +16,7 @@ from brain.core_services.intent_service import IntentService
 from brain.core_services.orchestration_service import OrchestrationService
 from brain.core_services.planning_service import PlanningService
 from brain.core_services.integration_service import IntegrationService
+from brain.core_services.tool_service import tool_service
 
 # Import agent classes for factory method access
 from agents.base_agent import BaseAgent
@@ -24,7 +26,14 @@ from agents.store_locator import StoreLocatorAgent
 from agents.product_info import ProductInfoAgent
 from agents.returns_processing import ReturnsProcessingAgent
 
-from utils.observability import record_error
+# Import observability and LangSmith utilities
+from utils.observability import record_error, record_api_call
+from utils.langsmith_utils import (
+    langsmith_trace, 
+    create_langsmith_run,
+    update_langsmith_run,
+    feedback_langsmith_run
+)
 
 logger = logging.getLogger(__name__)
 
@@ -156,6 +165,7 @@ class BrainCore(CoreService):
             logger.error(f"Error initializing agents: {str(e)}")
             record_error("agent_initialization", str(e))
     
+    @langsmith_trace(run_type="chain", name="process_request", tags=["brain_core", "request_processing"])
     async def process_request(self, user_input: str, session_id: str, source: Optional[str] = None, 
                             raw_data: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """
@@ -170,6 +180,21 @@ class BrainCore(CoreService):
         Returns:
             Response from the brain
         """
+        # Create a run for better tracing
+        inputs = {
+            "user_input": user_input,
+            "session_id": session_id,
+            "source": source,
+            "raw_data": json.dumps(raw_data) if raw_data else None
+        }
+        
+        # Record the API call for metrics
+        record_api_call(
+            system="brain_core", 
+            endpoint="process_request",
+            status_code=200 if self.initialized else 500
+        )
+        
         if not self.initialized:
             logger.error("Brain core not initialized. Cannot process request.")
             return {
