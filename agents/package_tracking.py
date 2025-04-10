@@ -8,6 +8,7 @@ from langchain_core.runnables import RunnableSequence
 from langchain_core.output_parsers import StrOutputParser
 from agents.base_agent import BaseAgent, EntityDefinition
 from config import PACKAGE_TRACKING_ENDPOINT
+from api_services.order_api import OrderApiClient
 
 logger = logging.getLogger(__name__)
 
@@ -33,6 +34,9 @@ class PackageTrackingAgent(BaseAgent):
             description="I can help track your orders, check package status, and provide delivery updates for Staples purchases.",
             llm=llm
         )
+        
+        # Initialize the Order API Client
+        self.order_api = OrderApiClient(mock_mode=True)
         
         # Customize the Staples Customer Service Representative persona for order tracking
         self.persona = {
@@ -605,52 +609,70 @@ class PackageTrackingAgent(BaseAgent):
                 }
             
             # If we have both order number and zip code, proceed with API call
-            # In a real implementation, this would call an actual order status API
-            headers = {"Content-Type": "application/json"}
-            api_key = os.environ.get("ORDER_API_KEY")
-            
-            if api_key:
-                headers["Authorization"] = f"Bearer {api_key}"
-            
-            payload = {
-                "order_number": order_number,
-                "zip_code": zip_code
-            }
-            
-            # Add tracking number if available (optional)
-            if tracking_info.get("tracking_number"):
-                payload["tracking_number"] = tracking_info.get("tracking_number")
-            
-            # Make API request to order status service
             try:
-                ORDER_STATUS_ENDPOINT = "https://api.staples.com/order-status"  # Example endpoint
-                response = requests.post(
-                    ORDER_STATUS_ENDPOINT,
-                    headers=headers,
-                    json=payload,
-                    timeout=10
-                )
-                response.raise_for_status()
-                api_response = response.json()
+                # Use the OrderApiClient to get order information
+                tracking_number = tracking_info.get("tracking_number")
                 
-                # If the API returns a flag to transfer to human, pass it through
-                if api_response.get("transfer_to_human", False):
-                    api_response["status"] = "transfer_to_human"
-                    api_response["human_transfer_reason"] = "api_request"
+                # If we have a tracking number, use it to find the order
+                if tracking_number:
+                    api_response = self.order_api.get_order_by_tracking_number(tracking_number)
+                    logger.info(f"Retrieved order by tracking number: {tracking_number}")
+                else:
+                    # Otherwise use the order_id (order_number) to look up
+                    api_response = self.order_api.get_order_by_id(order_number)
+                    logger.info(f"Retrieved order by ID: {order_number}")
                 
-                return api_response
+                # Get shipment details for more specific tracking information
+                if api_response and "order_id" in api_response:
+                    shipment_details = self.order_api.get_order_shipment_status(api_response["order_id"])
+                    
+                    # Format the response for our Package Tracking Agent
+                    status_response = {
+                        "status": shipment_details.get("status", "unknown"),
+                        "message": f"Order {order_number} is {shipment_details.get('status', 'being processed')}",
+                        "estimated_delivery": shipment_details.get("estimated_delivery"),
+                        "current_location": None,
+                        "last_updated": None,
+                        "carrier": None,
+                        "tracking_number": None
+                    }
+                    
+                    # Add shipment details if available
+                    if "shipments" in shipment_details and shipment_details["shipments"]:
+                        shipment = shipment_details["shipments"][0]  # Use first shipment
+                        status_response["current_location"] = shipment.get("location")
+                        status_response["last_updated"] = shipment.get("timestamp")
+                        status_response["carrier"] = shipment.get("carrier")
+                        status_response["tracking_number"] = shipment.get("tracking_number")
+                        
+                        # Add delivery exception details if relevant
+                        if shipment.get("status") == "exception":
+                            status_response["status"] = "exception"
+                            status_response["exception_reason"] = shipment.get("status_detail", "Delivery exception")
+                            status_response["transfer_to_human"] = True
+                            status_response["human_transfer_reason"] = "delivery_exception"
+                    
+                    return status_response
+                else:
+                    # If no order was found, return a not found status
+                    return {
+                        "status": "not_found",
+                        "message": f"No order found with the provided information. Please verify your order number ({order_number}) and zip code.",
+                        "estimated_delivery": None,
+                        "transfer_to_human": False
+                    }
                 
-            except requests.RequestException as e:
-                logger.warning(f"Could not connect to order status API: {str(e)}")
-                # For API failures, use simulated data but also set transfer flag
-                simulated_data = self._simulate_order_status(order_number, zip_code)
-                
-                # For a real system, consider transferring to a human agent when API fails
-                # Uncomment this if you want API failures to trigger a human transfer
-                # simulated_data["transfer_to_human"] = True
-                # simulated_data["human_transfer_reason"] = "api_failure" 
-                
-                return simulated_data
+            except Exception as e:
+                logger.warning(f"Error retrieving order status via API: {str(e)}")
+                # We don't need to use simulated data as our API client already uses mock data
+                # Just return a fallback status
+                return {
+                    "status": "error",
+                    "message": "Unable to retrieve your order status at this time.",
+                    "estimated_delivery": None,
+                    "transfer_to_human": True,
+                    "human_transfer_reason": "api_error"
+                }
                 
         except Exception as e:
             logger.error(f"Error getting order status: {str(e)}", exc_info=True)

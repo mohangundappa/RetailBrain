@@ -427,9 +427,28 @@ class StoreLocatorAgent(BaseAgent):
             }
         
         try:
-            # TODO: Replace with actual API call to Staples store locator service
-            # For now, simulate a response
-            return self._simulate_store_info(location, location_info.get("radius", 10), location_info.get("service"))
+            # Use the StoreApiClient to get store information
+            radius = location_info.get("radius", 10)
+            service_name = location_info.get("service")
+            
+            # Convert single service to list if provided
+            services = [service_name] if service_name else None
+            
+            # Call the API to find stores by location
+            api_response = self.store_api.find_stores_by_location(
+                location=location,
+                radius=float(radius),
+                services=services,
+                limit=3  # Limit to 3 closest stores
+            )
+            
+            # Format the response
+            return {
+                "location": location,
+                "radius": radius,
+                "stores": api_response.get("stores", []),
+                "total_count": api_response.get("total_count", 0)
+            }
             
         except Exception as e:
             logger.error(f"Error getting store information for {location}: {str(e)}")
