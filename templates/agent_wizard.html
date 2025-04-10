@@ -591,6 +591,8 @@
 {% block scripts %}
 <script>
   document.addEventListener('DOMContentLoaded', function() {
+    // Initialize all elements with proper null checks
+    
     // Save as Template functionality
     const saveAsTemplateBtn = document.getElementById('save-as-template-btn');
     if (saveAsTemplateBtn) {
@@ -715,18 +717,19 @@
     const addEntityButton = document.getElementById('add-entity');
     const entityCountField = document.getElementById('entity_count');
     
-    let entityCount = {{ entities|length }};
-    
-    // Update entity count in the hidden field
-    const updateEntityCount = () => {
-      entityCountField.value = entityCount;
-    };
-    
-    // Initialize the entity count field
-    updateEntityCount();
-    
-    // Add a new entity form
-    addEntityButton.addEventListener('click', function() {
+    if (entityContainer && addEntityButton && entityCountField) {
+      let entityCount = {{ entities|length if entities is defined else 0 }};
+      
+      // Update entity count in the hidden field
+      const updateEntityCount = () => {
+        entityCountField.value = entityCount;
+      };
+      
+      // Initialize the entity count field
+      updateEntityCount();
+      
+      // Add a new entity form
+      addEntityButton.addEventListener('click', function() {
       const entityIndex = entityCount;
       const entityHtml = `
         <div class="card mb-3 entity-card" data-entity-index="${entityIndex}">
@@ -807,6 +810,7 @@
     document.querySelectorAll('.remove-entity').forEach(button => {
       button.addEventListener('click', handleRemoveEntity);
     });
+    }
     {% endif %}
     
     // Suggestion templates for step 3
