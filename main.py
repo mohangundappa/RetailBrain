@@ -50,8 +50,7 @@ from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
 
 # Import from app.py which contains our application factory
-from app import app
-from db import db
+from app import app, db
 
 # Import other required modules
 from models import Conversation, Message, PackageTracking, PasswordReset, StoreLocator, ProductInfo, AnalyticsData, CustomAgent, AgentTemplate
