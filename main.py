@@ -1224,6 +1224,7 @@ def agent_wizard(agent_id=None, step=1):
         logger.error(f"Error in agent wizard: {e}")
         return render_template('error.html', error=str(e))
 
+@app.route('/agent-wizard/step/<int:step>', methods=['POST'])
 @app.route('/agent-wizard/<int:agent_id>/step/<int:step>', methods=['POST'])
 def agent_wizard_save(agent_id=None, step=1):
     """Save the current step of the agent wizard and move to the next."""

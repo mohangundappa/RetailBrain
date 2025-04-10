@@ -174,7 +174,7 @@
             </div>
           </div>
           
-          <form id="agent-wizard-form" method="post" action="{{ url_for('agent_wizard_save', agent_id=agent.id, step=step) }}">
+          <form id="agent-wizard-form" method="post" action="{{ url_for('agent_wizard_save', agent_id=agent.id if agent else None, step=step) }}">
             <!-- Step 1: Agent Basics -->
             {% if step == 1 %}
             <div class="step-content" id="step-1">
