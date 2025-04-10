@@ -23,6 +23,15 @@ class MockClient:
                 self.parent = parent
                 
             def create(self, model=None, messages=None, **kwargs):
+                """Synchronous create method"""
+                return self._create_response(model, messages, **kwargs)
+                
+            async def create(self, model=None, messages=None, **kwargs):
+                """Async create method - returns the same result as sync version"""
+                return self._create_response(model, messages, **kwargs)
+                
+            def _create_response(self, model=None, messages=None, **kwargs):
+                """Common implementation for both sync and async methods"""
                 # Determine response content
                 if self.parent is None:
                     response_content = "0.7"  # Default confidence
@@ -90,12 +99,8 @@ class MockChatModel(BaseChatModel):
     
     model_name: str = "gpt-4-mock"  # Define this as a class attribute for pydantic
     
-    @property
-    def client(self):
-        """Property to access the mock client"""
-        if not hasattr(self, "_mock_client"):
-            self._mock_client = MockClient(self)
-        return self._mock_client
+    # Client access is now handled directly in __init__
+    # to avoid conflicts with the client assignment
     
     def __init__(self, 
                  responses: Optional[List[str]] = None,
@@ -125,6 +130,20 @@ class MockChatModel(BaseChatModel):
         
         # Create mock client that can be accessed safely
         self._mock_client = MockClient(self)
+        
+        # Add required attributes for LangChain OpenAI compatibility
+        self.client = self._mock_client
+        self.async_client = self._mock_client  # Important for async calls
+        self.model_name = "mock-chat-model"
+        
+        # Add support for invoking directly (used by some chains)
+        self.invoke = MagicMock(return_value=MagicMock(content=self._get_next_response()))
+        
+        # For asynchronous calls, we need to return an awaitable
+        async def _async_mock_ainvoke(*args, **kwargs):
+            return MagicMock(content=self._get_next_response())
+        
+        self.ainvoke = MagicMock(side_effect=_async_mock_ainvoke)
     
     def _is_can_handle_call(self, messages: List[Any]) -> bool:
         """Check if this is a can_handle capability call"""
@@ -185,13 +204,25 @@ class MockChatModel(BaseChatModel):
         """Generate a response asynchronously"""
         content = ""
         if self._is_can_handle_call(messages):
-            content = "0.9"  # Standard confidence score for can_handle calls
+            content = str(self._confidence_score)  # Use configured confidence score
         else:
             content = self._get_content_based_on_message(messages) or self._get_next_response()
             
         message = AIMessageChunk(content=content)
         chunk = ChatGenerationChunk(message=message)
-        return ChatResult(generations=[chunk])
+        
+        # Create a more complete response object that matches OpenAI's structure
+        result = ChatResult(
+            generations=[chunk], 
+            llm_output={
+                "token_usage": {
+                    "prompt_tokens": 10,
+                    "completion_tokens": 20,
+                    "total_tokens": 30
+                }
+            }
+        )
+        return result
     
     def _generate(self, messages, stop=None, run_manager=None, **kwargs):
         """Generate a response synchronously"""
@@ -199,13 +230,25 @@ class MockChatModel(BaseChatModel):
         # when tests are running in an async context already
         content = ""
         if self._is_can_handle_call(messages):
-            content = "0.9"  # Standard confidence score for can_handle calls
+            content = str(self._confidence_score)  # Use configured confidence score
         else:
             content = self._get_content_based_on_message(messages) or self._get_next_response()
             
         message = AIMessageChunk(content=content)
         chunk = ChatGenerationChunk(message=message)
-        return ChatResult(generations=[chunk])
+        
+        # Create a more complete response object that matches OpenAI's structure
+        result = ChatResult(
+            generations=[chunk], 
+            llm_output={
+                "token_usage": {
+                    "prompt_tokens": 10,
+                    "completion_tokens": 20,
+                    "total_tokens": 30
+                }
+            }
+        )
+        return result
         
     # This class property is added for backward compatibility with some test code
     # The actual implementation is handled by the instance-based chat namespace
@@ -221,7 +264,15 @@ class MockChatModel(BaseChatModel):
                     self.parent = parent
                 
                 def create(self, model=None, messages=None, **kwargs):
-                    """Mock create method for chat completions"""
+                    """Mock synchronous create method for chat completions"""
+                    return self._create_response(model, messages, **kwargs)
+                
+                async def create(self, model=None, messages=None, **kwargs):
+                    """Mock asynchronous create method for chat completions"""
+                    return self._create_response(model, messages, **kwargs)
+                
+                def _create_response(self, model=None, messages=None, **kwargs):
+                    """Common implementation for both sync and async methods"""
                     # Initialize with a default confidence score
                     message_content = str(self.parent._confidence_score)
                     
