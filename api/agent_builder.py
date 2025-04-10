@@ -173,31 +173,64 @@ def get_agent(agent_id):
         JSON with the complete agent configuration
     """
     try:
+        logger.debug(f"Getting agent with ID: {agent_id}")
         agent = CustomAgent.query.get(agent_id)
         
         if not agent:
+            logger.warning(f"Agent not found with ID: {agent_id}")
             return jsonify({'error': 'Agent not found'}), 404
             
+        logger.debug(f"Agent found: {agent.name}, has configuration: {bool(agent.configuration)}")
+        
         # If we have stored configuration, use that as the base
         if agent.configuration:
-            config = json.loads(agent.configuration)
-            # Update basic properties
-            config['id'] = agent.id
-            config['name'] = agent.name
-            config['description'] = agent.description
-            config['is_active'] = agent.is_active
-            config['created_at'] = agent.created_at.isoformat() if agent.created_at else None
-            config['updated_at'] = agent.updated_at.isoformat() if agent.updated_at else None
-            
-            return jsonify(config), 200
+            try:
+                config = json.loads(agent.configuration)
+                logger.debug(f"Loaded configuration JSON successfully")
+                
+                # Update basic properties
+                config['id'] = agent.id
+                config['name'] = agent.name
+                config['description'] = agent.description
+                config['is_active'] = agent.is_active
+                config['created_at'] = agent.created_at.isoformat() if agent.created_at else None
+                config['updated_at'] = agent.updated_at.isoformat() if agent.updated_at else None
+                
+                # Validate required fields for component rendering
+                for idx, component in enumerate(config.get('components', [])):
+                    if 'template' not in component:
+                        logger.warning(f"Component {idx} missing template field, adding default")
+                        component_type = component.get('component_type', 'unknown')
+                        if component_type == 'prompt':
+                            component['template'] = 'custom_prompt'
+                        elif component_type == 'llm':
+                            component['template'] = 'openai_gpt4'
+                        elif component_type == 'output':
+                            component['template'] = 'json_formatter'
+                        else:
+                            component['template'] = f"{component_type}_default"
+                
+                return jsonify(config), 200
+            except json.JSONDecodeError as e:
+                logger.error(f"Failed to parse agent configuration JSON: {str(e)}")
+                # If JSON parsing fails, fall back to building config from components
             
         # Otherwise build the configuration from components and connections
+        logger.debug(f"Building configuration from components: {len(agent.components)} and connections: {len(agent.connections)}")
         components = []
         for comp in agent.components:
+            # Determine template from component type if not available
+            template = 'custom_prompt'
+            if comp.component_type == 'llm':
+                template = 'openai_gpt4'
+            elif comp.component_type == 'output':
+                template = 'json_formatter'
+                
             component_data = {
                 'id': f"component-{comp.id}",
                 'component_type': comp.component_type,
                 'name': comp.name,
+                'template': template,  # Add template field which is required by the frontend
                 'position_x': comp.position_x,
                 'position_y': comp.position_y,
                 'configuration': json.loads(comp.configuration) if comp.configuration else {}
@@ -226,6 +259,7 @@ def get_agent(agent_id):
             'connections': connections
         }
         
+        logger.debug(f"Built agent configuration with {len(components)} components and {len(connections)} connections")
         return jsonify(result), 200
         
     except Exception as e:
