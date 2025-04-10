@@ -355,18 +355,32 @@ class AgentOrchestrator:
                 # This is especially important for maintaining context during entity collection
                 for agent in self.agents:
                     if agent.name == last_agent_name:
-                        # Apply a high continuity bonus to ensure we stay with this agent 
-                        confidence = max(0.6, agent.can_handle(user_input, context))
-                        adjusted_confidence = min(0.99, confidence + CONTINUITY_BONUS * 2)  # Significant continuity bonus
+                        # Get base confidence from the current agent
+                        current_agent_confidence = agent.can_handle(user_input, context)
                         
-                        logger.info(f"Prioritizing continuity with agent: {agent.name} "
-                                  f"(base confidence: {confidence:.2f}, "
-                                  f"with high continuity bonus: {adjusted_confidence:.2f})")
+                        # Check if there's a topic change by comparing with other agents
+                        topic_change = self._detect_topic_change(user_input, agent, context)
                         
-                        # Reset the continue_with_same_agent flag unless explicitly set again by the agent
-                        memory.update_working_memory('continue_with_same_agent', False)
-                        
-                        return agent, adjusted_confidence, True
+                        if topic_change:
+                            # If topic changed, don't apply continuity bonus - let normal routing work
+                            logger.info(f"Detected topic change - not applying continuity bonus")
+                            # Reset the continue_with_same_agent flag
+                            memory.update_working_memory('continue_with_same_agent', False)
+                            # Just use normal routing algorithm
+                            break
+                        else:
+                            # Only if staying on the same topic, apply continuity bonus
+                            confidence = max(0.5, current_agent_confidence)  # Reduced from 0.6
+                            adjusted_confidence = min(0.95, confidence + CONTINUITY_BONUS)  # Reduced bonus (removed *2)
+                            
+                            logger.info(f"Prioritizing continuity with agent: {agent.name} "
+                                      f"(base confidence: {confidence:.2f}, "
+                                      f"with continuity bonus: {adjusted_confidence:.2f})")
+                            
+                            # Reset the continue_with_same_agent flag unless explicitly set again by the agent
+                            memory.update_working_memory('continue_with_same_agent', False)
+                            
+                            return agent, adjusted_confidence, True
             
             # Fall back to standard time-based continuity if explicit flag not set
             elif last_agent_name and last_timestamp_str:
@@ -376,16 +390,26 @@ class AgentOrchestrator:
                     if datetime.now() - last_timestamp < timedelta(seconds=self.recency_window):
                         for agent in self.agents:
                             if agent.name == last_agent_name:
-                                # Check if this agent still has some confidence in handling the new input
-                                confidence = agent.can_handle(user_input, context)
-                                # Apply continuity bonus for the same agent
-                                adjusted_confidence = confidence + self.continuity_bonus
+                                # Check if the current agent still has some confidence in handling the new input
+                                current_agent_confidence = agent.can_handle(user_input, context)
                                 
-                                if adjusted_confidence > self.fallback_threshold:
-                                    logger.info(f"Continuing with same agent: {agent.name} "
-                                            f"(base confidence: {confidence:.2f}, "
-                                            f"with continuity bonus: {adjusted_confidence:.2f})")
-                                    return agent, adjusted_confidence, True
+                                # Check if there's a topic change by comparing with other agents
+                                topic_change = self._detect_topic_change(user_input, agent, context)
+                                
+                                if topic_change:
+                                    # If topic changed, don't apply continuity bonus - let normal routing work
+                                    logger.info(f"Detected topic change in time-based continuity - not applying bonus")
+                                    # Just use normal routing algorithm
+                                    break
+                                else:
+                                    # Apply continuity bonus for the same agent if topic hasn't changed
+                                    adjusted_confidence = current_agent_confidence + self.continuity_bonus * 0.5  # Reduced bonus
+                                    
+                                    if adjusted_confidence > self.fallback_threshold:
+                                        logger.info(f"Continuing with same agent: {agent.name} "
+                                                f"(base confidence: {current_agent_confidence:.2f}, "
+                                                f"with reduced continuity bonus: {adjusted_confidence:.2f})")
+                                        return agent, adjusted_confidence, True
                 except (ValueError, TypeError):
                     # If timestamp parsing fails, continue with normal agent selection
                     pass
@@ -451,6 +475,78 @@ class AgentOrchestrator:
         # No agent reached the confidence threshold
         logger.warning(f"No agent reached the confidence threshold ({self.confidence_threshold:.2f})")
         return None, 0.0, False
+    
+    def _detect_topic_change(self, user_input: str, current_agent: BaseAgent, context: Dict[str, Any] = None) -> bool:
+        """
+        Detect if there's a topic change in the conversation that should trigger agent switching.
+        
+        Args:
+            user_input: The user's request or query
+            current_agent: The current agent handling the conversation
+            context: Additional context information
+            
+        Returns:
+            True if a topic change is detected, False otherwise
+        """
+        # If the user input is very short, it's likely a clarification or simple response, not a topic change
+        if len(user_input.split()) <= 2:
+            return False
+            
+        # Get confidence score from current agent
+        current_agent_confidence = current_agent.can_handle(user_input, context)
+        
+        # Check if any other agent has significantly higher confidence
+        for agent in self.agents:
+            # Skip the current agent
+            if agent.name == current_agent.name:
+                continue
+                
+            try:
+                # Get confidence from this agent
+                other_agent_confidence = agent.can_handle(user_input, context)
+                
+                # Compare confidence levels
+                confidence_diff = other_agent_confidence - current_agent_confidence
+                
+                # If another agent has significantly higher confidence, it's a topic change
+                if confidence_diff > 0.3:  # Threshold for topic change detection
+                    logger.info(f"Topic change detected: {current_agent.name} ({current_agent_confidence:.2f}) -> "
+                              f"{agent.name} ({other_agent_confidence:.2f}), diff: {confidence_diff:.2f}")
+                    return True
+                    
+            except Exception as e:
+                logger.error(f"Error comparing confidence with agent '{agent.name}': {str(e)}")
+                
+        # Look for intent change if intent classification is available
+        if context and 'intent' in context:
+            current_intent = context.get('intent')
+            if current_intent:
+                # Check if the intent maps to current agent
+                if current_intent in self.intent_routing:
+                    mapped_agent = self.intent_routing[current_intent]
+                    if mapped_agent.lower() != current_agent.name.lower():
+                        logger.info(f"Intent change detected: intent '{current_intent}' maps to {mapped_agent}, "
+                                  f"not current agent {current_agent.name}")
+                        return True
+                        
+        # Check for specific agent keywords
+        if current_agent.name == "Reset Password Agent" and any(kw in user_input.lower() for kw in 
+                                                          ['store', 'location', 'nearby', 'closest']):
+            logger.info("Topic change detected through keywords: Reset Password -> Store Locator")
+            return True
+            
+        if current_agent.name == "Package Tracking Agent" and any(kw in user_input.lower() for kw in 
+                                                           ['password', 'login', 'account', 'sign in']):
+            logger.info("Topic change detected through keywords: Package Tracking -> Reset Password")
+            return True
+            
+        if current_agent.name == "Store Locator Agent" and any(kw in user_input.lower() for kw in 
+                                                        ['order', 'tracking', 'package', 'shipped']):
+            logger.info("Topic change detected through keywords: Store Locator -> Package Tracking")
+            return True
+                
+        # No clear topic change detected
+        return False
     
     def get_routing_history(self, session_id: str) -> List[Dict[str, Any]]:
         """
