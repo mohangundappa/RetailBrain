@@ -1216,6 +1216,15 @@ def agent_wizard(agent_id=None, step=1):
         # Get current step from session or use the step parameter
         current_step = session.get('current_wizard_step', step)
         
+        # Add prompts dictionary if step is 3 (prompt templates)
+        prompts = {}
+        if step == 3:
+            prompts = {
+                "system": agent.get_system_prompt() or "",
+                "entity_extraction": agent.get_entity_extraction_prompt() or "",
+                "response_generation": agent.get_response_generation_prompt() or ""
+            }
+            
         return render_template(
             'agent_wizard.html',
             agent=agent,
@@ -1224,7 +1233,8 @@ def agent_wizard(agent_id=None, step=1):
             current_step=current_step,  # Pass current_step to the template
             step_template=wizard_templates.get(step, 'agent_wizard_step1.html'),
             step_data=step_data,
-            total_steps=len(wizard_templates)
+            total_steps=len(wizard_templates),
+            prompts=prompts  # Add prompts variable
         )
         
     except Exception as e:
@@ -1315,7 +1325,32 @@ def agent_wizard_save(agent_id=None, step=1):
                 }
                 prompt_templates.append(template)
             
+            # Save the prompt templates
             agent.prompt_templates = json.dumps(prompt_templates)
+            
+            # Save the system, entity extraction and response generation prompts
+            system_prompt = request.form.get('prompts[system]', '')
+            entity_extraction_prompt = request.form.get('prompts[entity_extraction]', '')
+            response_generation_prompt = request.form.get('prompts[response_generation]', '')
+            
+            # Get or create the agent's configuration
+            config = {}
+            if agent.configuration:
+                try:
+                    config = json.loads(agent.configuration)
+                except:
+                    config = {}
+            
+            # Update the prompts section in the configuration
+            if 'prompts' not in config:
+                config['prompts'] = {}
+                
+            config['prompts']['system'] = system_prompt
+            config['prompts']['entity_extraction'] = entity_extraction_prompt
+            config['prompts']['response_generation'] = response_generation_prompt
+            
+            # Save the updated configuration
+            agent.configuration = json.dumps(config)
         
         elif step == 4:
             # Save response formats
