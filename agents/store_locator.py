@@ -193,10 +193,20 @@ class StoreLocatorAgent(BaseAgent):
             
             # Extract location info
             extraction_result = await self._extraction_chain.ainvoke({"query": user_input})
+            logger.info(f"Raw extraction result: {extraction_result}")
             
             # Handle empty or invalid JSON responses
             try:
-                location_info = json.loads(extraction_result["text"])
+                # Handle different response formats from the extraction chain
+                if isinstance(extraction_result, dict) and "text" in extraction_result:
+                    location_text = extraction_result["text"]
+                elif isinstance(extraction_result, str):
+                    location_text = extraction_result
+                else:
+                    location_text = str(extraction_result)
+                
+                # Try to parse the location information as JSON
+                location_info = json.loads(location_text)
                 logger.info(f"Extracted location information: {location_info}")
                 
                 # If we have a location from entity collection, use it instead
@@ -212,11 +222,21 @@ class StoreLocatorAgent(BaseAgent):
                         "entities": {},
                         "continue_with_same_agent": True
                     }
-            except json.JSONDecodeError as json_err:
-                logger.warning(f"Failed to parse location JSON: {json_err}. Raw text: {extraction_result.get('text', '')}")
+            except (json.JSONDecodeError, TypeError) as err:
+                logger.warning(f"Failed to parse location data: {err}. Raw extraction result: {extraction_result}")
                 
+                # If the user input looks like a location, use it directly
+                if any(kw in user_input.lower() for kw in ['zip', 'code', 'store', 'location', 'city', 'town']):
+                    # Extract potential location
+                    potential_location = user_input
+                    location_info = {
+                        "location": potential_location,
+                        "radius": 10,
+                        "service": None,
+                        "hours": False
+                    }
                 # If we have a location from entity collection, create a simple location_info
-                if location:
+                elif location:
                     location_info = {
                         "location": location,
                         "radius": 10,
