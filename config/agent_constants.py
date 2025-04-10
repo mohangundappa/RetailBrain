@@ -8,6 +8,7 @@ PACKAGE_TRACKING_AGENT = "Package Tracking Agent"
 RESET_PASSWORD_AGENT = "Reset Password Agent" 
 STORE_LOCATOR_AGENT = "Store Locator Agent"
 PRODUCT_INFO_AGENT = "Product Information Agent"
+RETURNS_PROCESSING_AGENT = "Returns Processing Agent"
 
 # Confidence Thresholds
 DEFAULT_CONFIDENCE_THRESHOLD = 0.3  # Minimum confidence required to select an agent
@@ -37,5 +38,11 @@ INTENT_AGENT_MAPPING = {
     # Product Information intents
     "product_info": PRODUCT_INFO_AGENT,
     "product_comparison": PRODUCT_INFO_AGENT,
-    "product_recommendation": PRODUCT_INFO_AGENT
+    "product_recommendation": PRODUCT_INFO_AGENT,
+    
+    # Returns Processing intents
+    "returns_processing": RETURNS_PROCESSING_AGENT,
+    "return_item": RETURNS_PROCESSING_AGENT,
+    "refund_inquiry": RETURNS_PROCESSING_AGENT,
+    "exchange_product": RETURNS_PROCESSING_AGENT
 }
