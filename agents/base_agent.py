@@ -598,8 +598,8 @@ class BaseAgent(ABC):
         is_greeting = any(re.search(pattern, user_input.lower()) for pattern in greeting_patterns)
         
         if is_greeting and len(user_input.split()) <= 3:
-            # Return a friendly greeting specific to this agent's domain
-            greeting_response = f"Hello! I'm the {self.name}. {self.description} How can I help you today?"
+            # Return a concise greeting specific to this agent's domain
+            greeting_response = f"Hi! How can I help with {self.name.replace(' Agent', '')}?"
             
             return {
                 "success": True,
@@ -1020,16 +1020,15 @@ Remember: Your goal is to provide excellent customer service while representing 
         This is the context of already collected information:
         {collected_info}
         
-        Generate a BRIEF, friendly follow-up message asking for ONLY the missing information.
-        The message should:
-        1. Be friendly, personable and extremely concise (2-3 sentences maximum)
-        2. Include one clear, helpful example if appropriate
-        3. If validation has failed, briefly mention what was wrong
-        4. Sound natural and conversational, like a real customer service representative
-        5. Avoid unnecessary explanations or verbose language
-        6. Start with a greeting and end with a simple "Thanks!"
+        Generate an EXTREMELY BRIEF message asking for ONLY the missing information.
+        IMPORTANT RULES:
+        1. ONE SENTENCE ONLY - just request the specific field needed
+        2. If example needed, include in a second sentence ONLY
+        3. NO greeting, pleasantries, or explanations
+        4. MAXIMUM 15 WORDS TOTAL
+        5. Be direct - "Please provide [exact field name]."
         
-        Your response should be in this style: "Hi there! I'd be happy to help track your package. Could you please provide me with the billing zip code associated with your order? For example, it might look something like 90210. Thanks!"
+        Your response should be in this style: "Please provide your ZIP code. For example, 90210."
         
         Your response:
         """
@@ -1071,11 +1070,11 @@ Remember: Your goal is to provide excellent customer service while representing 
         except Exception as e:
             logger.error(f"Error generating entity collection prompt: {str(e)}")
             
-            # Fall back to a basic prompt if LLM fails
-            follow_up = f"Please provide your {current_entity.name.replace('_', ' ')}"
+            # Fall back to a basic prompt if LLM fails - make it extremely concise
+            follow_up = f"Please provide your {current_entity.name.replace('_', ' ')}."
             if current_entity.examples:
                 example = current_entity.examples[0]
-                follow_up += f" (e.g., {example})"
+                follow_up += f" Example: {example}"
                 
             return False, follow_up
         
