@@ -8,19 +8,34 @@ import os
 import logging
 import inspect
 import time
+import traceback
 from typing import Dict, Any, List, Optional, Union, Callable
 from functools import wraps
-import traceback
+from datetime import datetime
 
 # Import LangSmith
 from langsmith import Client
 from langsmith.run_helpers import traceable
 from langsmith.schemas import Run, RunTypeEnum
 
-# Import tracking utilities
-from utils.observability import record_api_call, record_error
-
 logger = logging.getLogger(__name__)
+
+# Internal logging functions to avoid circular imports
+def _log_api_call(system: str, endpoint: str, duration_ms: float = 0, status_code: int = 200):
+    """
+    Internal function to log API calls without relying on observability module.
+    This prevents circular imports.
+    """
+    logger.info(f"API call to {system}/{endpoint} completed with status {status_code} in {duration_ms:.2f}ms")
+
+def _log_error(error_type: str, message: str, traceback_str: Optional[str] = None):
+    """
+    Internal function to log errors without relying on observability module.
+    This prevents circular imports.
+    """
+    logger.error(f"{error_type}: {message}")
+    if traceback_str:
+        logger.debug(f"Traceback: {traceback_str}")
 
 # Initialize langsmith client
 try:
@@ -96,7 +111,7 @@ def langsmith_trace(run_type: str = "chain", name: Optional[str] = None,
                     duration = time.time() - start_time
                     
                     # Record this as an API call for internal metrics
-                    record_api_call(
+                    _log_api_call(
                         system="langsmith",
                         endpoint=func_name,
                         duration_ms=duration * 1000,
@@ -109,7 +124,7 @@ def langsmith_trace(run_type: str = "chain", name: Optional[str] = None,
                 # Record error
                 error_message = f"Error in {func_name}: {str(e)}"
                 logger.error(error_message)
-                record_error("langsmith_trace", error_message, traceback.format_exc())
+                _log_error("langsmith_trace", error_message, traceback.format_exc())
                 
                 # Re-raise the exception
                 raise
@@ -152,7 +167,7 @@ def langsmith_trace(run_type: str = "chain", name: Optional[str] = None,
                     duration = time.time() - start_time
                     
                     # Record this as an API call for internal metrics
-                    record_api_call(
+                    _log_api_call(
                         system="langsmith",
                         endpoint=func_name,
                         duration_ms=duration * 1000,
@@ -165,7 +180,7 @@ def langsmith_trace(run_type: str = "chain", name: Optional[str] = None,
                 # Record error
                 error_message = f"Error in {func_name}: {str(e)}"
                 logger.error(error_message)
-                record_error("langsmith_trace", error_message, traceback.format_exc())
+                _log_error("langsmith_trace", error_message, traceback.format_exc())
                 
                 # Re-raise the exception
                 raise
@@ -314,4 +329,40 @@ def get_langsmith_trace_url(run_id: str) -> Optional[str]:
         
     except Exception as e:
         logger.error(f"Error generating LangSmith trace URL: {str(e)}")
+        return None
+
+
+# Functions that can be used by observability.py to get LangSmith client and tracer
+def get_langsmith_client():
+    """
+    Get the LangSmith client instance.
+    
+    Returns:
+        LangSmith client if available, None otherwise
+    """
+    return langsmith_client
+
+
+def get_langchain_tracer():
+    """
+    Get a LangChain tracer configured for the project.
+    
+    Returns:
+        LangChain tracer if available, None otherwise
+    """
+    if not langsmith_client:
+        return None
+        
+    try:
+        from langchain.callbacks.tracers import LangChainTracer
+        
+        tracer = LangChainTracer(
+            project_name=LANGSMITH_PROJECT,
+            client=langsmith_client,
+        )
+        
+        return tracer
+        
+    except Exception as e:
+        logger.error(f"Error creating LangChain tracer: {str(e)}")
         return None

@@ -404,10 +404,10 @@ def initialize_external_telemetry():
     
     # Initialize LangSmith telemetry
     try:
-        from utils.langsmith_utils import get_langsmith_client, get_langchain_tracer
-        client = get_langsmith_client()
+        import utils.langsmith_utils as langsmith_utils
+        client = langsmith_utils.get_langsmith_client()
         if client:
-            tracer = get_langchain_tracer()
+            tracer = langsmith_utils.get_langchain_tracer()
             if tracer:
                 logger.info("LangSmith telemetry initialized")
             else:

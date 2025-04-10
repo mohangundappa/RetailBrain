@@ -27,12 +27,13 @@ from agents.product_info import ProductInfoAgent
 from agents.returns_processing import ReturnsProcessingAgent
 
 # Import observability and LangSmith utilities
-from utils.observability import record_error, record_api_call
+from utils.observability import record_error
 from utils.langsmith_utils import (
     langsmith_trace, 
     create_langsmith_run,
     update_langsmith_run,
-    feedback_langsmith_run
+    feedback_langsmith_run,
+    _log_api_call
 )
 
 logger = logging.getLogger(__name__)
