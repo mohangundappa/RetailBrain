@@ -1140,9 +1140,10 @@ def agent_wizard(agent_id=None, step=1):
                 name=f"New Agent {datetime.utcnow().strftime('%Y%m%d%H%M%S')}",
                 description="Custom agent created through the wizard",
                 is_active=False,
-                creator=request.args.get('creator', 'Unknown'),
-                current_wizard_step=1
+                creator=request.args.get('creator', 'Unknown')
             )
+            # Store the current step in session instead of model
+            session['current_wizard_step'] = 1
             db.session.add(new_agent)
             db.session.commit()
             
@@ -1286,7 +1287,8 @@ def agent_wizard_save(agent_id, step):
             # Finalize agent
             agent.is_active = request.form.get('activate_agent') == 'on'
             agent.wizard_completed = True
-            agent.current_wizard_step = 5
+            # Store current step in session
+            session['current_wizard_step'] = 5
             
             # Set any additional configuration
             agent_config = {
