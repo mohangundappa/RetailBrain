@@ -281,9 +281,14 @@
                 {% endfor %}
               </div>
               
-              <button type="button" id="add-entity" class="btn btn-outline-primary mb-3">
-                <i class="bi bi-plus-circle"></i> Add New Entity
-              </button>
+              <div class="d-flex mb-3">
+                <button type="button" id="add-entity" class="btn btn-outline-primary me-2">
+                  <i class="bi bi-plus-circle"></i> Add New Entity
+                </button>
+                <button type="button" id="entity-ai-assist" class="btn btn-outline-secondary ai-assist-btn" data-target="entity-assistant" data-type="entity_definition">
+                  <i class="bi bi-magic"></i> AI Assist
+                </button>
+              </div>
               
               <div class="alert alert-info">
                 <h5><i class="bi bi-lightbulb"></i> Tips for Entity Definitions</h5>
@@ -1014,11 +1019,20 @@ Next steps:
   
   // AI Assist functionality
   const aiAssistButtons = document.querySelectorAll('.ai-assist-btn');
-  aiAssistButtons.forEach(button => {
-    button.addEventListener('click', function() {
-      const targetId = this.getAttribute('data-target');
-      const assistType = this.getAttribute('data-type');
-      const targetElement = document.getElementById(targetId);
+  if (aiAssistButtons) {
+    aiAssistButtons.forEach(button => {
+      if (button) {
+        button.addEventListener('click', function() {
+          const targetId = this.getAttribute('data-target');
+          const assistType = this.getAttribute('data-type');
+          let targetElement = document.getElementById(targetId);
+          
+          // Special handling for entity assistance
+          if (assistType === 'entity_definition' && targetId === 'entity-assistant') {
+            // No specific target, the result will be used to create new entities
+            targetElement = document.createElement('div');
+            targetElement.id = 'entity-assistant';
+          }
       
       if (!targetElement) {
         console.error('Target element not found:', targetId);
