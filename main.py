@@ -1304,8 +1304,8 @@ def agent_wizard_save(agent_id, step):
             db.session.commit()
             return redirect(url_for('agent_builder'))
         
-        # Update wizard progress
-        agent.current_wizard_step = step + 1
+        # Update wizard progress in session
+        session['current_wizard_step'] = step + 1
         
         # Save the agent
         db.session.commit()
