@@ -11,6 +11,76 @@ from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import AIMessageChunk, BaseMessage
 from langchain_core.outputs import ChatGenerationChunk, ChatResult
 
+class MockClient:
+    """A mock client that mimics the OpenAI client structure for testing"""
+    
+    def __init__(self, parent=None):
+        self.parent = parent
+        
+        # Create mock chat completions
+        class ChatCompletionsAPI:
+            def __init__(self, parent):
+                self.parent = parent
+                
+            def create(self, model=None, messages=None, **kwargs):
+                # Determine response content
+                if self.parent is None:
+                    response_content = "0.7"  # Default confidence
+                else:
+                    # Check if this is a confidence check
+                    is_confidence_check = False
+                    if messages:
+                        for msg in messages:
+                            if isinstance(msg, dict) and msg.get("role") == "user":
+                                content = msg.get("content", "")
+                                if content and isinstance(content, str) and (
+                                    "confidence" in content.lower() or 
+                                    "can you handle" in content.lower() or 
+                                    "rate your" in content.lower()
+                                ):
+                                    is_confidence_check = True
+                                    break
+                    
+                    # Get appropriate response based on message type            
+                    if is_confidence_check:
+                        response_content = str(getattr(self.parent, "_confidence_score", 0.7))
+                    else:
+                        # Get content from parent's response list
+                        if hasattr(self.parent, "_get_next_response"):
+                            response_content = self.parent._get_next_response()
+                        else:
+                            response_content = "Mock response"
+                
+                # Create mock response structure
+                class MockMessage:
+                    def __init__(self, content):
+                        self.content = content
+                        
+                class MockChoice:
+                    def __init__(self, content):
+                        self.message = MockMessage(content)
+                        self.index = 0
+                        self.finish_reason = "stop"
+                        
+                class MockResponse:
+                    def __init__(self, choices):
+                        self.choices = choices
+                        self.id = "mock-response-id"
+                        self.model = "mock-model"
+                        self.usage = {"total_tokens": 10, "prompt_tokens": 5, "completion_tokens": 5}
+                
+                return MockResponse([MockChoice(response_content)])
+        
+        # Create mock chat namespace
+        class ChatNamespace:
+            def __init__(self, parent):
+                self.parent = parent
+                self.completions = ChatCompletionsAPI(parent)
+        
+        # Assign chat namespace
+        self.chat = ChatNamespace(self)
+
+
 class MockChatModel(BaseChatModel):
     """
     Mock chat model for testing.
@@ -19,15 +89,14 @@ class MockChatModel(BaseChatModel):
     """
     
     model_name: str = "gpt-4-mock"  # Define this as a class attribute for pydantic
-    _client = None  # Private attribute for storing self reference
     
-    # Add a property for client access
     @property
     def client(self):
-        if self._client is None:
-            self._client = self
-        return self._client
-
+        """Property to access the mock client"""
+        if not hasattr(self, "_mock_client"):
+            self._mock_client = MockClient(self)
+        return self._mock_client
+    
     def __init__(self, 
                  responses: Optional[List[str]] = None,
                  confidence_score: float = 0.9):
@@ -41,7 +110,7 @@ class MockChatModel(BaseChatModel):
         # Since BaseChatModel is a pydantic model, we need to initialize it properly
         super().__init__(callbacks=None)  # Initialize with required args
         
-        # Store our custom attributes
+        # Set up responses
         self._responses = responses or [
             # Default sequence of responses
             str(confidence_score),  # For confidence checks
@@ -54,62 +123,8 @@ class MockChatModel(BaseChatModel):
         self._response_counter = 0
         self._confidence_score = confidence_score
         
-        # The client property will handle the self-reference
-        self._client = self
-        
-        # Initialize the chat attribute for the client
-        class ChatCompletionsAPI:
-            """Mock completions API interface"""
-            
-            def __init__(self, parent):
-                self.parent = parent
-            
-            def create(self, model=None, messages=None, **kwargs):
-                """Mock create method for chat completions"""
-                # Initialize with a default confidence score
-                message_content = str(self.parent._confidence_score)
-                
-                # Handle case where messages is None or empty
-                if messages:
-                    for msg in messages:
-                        if isinstance(msg, dict) and msg.get("role") == "user" and isinstance(msg.get("content"), str):
-                            content = msg.get("content", "")
-                            if "confidence" in content.lower() or "can you handle" in content.lower() or "rate your confidence" in content.lower():
-                                # This is a confidence check for an agent, use the configured confidence score
-                                message_content = str(self.parent._confidence_score)
-                                break
-                            else:
-                                # For regular content responses, use the next in sequence
-                                message_content = self.parent._get_content_based_on_message(messages) or self.parent._get_next_response()
-                
-                # Mock response object with OpenAI-style structure
-                class MockChoice:
-                    class Message:
-                        def __init__(self, content):
-                            self.content = content
-                    
-                    def __init__(self, content):
-                        self.message = self.Message(content)
-                        self.index = 0
-                        self.finish_reason = "stop"
-                        
-                class MockResponse:
-                    def __init__(self, choices):
-                        self.choices = choices
-                        self.id = "mock-response-id"
-                        self.model = "mock-model"
-                        self.usage = {"total_tokens": 10, "prompt_tokens": 5, "completion_tokens": 5}
-                        
-                return MockResponse([MockChoice(message_content)])
-                
-        # Create a chat namespace with completions API
-        class ChatNamespace:
-            def __init__(self, parent):
-                self.parent = parent
-                self.completions = ChatCompletionsAPI(parent)
-                
-        # Assign chat namespace to client 
-        self._chat_instance = ChatNamespace(self)
+        # Create mock client that can be accessed safely
+        self._mock_client = MockClient(self)
     
     def _is_can_handle_call(self, messages: List[Any]) -> bool:
         """Check if this is a can_handle capability call"""

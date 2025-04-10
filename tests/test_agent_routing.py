@@ -34,52 +34,64 @@ class TestAgentRouting(unittest.TestCase):
         # We need to patch multiple LLM imports to avoid actual API calls
         self.patchers = []
         
-        # Patch langchain_community.chat_models.ChatOpenAI
-        self.llm_community_patcher = patch('langchain_community.chat_models.ChatOpenAI')
-        self.mock_community_llm = self.llm_community_patcher.start()
-        self.patchers.append(self.llm_community_patcher)
+        # Patch openai.OpenAI class and AsyncOpenAI
+        self.openai_patcher = patch('openai.OpenAI')
+        self.async_openai_patcher = patch('openai.AsyncOpenAI')
+        self.mock_openai = self.openai_patcher.start()
+        self.mock_async_openai = self.async_openai_patcher.start()
+        self.patchers.extend([self.openai_patcher, self.async_openai_patcher])
         
-        # Patch langchain_openai.chat_models.ChatOpenAI
-        self.llm_openai_patcher = patch('langchain_openai.chat_models.ChatOpenAI')
-        self.mock_openai_llm = self.llm_openai_patcher.start()
-        self.patchers.append(self.llm_openai_patcher)
-        
-        # Mock the create method for both
-        for mock_llm in [self.mock_community_llm, self.mock_openai_llm]:
-            mock_llm.return_value = MagicMock()
-            mock_llm.return_value._generate.return_value.generations[0].message.content = "0.7"
-            # Setup instance attributes
-            mock_llm.return_value.client = MagicMock()
-            mock_llm.return_value.model_name = "gpt-4-mock"
-            # Mock chat completions create method
-            mock_chat = MagicMock()
-            mock_completions = MagicMock()
-            mock_llm.return_value.client.chat = mock_chat
-            mock_chat.completions = mock_completions
+        # Create a standard mock for OpenAI clients
+        def create_mock_openai_client():
+            mock_client = MagicMock()
             mock_choice = MagicMock()
             mock_choice.message.content = "0.7"
-            mock_completions.create.return_value.choices = [mock_choice]
+            mock_client.chat.completions.create.return_value.choices = [mock_choice]
+            mock_client.chat.completions.create.return_value.usage.completion_tokens = 10
+            mock_client.chat.completions.create.return_value.usage.prompt_tokens = 10
+            return mock_client
         
-        # Patch direct openai usage
-        self.openai_patcher = patch('openai.OpenAI')
-        self.mock_openai = self.openai_patcher.start()
-        self.patchers.append(self.openai_patcher)
+        # Set the return values for both openai patchers
+        self.mock_openai.return_value = create_mock_openai_client()
+        self.mock_async_openai.return_value = create_mock_openai_client()
         
-        # Mock the OpenAI client
-        mock_client = MagicMock()
-        self.mock_openai.return_value = mock_client
-        mock_client.chat.completions.create.return_value.choices = [MagicMock(message=MagicMock(content="0.7"))]
+        # Patch langchain community and openai classes 
+        self.llm_community_patcher = patch('langchain_community.chat_models.ChatOpenAI')
+        self.llm_openai_patcher = patch('langchain_openai.chat_models.ChatOpenAI')
+        # Don't patch BaseChatModel as our MockChatModel extends it
         
-        # Import our test utilities and use them for consistent mocking
-        from tests.test_utils import create_mock_chat_model, patch_llm_in_brain
+        self.mock_community_llm = self.llm_community_patcher.start()
+        self.mock_openai_llm = self.llm_openai_patcher.start()
+        
+        self.patchers.extend([self.llm_community_patcher, self.llm_openai_patcher])
+        
+        # Create a mock for LLM classes
+        def setup_mock_llm(mock_llm):
+            mock_llm_instance = MagicMock()
+            mock_llm_instance._generate.return_value.generations[0].message.content = "0.7"
+            mock_llm_instance.invoke.return_value.content = "0.7"
+            # Setup client mock
+            mock_llm_instance.client = create_mock_openai_client()
+            mock_llm_instance.model_name = "gpt-4-mock"
+            # Setup invoke methods
+            mock_llm_instance.invoke.return_value = MagicMock(content="0.7")
+            mock_llm_instance.batch.return_value = [MagicMock(content="0.7")]
+            return mock_llm_instance
+        
+        # Set up the mock LLMs
+        self.mock_community_llm.return_value = setup_mock_llm(self.mock_community_llm)
+        self.mock_openai_llm.return_value = setup_mock_llm(self.mock_openai_llm)
         
         # Set environment variables for initialization
         os.environ["OPENAI_API_KEY"] = "test_api_key"
         
+        # Import our test utilities 
+        from tests.test_utils import create_mock_chat_model, patch_llm_in_brain
+        
         # Initialize the brain
         self.brain = initialize_staples_brain()
         
-        # Use our test_utils to patch the LLM in the brain
+        # Apply our mock to the brain
         self.mock_llm = create_mock_chat_model()
         patch_llm_in_brain(self.brain, self.mock_llm)
         
@@ -201,20 +213,29 @@ class TestAgentRouting(unittest.TestCase):
         # Create context with this memory
         context = {"session_id": session_id, "conversation_memory": memory}
         
-        # Process a request with this context
-        with patch.object(AgentOrchestrator, '_select_agent') as mock_select:
-            # Mock the _select_agent method to return a known agent
-            for agent in self.brain.agents:
-                if agent.name == PACKAGE_TRACKING_AGENT:
-                    mock_select.return_value = (agent, 0.9, True)
-                    break
-            
-            # Process the request
-            asyncio.run(self.orchestrator.process_request("Test query", context))
+        # Instead of mocking _select_agent, we need to test the actual logic
+        # Find the package tracking agent
+        package_agent = None
+        for agent in self.brain.agents:
+            if agent.name == PACKAGE_TRACKING_AGENT:
+                package_agent = agent
+                break
+                
+        self.assertIsNotNone(package_agent, "Package tracking agent not found")
         
-        # Verify the continue_with_same_agent flag was reset
-        self.assertFalse(memory.get_working_memory('continue_with_same_agent', False),
-                       "continue_with_same_agent should be reset after being used")
+        # Directly manipulate the _select_agent method's continuation logic
+        with patch.object(package_agent, 'can_handle', return_value=0.8):
+            # Call the actual _select_agent to test the flag reset logic
+            best_agent, confidence, context_used = self.orchestrator._select_agent("Track my package", context)
+            
+            # Verify the agent was selected and confidence was boosted
+            self.assertEqual(best_agent.name, PACKAGE_TRACKING_AGENT)
+            self.assertGreater(confidence, 0.8)  # Should be higher due to continuity bonus
+            self.assertTrue(context_used)
+            
+            # Verify the continue_with_same_agent flag was reset
+            self.assertFalse(memory.get_working_memory('continue_with_same_agent', False),
+                           "continue_with_same_agent should be reset after being used")
 
 
 if __name__ == '__main__':
