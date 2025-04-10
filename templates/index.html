@@ -335,13 +335,13 @@
                     chatContainer.scrollTop = chatContainer.scrollHeight;
                     
                     // Send to server
-                    fetch('/process', {
+                    fetch('/api/chat', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
                         },
                         body: JSON.stringify({
-                            input: message,
+                            message: message,
                             session_id: sessionId
                         }),
                     })
@@ -358,7 +358,7 @@
                                 </div>
                                 <div class="message brain-message">
                                     <p>${data.response}</p>
-                                    ${data.selected_agent ? `<div class="badge bg-info mt-2">Agent: ${data.selected_agent}</div>` : ''}
+                                    ${data.agent ? `<div class="badge bg-info mt-2">Agent: ${data.agent}</div>` : ''}
                                 </div>
                             </div>
                         `;
