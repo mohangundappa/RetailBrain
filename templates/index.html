@@ -7,202 +7,115 @@
     <div class="container">
         <h1 class="display-4"><i class="fas fa-brain"></i> Staples Brain</h1>
         <p class="lead">A modular AI super brain system with specialized agents</p>
-        
-        <!-- System Status -->
-        <div class="row mt-4">
-            <div class="col-md-8 offset-md-2">
-                <div class="card bg-dark text-light">
-                    <div class="card-body">
-                        <h5 class="card-title">System Status</h5>
-                        <div class="row text-center">
-                            <div class="col">
-                                <div class="status-indicator">
-                                    <div class="status-icon">
-                                        <i class="fas fa-database {% if stats.database_connected %}text-success{% else %}text-danger{% endif %}"></i>
-                                    </div>
-                                    <div class="status-text">Database</div>
-                                    <div class="status-value">{% if stats.database_connected %}Connected{% else %}Disconnected{% endif %}</div>
-                                </div>
-                            </div>
-                            <div class="col">
-                                <div class="status-indicator">
-                                    <div class="status-icon">
-                                        <i class="fas fa-robot {% if stats.llm_integration %}text-success{% else %}text-warning{% endif %}"></i>
-                                    </div>
-                                    <div class="status-text">LLM Integration</div>
-                                    <div class="status-value">{% if stats.llm_integration %}Active{% else %}Inactive{% endif %}</div>
-                                </div>
-                            </div>
-                            <div class="col">
-                                <div class="status-indicator">
-                                    <div class="status-icon">
-                                        <i class="fas fa-comments text-info"></i>
-                                    </div>
-                                    <div class="status-text">Conversations</div>
-                                    <div class="status-value">{{ stats.conversation_count }}</div>
-                                </div>
-                            </div>
-                            <div class="col">
-                                <div class="status-indicator">
-                                    <div class="status-icon">
-                                        <i class="fas fa-server text-info"></i>
-                                    </div>
-                                    <div class="status-text">Agents</div>
-                                    <div class="status-value">{{ stats.available_agents|length }}</div>
-                                </div>
-                            </div>
-                            <div class="col">
-                                <a href="/dashboard" class="text-decoration-none">
-                                    <div class="status-indicator">
-                                        <div class="status-icon">
-                                            <i class="fas fa-tachometer-alt text-success"></i>
-                                        </div>
-                                        <div class="status-text">Observability</div>
-                                        <div class="status-value">Dashboard</div>
-                                    </div>
-                                </a>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
     </div>
 </header>
 {% endblock %}
 
 {% block content %}
-<div class="row mb-5">
-    <div class="col-md-8 offset-md-2">
-        <div class="card bg-dark text-light">
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center mb-4">
-                    <h3 class="card-title mb-0">Chat with Staples Brain</h3>
-                    <button id="new-session-btn" class="btn btn-outline-warning">
-                        <i class="fas fa-plus"></i> New Session
-                    </button>
-                </div>
-                
-                <!-- Chat History -->
-                <div class="chat-container mb-3" id="chat-container">
-                    <div class="welcome-message">
-                        <div class="message-wrapper">
-                            <div class="avatar brain-avatar">
-                                <i class="fas fa-brain"></i>
+<!-- Tabs Navigation -->
+<ul class="nav nav-tabs mb-4" id="mainTabs" role="tablist">
+    <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="system-status-tab" data-bs-toggle="tab" data-bs-target="#system-status" type="button" role="tab" aria-controls="system-status" aria-selected="true">
+            <i class="fas fa-server"></i> System Status
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="chat-tab" data-bs-toggle="tab" data-bs-target="#chat-with-brain" type="button" role="tab" aria-controls="chat-with-brain" aria-selected="false">
+            <i class="fas fa-comments"></i> Chat With Staples Brain
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="agents-tab" data-bs-toggle="tab" data-bs-target="#available-agents" type="button" role="tab" aria-controls="available-agents" aria-selected="false">
+            <i class="fas fa-robot"></i> Available Agents
+        </button>
+    </li>
+</ul>
+
+<!-- Tab Content -->
+<div class="tab-content" id="mainTabsContent">
+    <!-- System Status Tab -->
+    <div class="tab-pane fade show active" id="system-status" role="tabpanel" aria-labelledby="system-status-tab">
+        <div class="row mb-4">
+            <div class="col-md-10 offset-md-1">
+                <div class="card bg-dark text-light">
+                    <div class="card-body">
+                        <h3 class="card-title mb-4">System Status</h3>
+                        <div class="row text-center">
+                            <div class="col-md-4 mb-4">
+                                <div class="status-indicator p-3 border rounded">
+                                    <div class="status-icon mb-3">
+                                        <i class="fas fa-database fa-3x {% if stats.database_connected %}text-success{% else %}text-danger{% endif %}"></i>
+                                    </div>
+                                    <h4 class="status-text">Database</h4>
+                                    <div class="status-value">
+                                        <span class="badge {% if stats.database_connected %}bg-success{% else %}bg-danger{% endif %} p-2">
+                                            {% if stats.database_connected %}Connected{% else %}Disconnected{% endif %}
+                                        </span>
+                                    </div>
+                                </div>
                             </div>
-                            <div class="message brain-message">
-                                <p>Hello! I'm Staples Brain, here to assist you with various Staples services. How can I help you today?</p>
+                            <div class="col-md-4 mb-4">
+                                <div class="status-indicator p-3 border rounded">
+                                    <div class="status-icon mb-3">
+                                        <i class="fas fa-robot fa-3x {% if stats.llm_integration %}text-success{% else %}text-warning{% endif %}"></i>
+                                    </div>
+                                    <h4 class="status-text">LLM Integration</h4>
+                                    <div class="status-value">
+                                        <span class="badge {% if stats.llm_integration %}bg-success{% else %}bg-warning text-dark{% endif %} p-2">
+                                            {% if stats.llm_integration %}Active{% else %}Inactive{% endif %}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4 mb-4">
+                                <div class="status-indicator p-3 border rounded">
+                                    <div class="status-icon mb-3">
+                                        <i class="fas fa-tachometer-alt fa-3x text-info"></i>
+                                    </div>
+                                    <h4 class="status-text">Observability</h4>
+                                    <div class="status-value">
+                                        <a href="/dashboard" class="btn btn-outline-info">View Dashboard</a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row text-center mt-3">
+                            <div class="col-md-6 mb-4">
+                                <div class="status-indicator p-3 border rounded">
+                                    <div class="status-icon mb-3">
+                                        <i class="fas fa-comments fa-3x text-primary"></i>
+                                    </div>
+                                    <h4 class="status-text">Conversations</h4>
+                                    <div class="status-value">
+                                        <h3>{{ stats.conversation_count }}</h3>
+                                        <p class="text-muted">Total conversations</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6 mb-4">
+                                <div class="status-indicator p-3 border rounded">
+                                    <div class="status-icon mb-3">
+                                        <i class="fas fa-cogs fa-3x text-primary"></i>
+                                    </div>
+                                    <h4 class="status-text">Agents</h4>
+                                    <div class="status-value">
+                                        <h3>{{ stats.available_agents|length }}</h3>
+                                        <p class="text-muted">Active agents</p>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
-                
-                <form id="brain-form">
-                    <div class="mb-3">
-                        <textarea id="user-input" class="form-control" rows="3" placeholder="Ask about package tracking, password reset, or anything else..."></textarea>
-                    </div>
-                    <div class="d-flex">
-                        <button type="submit" class="btn btn-primary me-2">
-                            <i class="fas fa-paper-plane"></i> Send
-                        </button>
-                        <button type="button" id="clear-chat-btn" class="btn btn-outline-secondary">
-                            <i class="fas fa-eraser"></i> Clear Chat
-                        </button>
-                    </div>
-                </form>
-                <div class="loading-indicator" id="loading">
-                    <div class="spinner-border text-primary" role="status">
-                        <span class="visually-hidden">Loading...</span>
-                    </div>
-                    <p class="mt-2">Thinking...</p>
-                </div>
             </div>
         </div>
-    </div>
-</div>
-
-<div class="text-center mb-4">
-    <h2 class="d-inline-block me-3">Available Agents</h2>
-    <a href="{{ url_for('agent_wizard') }}" class="btn btn-success">
-        <i class="fas fa-plus-circle"></i> Create New Agent
-    </a>
-</div>
-
-<div class="row mb-4">
-    <div class="col-md-6 mb-4">
-        <div class="card agent-card bg-dark text-light h-100">
-            <div class="card-body text-center">
-                <div class="agent-icon">
-                    <i class="fas fa-box"></i>
-                </div>
-                <h3 class="card-title">Package Tracking</h3>
-                <p class="card-text">Track your packages and check delivery status</p>
-                <button class="btn btn-outline-info" onclick="setPrompt('Track my package with tracking number TRACK123456')">Try Package Tracking</button>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-6 mb-4">
-        <div class="card agent-card bg-dark text-light h-100">
-            <div class="card-body text-center">
-                <div class="agent-icon">
-                    <i class="fas fa-key"></i>
-                </div>
-                <h3 class="card-title">Password Reset</h3>
-                <p class="card-text">Reset your password and recover your account</p>
-                <button class="btn btn-outline-info" onclick="setPrompt('I need to reset my password for user@example.com')">Try Password Reset</button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<div class="row mb-4">
-    <div class="col-md-6 mb-4">
-        <div class="card agent-card bg-dark text-light h-100">
-            <div class="card-body text-center">
-                <div class="agent-icon">
-                    <i class="fas fa-store"></i>
-                </div>
-                <h3 class="card-title">Store Locator</h3>
-                <p class="card-text">Find Staples stores near you</p>
-                <button class="btn btn-outline-info" onclick="setPrompt('Find Staples stores near 10001')">Try Store Locator</button>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-6 mb-4">
-        <div class="card agent-card bg-dark text-light h-100">
-            <div class="card-body text-center">
-                <div class="agent-icon">
-                    <i class="fas fa-info-circle"></i>
-                </div>
-                <h3 class="card-title">Product Information</h3>
-                <p class="card-text">Get information about Staples products</p>
-                <button class="btn btn-outline-info" onclick="setPrompt('Tell me about Staples Hyken Mesh Task Chair')">Try Product Info</button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<div class="row">
-    <div class="col-md-6 offset-md-3 mb-4">
-        <div class="card agent-card bg-dark text-light h-100">
-            <div class="card-body text-center">
-                <div class="agent-icon">
-                    <i class="fas fa-undo"></i>
-                </div>
-                <h3 class="card-title">Returns Processing</h3>
-                <p class="card-text">Process returns for Staples orders and purchases</p>
-                <button class="btn btn-outline-info" onclick="setPrompt('I need to return an order I placed last week')">Try Returns Processing</button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Conversation History Section -->
-<div class="mt-5 pt-3">
-    <h2 class="mb-4 text-center">Recent Conversations</h2>
-    <div class="row">
-        <div class="col-md-8 offset-md-2">
+        
+        <!-- Conversation History Section -->
+        <div class="mt-4">
             <div class="card bg-dark text-light">
+                <div class="card-header">
+                    <h4 class="mb-0">Recent Conversations</h4>
+                </div>
                 <div class="card-body">
                     <div id="conversations-list">
                         {% if stats.total_conversations and stats.total_conversations > 0 %}
@@ -235,137 +148,135 @@
             </div>
         </div>
     </div>
-</div>
+    
+    <!-- Chat Tab -->
+    <div class="tab-pane fade" id="chat-with-brain" role="tabpanel" aria-labelledby="chat-tab">
+        <div class="row">
+            <div class="col-lg-10 offset-lg-1">
+                <div class="card bg-dark text-light">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center mb-4">
+                            <h3 class="card-title mb-0">Chat with Staples Brain</h3>
+                            <button id="new-session-btn" class="btn btn-outline-warning">
+                                <i class="fas fa-plus"></i> New Session
+                            </button>
+                        </div>
+                        
+                        <!-- Chat History -->
+                        <div class="chat-container mb-3" id="chat-container">
+                            <div class="welcome-message">
+                                <div class="message-wrapper">
+                                    <div class="avatar brain-avatar">
+                                        <i class="fas fa-brain"></i>
+                                    </div>
+                                    <div class="message brain-message">
+                                        <p>Hello! I'm Staples Brain, here to assist you with various Staples services. How can I help you today?</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <form id="brain-form">
+                            <div class="mb-3">
+                                <textarea id="user-input" class="form-control" rows="3" placeholder="Ask about package tracking, password reset, or anything else..."></textarea>
+                            </div>
+                            <div class="d-flex">
+                                <button type="submit" class="btn btn-primary me-2">
+                                    <i class="fas fa-paper-plane"></i> Send
+                                </button>
+                                <button type="button" id="clear-chat-btn" class="btn btn-outline-secondary">
+                                    <i class="fas fa-eraser"></i> Clear Chat
+                                </button>
+                            </div>
+                        </form>
+                        <div class="loading-indicator" id="loading">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                            <p class="mt-2">Thinking...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Available Agents Tab -->
+    <div class="tab-pane fade" id="available-agents" role="tabpanel" aria-labelledby="agents-tab">
+        <div class="text-center mb-4">
+            <h2 class="d-inline-block me-3">Available Agents</h2>
+            <a href="{{ url_for('agent_wizard') }}" class="btn btn-success">
+                <i class="fas fa-plus-circle"></i> Create New Agent
+            </a>
+        </div>
 
-<div class="mt-5 pt-5" id="api-docs">
-    <h2 class="mb-4">API Documentation</h2>
-    <p>Staples Brain provides a RESTful API for integration with other systems.</p>
-    
-    <div class="endpoint">
-        <h4><span class="method">POST</span> <span class="url-path">/api/process</span></h4>
-        <p>Process a natural language request using the most appropriate agent.</p>
-        <h5>Request Body:</h5>
-        <div class="response-example">
-            {
-                "input": "Track my package with tracking number TRACK123456",
-                "context": {
-                    "user_id": "12345",
-                    "session_id": "abcdef"
-                }
-            }
+        <div class="row mb-4">
+            <div class="col-md-6 mb-4">
+                <div class="card agent-card bg-dark text-light h-100">
+                    <div class="card-body text-center">
+                        <div class="agent-icon">
+                            <i class="fas fa-box"></i>
+                        </div>
+                        <h3 class="card-title">Package Tracking</h3>
+                        <p class="card-text">Track your packages and check delivery status</p>
+                        <button class="btn btn-outline-info" onclick="setPrompt('Track my package with tracking number TRACK123456')">Try Package Tracking</button>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6 mb-4">
+                <div class="card agent-card bg-dark text-light h-100">
+                    <div class="card-body text-center">
+                        <div class="agent-icon">
+                            <i class="fas fa-key"></i>
+                        </div>
+                        <h3 class="card-title">Password Reset</h3>
+                        <p class="card-text">Reset your password and recover your account</p>
+                        <button class="btn btn-outline-info" onclick="setPrompt('I need to reset my password for user@example.com')">Try Password Reset</button>
+                    </div>
+                </div>
+            </div>
         </div>
-        <h5>Response:</h5>
-        <div class="response-example">
-            {
-                "agent": "Package Tracking Agent",
-                "response": "Your package with tracking number TRACK123456 is currently in transit...",
-                "tracking_info": { ... },
-                "package_status": { ... },
-                "success": true,
-                "selected_agent": "Package Tracking Agent",
-                "confidence": 0.95
-            }
+
+        <div class="row mb-4">
+            <div class="col-md-6 mb-4">
+                <div class="card agent-card bg-dark text-light h-100">
+                    <div class="card-body text-center">
+                        <div class="agent-icon">
+                            <i class="fas fa-store"></i>
+                        </div>
+                        <h3 class="card-title">Store Locator</h3>
+                        <p class="card-text">Find Staples stores near you</p>
+                        <button class="btn btn-outline-info" onclick="setPrompt('Find Staples stores near 10001')">Try Store Locator</button>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6 mb-4">
+                <div class="card agent-card bg-dark text-light h-100">
+                    <div class="card-body text-center">
+                        <div class="agent-icon">
+                            <i class="fas fa-info-circle"></i>
+                        </div>
+                        <h3 class="card-title">Product Information</h3>
+                        <p class="card-text">Get information about Staples products</p>
+                        <button class="btn btn-outline-info" onclick="setPrompt('Tell me about Staples Hyken Mesh Task Chair')">Try Product Info</button>
+                    </div>
+                </div>
+            </div>
         </div>
-    </div>
-    
-    <div class="endpoint">
-        <h4><span class="method">POST</span> <span class="url-path">/api/track-package</span></h4>
-        <p>Directly access the package tracking agent.</p>
-        <h5>Request Body:</h5>
-        <div class="response-example">
-            {
-                "tracking_number": "TRACK123456"
-            }
-        </div>
-        <h5>Or:</h5>
-        <div class="response-example">
-            {
-                "query": "Where is my package that I ordered last week?"
-            }
-        </div>
-    </div>
-    
-    <div class="endpoint">
-        <h4><span class="method">POST</span> <span class="url-path">/api/reset-password</span></h4>
-        <p>Directly access the password reset agent.</p>
-        <h5>Request Body:</h5>
-        <div class="response-example">
-            {
-                "email": "user@example.com"
-            }
-        </div>
-        <h5>Or:</h5>
-        <div class="response-example">
-            {
-                "query": "I forgot my password and need to reset it"
-            }
-        </div>
-    </div>
-    
-    <div class="endpoint">
-        <h4><span class="method">GET</span> <span class="url-path">/api/agents</span></h4>
-        <p>List all available agents.</p>
-        <h5>Response:</h5>
-        <div class="response-example">
-            {
-                "success": true,
-                "agents": [
-                    "Package Tracking Agent",
-                    "Reset Password Agent",
-                    "Store Locator Agent",
-                    "Product Information Agent",
-                    "Returns Processing Agent"
-                ]
-            }
-        </div>
-    </div>
-    
-    <div class="endpoint">
-        <h4><span class="method">GET</span> <span class="url-path">/api/health</span></h4>
-        <p>Check the health status of the Staples Brain.</p>
-        <h5>Response:</h5>
-        <div class="response-example">
-            {
-                "status": "healthy",
-                "message": "Staples Brain is running",
-                "version": "1.0.0",
-                "agents": [
-                    "Package Tracking Agent",
-                    "Reset Password Agent",
-                    "Store Locator Agent",
-                    "Product Information Agent",
-                    "Returns Processing Agent"
-                ]
-            }
-        </div>
-    </div>
-    
-    <div class="endpoint">
-        <h4><span class="method">POST</span> <span class="url-path">/api/generate-entity-definitions</span></h4>
-        <p>Generate entity definitions code for the entity collection framework.</p>
-        <h5>Request Body:</h5>
-        <div class="response-example">
-            {
-                "entities": [
-                    {
-                        "name": "order_number",
-                        "required": true,
-                        "validation_pattern": "^[A-Za-z0-9]{2,}-?[A-Za-z0-9]{2,}$",
-                        "error_message": "Order numbers typically contain letters and numbers",
-                        "description": "Your Staples order number",
-                        "examples": ["OD1234567", "STB-987654"]
-                    }
-                ]
-            }
-        </div>
-        <h5>Response:</h5>
-        <div class="response-example">
-            {
-                "success": true,
-                "setup_code": "def setup_entity_definitions(self) -> None:\n    # Code to set up entity definitions...",
-                "entity_count": 1,
-                "doc": "Insert this setup_entity_definitions method into your agent class and call it from the __init__ method."
-            }
+
+        <div class="row">
+            <div class="col-md-6 offset-md-3 mb-4">
+                <div class="card agent-card bg-dark text-light h-100">
+                    <div class="card-body text-center">
+                        <div class="agent-icon">
+                            <i class="fas fa-undo"></i>
+                        </div>
+                        <h3 class="card-title">Returns Processing</h3>
+                        <p class="card-text">Process returns for Staples orders and purchases</p>
+                        <button class="btn btn-outline-info" onclick="setPrompt('I need to return an order I placed last week')">Try Returns Processing</button>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 </div>
@@ -373,468 +284,204 @@
 
 {% block scripts %}
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    const brainForm = document.getElementById('brain-form');
-    const userInput = document.getElementById('user-input');
-    const loading = document.getElementById('loading');
-    const chatContainer = document.getElementById('chat-container');
-    const loadConversationsBtn = document.getElementById('load-conversations');
-    const conversationsTableBody = document.getElementById('conversations-table-body');
-    const newSessionBtn = document.getElementById('new-session-btn');
-    const clearChatBtn = document.getElementById('clear-chat-btn');
-    
-    // Initialize session data
-    let sessionId = localStorage.getItem('staples_brain_session_id') || generateSessionId();
-    let conversationHistory = [];
-    
-    // Function to generate a new session ID
-    function generateSessionId() {
-        const sessionId = 'session_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9);
-        localStorage.setItem('staples_brain_session_id', sessionId);
-        return sessionId;
+    // Function to set prompt text in the input field and switch to chat tab
+    function setPrompt(text) {
+        document.getElementById('user-input').value = text;
+        // Switch to chat tab
+        document.getElementById('chat-tab').click();
+        // Focus on the input
+        document.getElementById('user-input').focus();
     }
-    
-    // New session button click handler
-    newSessionBtn.addEventListener('click', function() {
-        // Generate a new session ID
-        sessionId = generateSessionId();
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const form = document.getElementById('brain-form');
+        const userInput = document.getElementById('user-input');
+        const chatContainer = document.getElementById('chat-container');
+        const loading = document.getElementById('loading');
+        const newSessionBtn = document.getElementById('new-session-btn');
+        const clearChatBtn = document.getElementById('clear-chat-btn');
+        const loadConversationsBtn = document.getElementById('load-conversations');
         
-        // Clear conversation history
-        conversationHistory = [];
+        let sessionId = Date.now().toString();
+        loading.style.display = 'none';
         
-        // Clear chat display
-        chatContainer.innerHTML = `
-            <div class="welcome-message">
-                <div class="message-wrapper">
-                    <div class="avatar brain-avatar">
-                        <i class="fas fa-brain"></i>
-                    </div>
-                    <div class="message brain-message">
-                        <p>Hello! I'm Staples Brain, here to assist you with various Staples services. How can I help you today?</p>
-                    </div>
-                </div>
-            </div>
-        `;
-        
-        // Clear input
-        userInput.value = '';
-        userInput.focus();
-    });
-    
-    // Clear chat button click handler
-    clearChatBtn.addEventListener('click', function() {
-        // Clear chat display but keep the session ID
-        chatContainer.innerHTML = `
-            <div class="welcome-message">
-                <div class="message-wrapper">
-                    <div class="avatar brain-avatar">
-                        <i class="fas fa-brain"></i>
-                    </div>
-                    <div class="message brain-message">
-                        <p>Chat cleared. How can I help you today?</p>
-                    </div>
-                </div>
-            </div>
-        `;
-        
-        // Clear input
-        userInput.value = '';
-        userInput.focus();
-    });
-    
-    // Helper function to add a message to the chat
-    function addMessageToChat(content, isUser = false) {
-        const messageWrapper = document.createElement('div');
-        messageWrapper.classList.add('message-wrapper');
-        
-        if (isUser) {
-            messageWrapper.innerHTML = `
-                <div class="avatar user-avatar">
-                    <i class="fas fa-user"></i>
-                </div>
-                <div class="message user-message">
-                    <p>${content}</p>
-                </div>
-            `;
-        } else {
-            messageWrapper.innerHTML = `
-                <div class="avatar brain-avatar">
-                    <i class="fas fa-brain"></i>
-                </div>
-                <div class="message brain-message">
-                    <p>${content}</p>
-                </div>
-            `;
-        }
-        
-        chatContainer.appendChild(messageWrapper);
-        
-        // Auto scroll to bottom
-        chatContainer.scrollTop = chatContainer.scrollHeight;
-        
-        return messageWrapper;
-    }
-    
-    // Initialize the brain form submission
-    brainForm.addEventListener('submit', async function(e) {
-        e.preventDefault();
-        
-        const input = userInput.value.trim();
-        if (!input) return;
-        
-        // Add user message to chat
-        addMessageToChat(input, true);
-        
-        // Store user message
-        conversationHistory.push({
-            role: 'user',
-            content: input
-        });
-        
-        // Clear input field
-        userInput.value = '';
-        
-        // Show loading indicator
-        loading.style.display = 'block';
-        
-        try {
-            const response = await fetch('/api/process', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    input: input,
-                    session_id: sessionId
-                })
-            });
-            
-            const data = await response.json();
-            
-            // Handle response
-            if (data.response) {
-                // Add response to chat
-                const messageElement = addMessageToChat(data.response);
+        // Handle form submission
+        if (form) {
+            form.addEventListener('submit', function(e) {
+                e.preventDefault();
+                const message = userInput.value.trim();
                 
-                // Add agent info if available
-                if (data.selected_agent) {
-                    const agentInfo = document.createElement('div');
-                    agentInfo.classList.add('agent-info', 'mt-1', 'text-muted', 'small');
-                    agentInfo.innerHTML = `<em>Agent: ${data.selected_agent}</em>`;
-                    messageElement.querySelector('.message').appendChild(agentInfo);
-                }
-                
-                // Store response in history
-                conversationHistory.push({
-                    role: 'assistant',
-                    content: data.response,
-                    agent: data.selected_agent
-                });
-                
-                // Reload conversation history after successful conversation
-                if (loadConversationsBtn) {
-                    setTimeout(() => {
-                        loadConversationsBtn.click();
-                    }, 1000);
-                }
-            } else {
-                // Handle error response
-                addMessageToChat("I'm sorry, but I encountered an error processing your request. Please try again.");
-            }
-            
-        } catch (error) {
-            console.error('Error:', error);
-            addMessageToChat("I'm sorry, but I couldn't process your request due to a technical issue. Please try again later.");
-        } finally {
-            // Hide loading indicator
-            loading.style.display = 'none';
-        }
-    });
-    
-    // Initialize the load conversations button
-    if (loadConversationsBtn) {
-        loadConversationsBtn.addEventListener('click', async function() {
-            loadConversationsBtn.disabled = true;
-            loadConversationsBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Loading...';
-            
-            try {
-                const response = await fetch('/api/conversations');
-                const data = await response.json();
-                
-                if (data.success && data.conversations && data.conversations.length > 0) {
-                    let html = '';
+                if (message) {
+                    // Add user message to chat
+                    const userMessageHtml = `
+                        <div class="message-wrapper user-message-wrapper">
+                            <div class="message user-message">
+                                <p>${message}</p>
+                            </div>
+                            <div class="avatar user-avatar">
+                                <i class="fas fa-user"></i>
+                            </div>
+                        </div>
+                    `;
+                    chatContainer.innerHTML += userMessageHtml;
                     
-                    data.conversations.forEach(conv => {
-                        const date = new Date(conv.created_at);
-                        const formattedDate = date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
+                    // Clear input
+                    userInput.value = '';
+                    
+                    // Show loading
+                    loading.style.display = 'flex';
+                    
+                    // Scroll to bottom
+                    chatContainer.scrollTop = chatContainer.scrollHeight;
+                    
+                    // Send to server
+                    fetch('/process', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            input: message,
+                            session_id: sessionId
+                        }),
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        // Hide loading
+                        loading.style.display = 'none';
                         
-                        html += `<tr class="conversation-row" data-id="${conv.id}">
-                            <td>${conv.id}</td>
-                            <td>${truncateText(conv.user_input, 30)}</td>
-                            <td><span class="badge ${getIntentBadgeClass(conv.intent)}">${conv.intent}</span></td>
-                            <td>${conv.selected_agent}</td>
-                            <td>${formattedDate}</td>
-                        </tr>`;
+                        // Add brain message to chat
+                        const brainMessageHtml = `
+                            <div class="message-wrapper">
+                                <div class="avatar brain-avatar">
+                                    <i class="fas fa-brain"></i>
+                                </div>
+                                <div class="message brain-message">
+                                    <p>${data.response}</p>
+                                    ${data.selected_agent ? `<div class="badge bg-info mt-2">Agent: ${data.selected_agent}</div>` : ''}
+                                </div>
+                            </div>
+                        `;
+                        chatContainer.innerHTML += brainMessageHtml;
+                        
+                        // Scroll to bottom
+                        chatContainer.scrollTop = chatContainer.scrollHeight;
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        loading.style.display = 'none';
+                        
+                        // Add error message
+                        const errorMessageHtml = `
+                            <div class="message-wrapper">
+                                <div class="avatar brain-avatar">
+                                    <i class="fas fa-brain"></i>
+                                </div>
+                                <div class="message brain-message error-message">
+                                    <p>Sorry, I encountered an error. Please try again later.</p>
+                                </div>
+                            </div>
+                        `;
+                        chatContainer.innerHTML += errorMessageHtml;
+                        
+                        // Scroll to bottom
+                        chatContainer.scrollTop = chatContainer.scrollHeight;
                     });
-                    
-                    conversationsTableBody.innerHTML = html;
-                    
-                    // Add click event to conversation rows
-                    document.querySelectorAll('.conversation-row').forEach(row => {
-                        row.addEventListener('click', async function() {
-                            const id = this.getAttribute('data-id');
-                            await loadConversationDetails(id);
-                        });
-                    });
-                    
-                } else {
-                    conversationsTableBody.innerHTML = `<tr><td colspan="5" class="text-center">No conversations found</td></tr>`;
                 }
-                
-            } catch (error) {
-                conversationsTableBody.innerHTML = `<tr><td colspan="5" class="text-center text-danger">Error loading conversations: ${error.message}</td></tr>`;
-            } finally {
-                loadConversationsBtn.disabled = false;
-                loadConversationsBtn.innerHTML = 'Load Recent Conversations';
-            }
-        });
-        
-        // Auto-load conversations on page load
-        if (conversationsTableBody.innerHTML.trim() === '') {
-            loadConversationsBtn.click();
+            });
         }
-    }
-});
-
-// Load conversation details
-async function loadConversationDetails(id) {
-    const responseContainer = document.getElementById('response-container');
-    
-    responseContainer.innerHTML = `<div class="text-center">
-        <div class="spinner-border text-primary" role="status">
-            <span class="visually-hidden">Loading...</span>
-        </div>
-        <p class="mt-2">Loading conversation details...</p>
-    </div>`;
-    
-    document.getElementById('brain-form').scrollIntoView({ behavior: 'smooth' });
-    
-    try {
-        const response = await fetch(`/api/conversations/${id}`);
-        const data = await response.json();
         
-        if (data.success && data.conversation) {
-            const conv = data.conversation;
-            
-            let html = `<div class="card bg-dark mb-3">
-                <div class="card-header bg-secondary">
-                    <strong>Conversation #${conv.id}</strong>
-                    <span class="float-end">${new Date(conv.created_at).toLocaleString()}</span>
-                </div>
-                <div class="card-body">
-                    <h5>User Input</h5>
-                    <div class="alert alert-dark mb-3">${conv.user_input}</div>
+        // Handle new session
+        if (newSessionBtn) {
+            newSessionBtn.addEventListener('click', function() {
+                sessionId = Date.now().toString();
+                chatContainer.innerHTML = `
+                    <div class="welcome-message">
+                        <div class="message-wrapper">
+                            <div class="avatar brain-avatar">
+                                <i class="fas fa-brain"></i>
+                            </div>
+                            <div class="message brain-message">
+                                <p>Hello! I'm Staples Brain, here to assist you with various Staples services. How can I help you today?</p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+        
+        // Handle clear chat
+        if (clearChatBtn) {
+            clearChatBtn.addEventListener('click', function() {
+                chatContainer.innerHTML = `
+                    <div class="welcome-message">
+                        <div class="message-wrapper">
+                            <div class="avatar brain-avatar">
+                                <i class="fas fa-brain"></i>
+                            </div>
+                            <div class="message brain-message">
+                                <p>Hello! I'm Staples Brain, here to assist you with various Staples services. How can I help you today?</p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+        
+        // Load conversations
+        if (loadConversationsBtn) {
+            loadConversationsBtn.addEventListener('click', function() {
+                fetch('/api/conversations')
+                .then(response => response.json())
+                .then(data => {
+                    const tableBody = document.getElementById('conversations-table-body');
+                    tableBody.innerHTML = '';
                     
-                    <h5>Brain Response</h5>
-                    <div class="alert alert-info mb-3">${formatResponse(conv.brain_response)}</div>
-                    
-                    <div class="row small mt-4">
-                        <div class="col-md-4">
-                            <strong>Intent:</strong> 
-                            <span class="badge ${getIntentBadgeClass(conv.intent)}">${conv.intent}</span>
-                        </div>
-                        <div class="col-md-4">
-                            <strong>Agent:</strong> ${conv.selected_agent}
-                        </div>
-                        <div class="col-md-4">
-                            <strong>Confidence:</strong> ${(conv.confidence * 100).toFixed(1)}%
-                        </div>
-                    </div>`;
-            
-            // Add message history if available
-            if (conv.messages && conv.messages.length > 0) {
-                html += `<div class="mt-4">
-                    <h5>Message History</h5>
-                    <div class="message-history">`;
-                
-                conv.messages.forEach(msg => {
-                    const isUser = msg.role === 'user';
-                    html += `<div class="message ${isUser ? 'user-message' : 'assistant-message'}">
-                        <div class="message-header">
-                            <strong>${isUser ? 'User' : 'Assistant'}</strong>
-                            <span class="small text-muted float-end">${new Date(msg.created_at).toLocaleTimeString()}</span>
-                        </div>
-                        <div class="message-content">
-                            ${formatResponse(msg.content)}
-                        </div>
-                    </div>`;
+                    if (data && data.conversations && data.conversations.length) {
+                        data.conversations.slice(0, 10).forEach(conv => {
+                            const row = document.createElement('tr');
+                            
+                            const idCell = document.createElement('td');
+                            idCell.textContent = conv.id;
+                            
+                            const inputCell = document.createElement('td');
+                            inputCell.textContent = conv.user_input.length > 50 ? 
+                                conv.user_input.substring(0, 50) + '...' : 
+                                conv.user_input;
+                            
+                            const intentCell = document.createElement('td');
+                            intentCell.textContent = conv.intent || 'Unknown';
+                            
+                            const agentCell = document.createElement('td');
+                            agentCell.textContent = conv.selected_agent || 'None';
+                            
+                            const createdCell = document.createElement('td');
+                            const date = new Date(conv.created_at);
+                            createdCell.textContent = date.toLocaleString();
+                            
+                            row.appendChild(idCell);
+                            row.appendChild(inputCell);
+                            row.appendChild(intentCell);
+                            row.appendChild(agentCell);
+                            row.appendChild(createdCell);
+                            
+                            tableBody.appendChild(row);
+                        });
+                    } else {
+                        const row = document.createElement('tr');
+                        const cell = document.createElement('td');
+                        cell.setAttribute('colspan', '5');
+                        cell.classList.add('text-center');
+                        cell.textContent = 'No conversations found';
+                        row.appendChild(cell);
+                        tableBody.appendChild(row);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading conversations:', error);
                 });
-                
-                html += `</div></div>`;
-            }
-            
-            // Add tracking data if available
-            if (conv.tracking_data) {
-                html += `<div class="mt-4">
-                    <h5>Tracking Information</h5>
-                    <div class="p-3 rounded tracking-info bg-dark">
-                        <div class="row">
-                            <div class="col-md-6">
-                                <strong>Tracking Number:</strong> ${conv.tracking_data.tracking_number}
-                            </div>
-                            <div class="col-md-6">
-                                <strong>Carrier:</strong> ${conv.tracking_data.shipping_carrier || 'N/A'}
-                            </div>
-                        </div>
-                        <div class="row mt-2">
-                            <div class="col-md-6">
-                                <strong>Status:</strong> ${conv.tracking_data.status ? conv.tracking_data.status.replace('_', ' ') : 'N/A'}
-                            </div>
-                            <div class="col-md-6">
-                                <strong>Estimated Delivery:</strong> ${conv.tracking_data.estimated_delivery || 'N/A'}
-                            </div>
-                        </div>
-                        <div class="row mt-2">
-                            <div class="col-md-6">
-                                <strong>Current Location:</strong> ${conv.tracking_data.current_location || 'N/A'}
-                            </div>
-                            <div class="col-md-6">
-                                <strong>Last Updated:</strong> ${conv.tracking_data.last_updated ? new Date(conv.tracking_data.last_updated).toLocaleString() : 'N/A'}
-                            </div>
-                        </div>
-                    </div>
-                </div>`;
-            }
-            
-            // Add password reset data if available
-            if (conv.password_reset_data) {
-                html += `<div class="mt-4">
-                    <h5>Password Reset Information</h5>
-                    <div class="p-3 rounded password-reset-info bg-dark">
-                        <div class="row">
-                            <div class="col-md-6">
-                                <strong>Email:</strong> ${conv.password_reset_data.email || 'N/A'}
-                            </div>
-                            <div class="col-md-6">
-                                <strong>Username:</strong> ${conv.password_reset_data.username || 'N/A'}
-                            </div>
-                        </div>
-                        <div class="row mt-2">
-                            <div class="col-md-6">
-                                <strong>Account Type:</strong> ${conv.password_reset_data.account_type || 'N/A'}
-                            </div>
-                            <div class="col-md-6">
-                                <strong>Issue:</strong> ${conv.password_reset_data.issue || 'N/A'}
-                            </div>
-                        </div>
-                        <div class="row mt-2">
-                            <div class="col-md-12">
-                                <strong>Reset Link Sent:</strong> ${conv.password_reset_data.reset_link_sent ? 'Yes' : 'No'}
-                            </div>
-                        </div>
-                    </div>
-                </div>`;
-            }
-            
-            html += `</div></div>`;
-            
-            responseContainer.innerHTML = html;
-            
-        } else {
-            responseContainer.innerHTML = `<div class="alert alert-danger">
-                <strong>Error:</strong> Unable to load conversation details
-            </div>`;
+            });
         }
-        
-    } catch (error) {
-        responseContainer.innerHTML = `<div class="alert alert-danger">
-            <strong>Error:</strong> ${error.message}
-        </div>`;
-    }
-}
-
-function getIntentBadgeClass(intent) {
-    switch(intent) {
-        case 'package_tracking':
-            return 'bg-primary';
-        case 'password_reset':
-            return 'bg-success';
-        case 'unknown':
-            return 'bg-warning';
-        case 'error':
-            return 'bg-danger';
-        default:
-            return 'bg-secondary';
-    }
-}
-
-function truncateText(text, maxLength) {
-    if (!text) return '';
-    return text.length > maxLength ? text.substring(0, maxLength) + '...' : text;
-}
-
-function formatResponse(text) {
-    if (!text) return '';
-    // Convert line breaks to <br>
-    return text.replace(/\n/g, '<br>');
-}
-
-function setPrompt(text) {
-    const userInput = document.getElementById('user-input');
-    userInput.value = text;
-    userInput.focus();
-    
-    // Scroll to form
-    document.getElementById('brain-form').scrollIntoView({ behavior: 'smooth' });
-}
+    });
 </script>
-
-<style>
-.status-indicator {
-    text-align: center;
-    margin-bottom: 15px;
-}
-.status-icon {
-    font-size: 2rem;
-    margin-bottom: 5px;
-}
-.status-text {
-    color: #aaa;
-    font-size: 0.9rem;
-}
-.status-value {
-    font-weight: bold;
-}
-.conversation-row {
-    cursor: pointer;
-}
-.conversation-row:hover {
-    background-color: rgba(255, 255, 255, 0.1) !important;
-}
-.message-history {
-    border: 1px solid #2c2c2c;
-    border-radius: 5px;
-    padding: 10px;
-    background-color: #1c1c1c;
-}
-.message {
-    margin-bottom: 10px;
-    padding: 10px;
-    border-radius: 5px;
-}
-.user-message {
-    background-color: #2c3e50;
-}
-.assistant-message {
-    background-color: #2d3748;
-}
-.message-header {
-    margin-bottom: 5px;
-    padding-bottom: 5px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-}
-.tracking-info, .password-reset-info {
-    border: 1px solid #2c2c2c;
-}
-</style>
 {% endblock %}
