@@ -802,3 +802,107 @@ def get_component_templates():
     except Exception as e:
         logger.error(f"Error getting component templates: {str(e)}", exc_info=True)
         return jsonify({'error': str(e)}), 500
+        
+        
+@agent_builder_bp.route('/llm-assist', methods=['POST'])
+def llm_assist():
+    """
+    Generate agent configuration components using LLM assistance.
+    
+    Request Body:
+        assistance_type: Type of assistance requested (prompt, entity, schema, etc.)
+        description: User's description of what they need
+        agent_type: Type of agent being configured (optional)
+        existing_context: Any existing configuration to consider (optional)
+    
+    Returns:
+        JSON with the LLM-generated suggestions
+    """
+    try:
+        data = request.json
+        assistance_type = data.get('assistance_type')
+        description = data.get('description', '')
+        agent_type = data.get('agent_type', 'custom')
+        existing_context = data.get('existing_context', {})
+        
+        # Import OpenAI client
+        from brain.staples_brain import get_openai_client
+        client = get_openai_client()
+        
+        # Define system prompts based on assistance type
+        system_prompts = {
+            'system_prompt': """You are an expert AI prompt engineer. Your task is to create a clear, effective system prompt for a customer service agent for Staples.
+The prompt should define the agent's behavior, tone, and guidelines for interacting with customers.
+Provide only the prompt text without explanations or additional information.""",
+            
+            'entity_definition': """You are an expert in defining entities for conversational AI agents. 
+Your task is to identify and define entities that should be extracted from customer queries for a Staples customer service agent.
+For each entity, provide:
+1. Name: A clear, programming-friendly name (snake_case)
+2. Description: What this entity represents
+3. Examples: At least 3 diverse examples of this entity
+4. Validation Pattern: A regex pattern to validate this entity (if applicable)
+Format your response as a JSON array of entity objects.""",
+            
+            'response_schema': """You are an expert in designing structured response formats for AI agents.
+Create a JSON schema that defines the structure of responses for a Staples customer service agent.
+The schema should include fields for customer-facing text as well as structured data needed for processing.
+Format your response as a JSON schema object with appropriate types and descriptions.""",
+            
+            'prompt_template': """You are an expert prompt engineer specializing in creating templates for specific customer service scenarios.
+Create a prompt template for handling a specific type of customer inquiry at Staples.
+The template should include placeholders for dynamic content in the format {placeholder_name}.
+Provide only the template text without explanations."""
+        }
+        
+        # Select appropriate system prompt
+        system_prompt = system_prompts.get(assistance_type, """You are an AI assistant helping to configure a customer service agent. 
+Provide helpful, detailed suggestions based on the user's request.""")
+        
+        # Construct user prompt based on assistance type and context
+        user_prompt = f"I'm creating a {agent_type} agent for Staples and need help with {assistance_type}.\n\n"
+        user_prompt += f"Description: {description}\n\n"
+        
+        # Add existing context if available
+        if existing_context:
+            user_prompt += f"Here's my current configuration:\n{json.dumps(existing_context, indent=2)}\n\n"
+        
+        user_prompt += "Please provide suggestions that would work well for this specific use case."
+        
+        # Call the LLM
+        response = client.chat.completions.create(
+            model="gpt-4o",
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt}
+            ],
+            temperature=0.7
+        )
+        
+        # Process response based on assistance type
+        result = response.choices[0].message.content
+        
+        # For structured outputs, attempt to parse JSON
+        if assistance_type in ['entity_definition', 'response_schema']:
+            try:
+                # Find JSON in the response if it's wrapped in markdown or explanations
+                import re
+                json_match = re.search(r'```(?:json)?\s*([\s\S]*?)\s*```', result)
+                if json_match:
+                    result = json_match.group(1)
+                
+                # Try to parse as JSON
+                result = json.loads(result)
+            except json.JSONDecodeError:
+                # If parsing fails, return raw text
+                logger.warning(f"Failed to parse LLM response as JSON: {result}")
+                pass
+        
+        return jsonify({
+            'suggestion': result,
+            'assistance_type': assistance_type
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Error in LLM assistant: {str(e)}", exc_info=True)
+        return jsonify({'error': str(e)}), 500
