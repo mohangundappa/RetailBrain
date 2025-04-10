@@ -26,6 +26,7 @@
             <li><a href="#agent-management" class="text-decoration-none">Agent Management</a></li>
             <li><a href="#templates" class="text-decoration-none">Templates Library</a></li>
             <li><a href="#advanced" class="text-decoration-none">Advanced Concepts</a></li>
+            <li><a href="#api-docs" class="text-decoration-none">API Documentation</a></li>
           </ul>
         </div>
       </div>
@@ -891,6 +892,178 @@
       <div class="border-top pt-4 text-muted">
         <p>"Good customer service doesn't just solve problems—it creates lasting connections. With Staples Brain, we're making every interaction an opportunity to deliver exceptional service." - Staples Customer Experience Team</p>
         <p class="small">© 2025 Staples Brain Documentation</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- API Documentation Section -->
+  <div class="row mb-5" id="api-docs">
+    <div class="col-lg-8 offset-lg-2">
+      <h2 class="border-bottom pb-2">API Documentation</h2>
+      
+      <div class="mt-4">
+        <p>Staples Brain provides a comprehensive RESTful API for integration with other systems. You can use these endpoints to programmatically interact with our brain and specialized agents.</p>
+        
+        <div class="endpoint mb-4">
+          <div class="card bg-dark text-light">
+            <div class="card-header d-flex align-items-center">
+              <span class="badge bg-primary me-2">POST</span>
+              <span class="fw-bold">/api/process</span>
+            </div>
+            <div class="card-body">
+              <p>Process a natural language request using the most appropriate agent.</p>
+              <h6 class="mt-3">Request Body:</h6>
+              <pre class="bg-dark text-light p-3 rounded"><code>{
+  "input": "Track my package with tracking number TRACK123456",
+  "context": {
+    "user_id": "12345",
+    "session_id": "abcdef"
+  }
+}</code></pre>
+              <h6 class="mt-3">Response:</h6>
+              <pre class="bg-dark text-light p-3 rounded"><code>{
+  "agent": "Package Tracking Agent",
+  "response": "Your package with tracking number TRACK123456 is currently in transit...",
+  "tracking_info": { ... },
+  "package_status": { ... },
+  "success": true,
+  "selected_agent": "Package Tracking Agent",
+  "confidence": 0.95
+}</code></pre>
+            </div>
+          </div>
+        </div>
+        
+        <div class="endpoint mb-4">
+          <div class="card bg-dark text-light">
+            <div class="card-header d-flex align-items-center">
+              <span class="badge bg-primary me-2">POST</span>
+              <span class="fw-bold">/api/track-package</span>
+            </div>
+            <div class="card-body">
+              <p>Directly access the package tracking agent.</p>
+              <h6 class="mt-3">Request Body:</h6>
+              <pre class="bg-dark text-light p-3 rounded"><code>{
+  "tracking_number": "TRACK123456"
+}</code></pre>
+              <h6 class="mt-3">Or:</h6>
+              <pre class="bg-dark text-light p-3 rounded"><code>{
+  "query": "Where is my package that I ordered last week?"
+}</code></pre>
+            </div>
+          </div>
+        </div>
+        
+        <div class="endpoint mb-4">
+          <div class="card bg-dark text-light">
+            <div class="card-header d-flex align-items-center">
+              <span class="badge bg-primary me-2">POST</span>
+              <span class="fw-bold">/api/reset-password</span>
+            </div>
+            <div class="card-body">
+              <p>Directly access the password reset agent.</p>
+              <h6 class="mt-3">Request Body:</h6>
+              <pre class="bg-dark text-light p-3 rounded"><code>{
+  "email": "user@example.com"
+}</code></pre>
+              <h6 class="mt-3">Or:</h6>
+              <pre class="bg-dark text-light p-3 rounded"><code>{
+  "query": "I forgot my password and need to reset it"
+}</code></pre>
+            </div>
+          </div>
+        </div>
+        
+        <div class="endpoint mb-4">
+          <div class="card bg-dark text-light">
+            <div class="card-header d-flex align-items-center">
+              <span class="badge bg-success me-2">GET</span>
+              <span class="fw-bold">/api/agents</span>
+            </div>
+            <div class="card-body">
+              <p>List all available agents.</p>
+              <h6 class="mt-3">Response:</h6>
+              <pre class="bg-dark text-light p-3 rounded"><code>{
+  "success": true,
+  "agents": [
+    "Package Tracking Agent",
+    "Reset Password Agent",
+    "Store Locator Agent",
+    "Product Information Agent",
+    "Returns Processing Agent"
+  ]
+}</code></pre>
+            </div>
+          </div>
+        </div>
+        
+        <div class="endpoint mb-4">
+          <div class="card bg-dark text-light">
+            <div class="card-header d-flex align-items-center">
+              <span class="badge bg-success me-2">GET</span>
+              <span class="fw-bold">/api/health</span>
+            </div>
+            <div class="card-body">
+              <p>Check the health status of the Staples Brain.</p>
+              <h6 class="mt-3">Response:</h6>
+              <pre class="bg-dark text-light p-3 rounded"><code>{
+  "status": "healthy",
+  "message": "Staples Brain is running",
+  "version": "1.0.0",
+  "agents": [
+    "Package Tracking Agent",
+    "Reset Password Agent",
+    "Store Locator Agent",
+    "Product Information Agent",
+    "Returns Processing Agent"
+  ]
+}</code></pre>
+            </div>
+          </div>
+        </div>
+        
+        <div class="endpoint mb-4">
+          <div class="card bg-dark text-light">
+            <div class="card-header d-flex align-items-center">
+              <span class="badge bg-primary me-2">POST</span>
+              <span class="fw-bold">/api/generate-entity-definitions</span>
+            </div>
+            <div class="card-body">
+              <p>Generate entity definitions code for the entity collection framework.</p>
+              <h6 class="mt-3">Request Body:</h6>
+              <pre class="bg-dark text-light p-3 rounded"><code>{
+  "entities": [
+    {
+      "name": "order_number",
+      "required": true,
+      "validation_pattern": "^[A-Za-z0-9]{2,}-?[A-Za-z0-9]{2,}$",
+      "error_message": "Order numbers typically contain letters and numbers",
+      "description": "Your Staples order number",
+      "examples": ["OD1234567", "STB-987654"]
+    }
+  ]
+}</code></pre>
+              <h6 class="mt-3">Response:</h6>
+              <pre class="bg-dark text-light p-3 rounded"><code>{
+  "success": true,
+  "code": "def collect_order_number(...):\n    ...",
+  "entity_definitions": { ... }
+}</code></pre>
+            </div>
+          </div>
+        </div>
+        
+        <h5>Using API Authentication</h5>
+        <p>For production use, all API endpoints require authentication. Requests should include an Authorization header with a valid API key:</p>
+        <pre class="bg-dark text-light p-3 rounded"><code>Authorization: Bearer YOUR_API_KEY</code></pre>
+        
+        <h5>API Rate Limits</h5>
+        <p>The Staples Brain API enforces the following rate limits to ensure system stability:</p>
+        <ul>
+          <li>100 requests per minute for standard endpoints</li>
+          <li>30 requests per minute for high-computation endpoints (e.g., process, generate-entity-definitions)</li>
+        </ul>
+        <p>Rate limit headers are included in all responses to help you track your usage.</p>
       </div>
     </div>
   </div>
