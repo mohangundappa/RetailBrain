@@ -1,7 +1,17 @@
 import os
+import logging
+
+# Configure logging for config module
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# Note: Environment variables are loaded from .env file in app.py
+# using python-dotenv before this module is imported
 
 # OpenAI API configuration
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
+if not OPENAI_API_KEY:
+    logger.warning("OPENAI_API_KEY not found. Make sure it's set in your .env file.")
 OPENAI_MODEL = os.environ.get("OPENAI_MODEL", "gpt-4")
 
 # Databricks configuration

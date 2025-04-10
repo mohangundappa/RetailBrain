@@ -3,7 +3,11 @@ import logging
 from flask import Flask
 from config import get_config
 from werkzeug.middleware.proxy_fix import ProxyFix
+from dotenv import load_dotenv
 from db import db
+
+# Load environment variables from .env file
+load_dotenv()
 
 def create_app(config_override=None):
     """
