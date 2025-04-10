@@ -99,7 +99,13 @@ class PackageTrackingAgent(BaseAgent):
         - Inquiring about shipment
         - Questions about order delivery timeline
         - Reporting a missing or delayed delivery
-        - Providing order number and/or zip code for tracking
+        - Providing both order number and zip code for tracking
+        
+        IMPORTANT DISAMBIGUATION RULES:
+        - Only consider zip codes to be tracking-related if they are specifically mentioned with an order
+        - The mere presence of a 5-digit number (like a zip code) is NOT sufficient to classify as order tracking
+        - If the query mentions stores, locations, or finding a Staples store, assign a low score (0.1-0.2)
+        - References to cities, towns, addresses, or store locations should receive a score of 0.1 or lower
         
         Please answer with a confidence score between 0 and 1, where:
         - 0 means definitely not related to order tracking or package status

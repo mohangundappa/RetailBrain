@@ -99,6 +99,23 @@ class StoreLocatorAgent(BaseAgent):
 
         User query: {query}
 
+        HIGH CONFIDENCE INDICATORS (0.8-1.0):
+        - Explicit mention of "store", "location", "Staples store", "nearest store"
+        - Asking about store hours or locations
+        - Asking for directions or addresses
+        - Asking about specific store services
+        - Seeking a physical store
+        - Mentioning a city name (e.g., "Natick", "Boston", "Miami")
+        
+        MEDIUM CONFIDENCE INDICATORS (0.5-0.8):
+        - Standalone zip codes (e.g., "01760", "90210")
+        - General area references ("downtown", "east side")
+        - Keywords like "nearby", "closest", "nearest" without context
+        
+        LOW CONFIDENCE INDICATORS (0.1-0.4):
+        - Vague requests without location context
+        - Mentions of online services or website questions
+        
         Return only a number between 0 and 1 representing your confidence that this query
         is related to Staples store locations. Higher numbers mean higher confidence.
         Only return the number, no other text.
@@ -113,18 +130,31 @@ class StoreLocatorAgent(BaseAgent):
         Returns:
             A RunnableSequence that can extract location details
         """
-        template = """You are a Staples customer service agent. 
-        Extract location information from the user's query.
+        template = """You are a Staples customer service agent specializing in store location data extraction.
+        Extract location information from the user's query very carefully.
 
         User query: {query}
 
+        EXTRACTION RULES:
+        - MUST identify city names (e.g., "Natick", "Boston", "San Francisco") as locations
+        - MUST recognize standalone zip codes (e.g., "01760", "90210") as valid locations
+        - MUST identify state names and abbreviations ("Massachusetts", "CA", "New York")
+        - MUST identify addresses or partial addresses
+        - If only numbers are provided, ASSUME they are a zip code
+        - If no location is found in the query, set location to null (not empty string)
+        
         Extract the following information in JSON format:
         - location: the location mentioned (city, zip code, address, etc.)
         - radius: search radius if mentioned (default to 10 miles if not specified)
         - service: specific service the user is looking for (print services, tech services, etc.)
-        - hours: if the user is asking about hours of operation
+        - hours: if the user is asking about hours of operation (true/false)
 
-        Return only valid JSON.
+        Return ONLY valid JSON without any additional text or explanation.
+        Example valid responses:
+        {"location": "Natick", "radius": 10, "service": null, "hours": false}
+        {"location": "01760", "radius": 10, "service": null, "hours": false}
+        {"location": "Boston, MA", "radius": 5, "service": "printing", "hours": true}
+        {"location": null, "radius": 10, "service": null, "hours": false}
         """
         
         return self._create_chain(template, ["query"])
