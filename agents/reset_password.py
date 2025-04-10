@@ -244,7 +244,14 @@ class ResetPasswordAgent(BaseAgent):
                 "reset_status": json.dumps(reset_status, indent=2),
                 "user_input": user_input
             })
-            formatted_response = formatted_result["text"]
+            
+            # Handle different types of formatted_result (string or dict)
+            if isinstance(formatted_result, dict) and "text" in formatted_result:
+                formatted_response = formatted_result["text"]
+            elif isinstance(formatted_result, str):
+                formatted_response = formatted_result
+            else:
+                formatted_response = str(formatted_result)
             
             # Apply guardrails to ensure appropriate responses
             corrected_response, violations = self.apply_response_guardrails(formatted_response)
