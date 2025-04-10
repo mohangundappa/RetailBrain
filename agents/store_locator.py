@@ -427,7 +427,18 @@ class StoreLocatorAgent(BaseAgent):
             store_keywords = ["store", "location", "branch", "shop", "retail", "hours", "open", "close", "nearby"]
             for keyword in store_keywords:
                 if keyword in user_input.lower():
-                    confidence = max(confidence, 0.8)
+                    confidence = max(confidence, 0.9)  # Increased from 0.8 to 0.9
+                    break
+                    
+            # Additional check for city names and zip codes (common store location patterns)
+            if re.search(r'\b\d{5}(-\d{4})?\b', user_input):  # Zip code pattern
+                confidence = max(confidence, 0.7)
+                
+            # Check for common city names or state references
+            location_terms = ["natick", "boston", "new york", "chicago", "california", "ma", "ny", "il", "ca"]
+            for loc in location_terms:
+                if loc in user_input.lower():
+                    confidence = max(confidence, 0.9)
                     break
             
             logger.info(f"Store Locator Agent confidence: {confidence} for query: {user_input}")
