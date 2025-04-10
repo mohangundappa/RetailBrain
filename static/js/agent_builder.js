@@ -706,6 +706,23 @@ function loadAgent(agentId) {
       return response.json();
     })
     .then(data => {
+      console.log('Agent data loaded:', data);
+      // Validate the data structure
+      if (!data || typeof data !== 'object') {
+        throw new Error('Invalid agent data structure');
+      }
+      
+      // Ensure required arrays exist
+      if (!Array.isArray(data.components)) {
+        console.warn('Components array missing, creating empty array');
+        data.components = [];
+      }
+      
+      if (!Array.isArray(data.connections)) {
+        console.warn('Connections array missing, creating empty array');
+        data.connections = [];
+      }
+      
       // Clear the canvas
       jsPlumbInstance.reset();
       document.getElementById('agent-canvas').innerHTML = '';
@@ -720,115 +737,185 @@ function loadAgent(agentId) {
       currentAgent = data;
       
       // Update form fields
-      document.getElementById('agent-name').value = data.name;
+      document.getElementById('agent-name').value = data.name || '';
       document.getElementById('agent-description').value = data.description || '';
-      document.getElementById('current-agent-name').textContent = data.name;
+      document.getElementById('current-agent-name').textContent = data.name || 'Agent';
       
       // Add components to canvas
       data.components.forEach(component => {
-        const componentElement = document.createElement('div');
-        const componentId = component.id;
+        // Skip invalid components
+        if (!component || !component.id) {
+          console.warn('Skipping invalid component:', component);
+          return;
+        }
         
-        componentElement.id = componentId;
-        componentElement.className = 'canvas-component';
-        componentElement.dataset.componentType = component.component_type;
-        componentElement.dataset.componentTemplate = component.template;
-        componentElement.style.left = `${component.position_x}px`;
-        componentElement.style.top = `${component.position_y}px`;
-        
-        componentElement.innerHTML = `
-          <div class="component-header">
-            <div class="component-title">${component.name}</div>
-            <div class="component-actions">
-              <button class="btn btn-sm btn-link p-0 text-danger delete-component" title="Delete component">
-                <i class="bi bi-x"></i>
-              </button>
-            </div>
-          </div>
-          <div class="component-body">
-            <div class="component-type">${component.component_type}</div>
-          </div>
-          <div class="input-point connection-point" data-point-type="input"></div>
-          <div class="output-point connection-point" data-point-type="output"></div>
-        `;
-        
-        document.getElementById('agent-canvas').appendChild(componentElement);
-        
-        // Make component draggable
-        jsPlumbInstance.draggable(componentId, {
-          containment: 'parent',
-          stop: function(event) {
-            const componentIndex = currentAgent.components.findIndex(comp => comp.id === componentId);
-            if (componentIndex !== -1) {
-              currentAgent.components[componentIndex].position_x = parseInt(componentElement.style.left);
-              currentAgent.components[componentIndex].position_y = parseInt(componentElement.style.top);
+        try {
+          const componentElement = document.createElement('div');
+          const componentId = component.id;
+          
+          // Ensure component has a template
+          if (!component.template) {
+            console.warn(`Component ${componentId} missing template, applying default`);
+            if (component.component_type === 'prompt') {
+              component.template = 'custom_prompt';
+            } else if (component.component_type === 'llm') {
+              component.template = 'openai_gpt4';
+            } else if (component.component_type === 'output') {
+              component.template = 'json_formatter';
+            } else {
+              component.template = `${component.component_type}_default`;
             }
           }
-        });
-        
-        // Add endpoints
-        if (component.component_type !== 'output') {
-          jsPlumbInstance.addEndpoint(componentId, {
-            anchor: 'Bottom',
-            isSource: true,
-            maxConnections: -1,
-            endpoint: 'Dot',
-            uniqueEndpoint: false
+          
+          componentElement.id = componentId;
+          componentElement.className = 'canvas-component';
+          componentElement.dataset.componentType = component.component_type;
+          componentElement.dataset.componentTemplate = component.template;
+          componentElement.style.left = `${component.position_x || 0}px`;
+          componentElement.style.top = `${component.position_y || 0}px`;
+          
+          componentElement.innerHTML = `
+            <div class="component-header">
+              <div class="component-title">${component.name || 'Unnamed'}</div>
+              <div class="component-actions">
+                <button class="btn btn-sm btn-link p-0 text-danger delete-component" title="Delete component">
+                  <i class="bi bi-x"></i>
+                </button>
+              </div>
+            </div>
+            <div class="component-body">
+              <div class="component-type">${component.component_type || 'unknown'}</div>
+            </div>
+            <div class="input-point connection-point" data-point-type="input"></div>
+            <div class="output-point connection-point" data-point-type="output"></div>
+          `;
+          
+          document.getElementById('agent-canvas').appendChild(componentElement);
+          
+          // Make component draggable
+          jsPlumbInstance.draggable(componentId, {
+            containment: 'parent',
+            stop: function(event) {
+              const componentIndex = currentAgent.components.findIndex(comp => comp.id === componentId);
+              if (componentIndex !== -1) {
+                currentAgent.components[componentIndex].position_x = parseInt(componentElement.style.left);
+                currentAgent.components[componentIndex].position_y = parseInt(componentElement.style.top);
+              }
+            }
           });
-        }
-        
-        if (component.component_type !== 'prompt') {
-          jsPlumbInstance.addEndpoint(componentId, {
-            anchor: 'Top',
-            isTarget: true,
-            maxConnections: -1,
-            endpoint: 'Dot',
-            uniqueEndpoint: false
-          });
-        }
-        
-        // Add event handlers
-        componentElement.addEventListener('click', function(event) {
-          event.stopPropagation();
-          if (!event.target.classList.contains('delete-component')) {
-            selectComponent(componentId);
+          
+          // Add endpoints
+          if (component.component_type !== 'output') {
+            jsPlumbInstance.addEndpoint(componentId, {
+              anchor: 'Bottom',
+              isSource: true,
+              maxConnections: -1,
+              endpoint: 'Dot',
+              uniqueEndpoint: false
+            });
           }
-        });
-        
-        componentElement.querySelector('.delete-component').addEventListener('click', function(event) {
-          event.stopPropagation();
-          deleteComponent(componentId);
-        });
-        
-        componentElement.querySelectorAll('.connection-point').forEach(point => {
-          point.addEventListener('click', function(event) {
+          
+          if (component.component_type !== 'prompt') {
+            jsPlumbInstance.addEndpoint(componentId, {
+              anchor: 'Top',
+              isTarget: true,
+              maxConnections: -1,
+              endpoint: 'Dot',
+              uniqueEndpoint: false
+            });
+          }
+          
+          // Add event handlers
+          componentElement.addEventListener('click', function(event) {
             event.stopPropagation();
-            handleConnectionPoint(componentId, point.dataset.pointType);
+            if (!event.target.classList.contains('delete-component')) {
+              selectComponent(componentId);
+            }
           });
-        });
+          
+          const deleteBtn = componentElement.querySelector('.delete-component');
+          if (deleteBtn) {
+            deleteBtn.addEventListener('click', function(event) {
+              event.stopPropagation();
+              deleteComponent(componentId);
+            });
+          }
+          
+          const connectionPoints = componentElement.querySelectorAll('.connection-point');
+          if (connectionPoints) {
+            connectionPoints.forEach(point => {
+              point.addEventListener('click', function(event) {
+                event.stopPropagation();
+                handleConnectionPoint(componentId, point.dataset.pointType);
+              });
+            });
+          }
+        } catch (err) {
+          console.error('Error creating component:', err);
+        }
       });
       
       // Add connections
       data.connections.forEach(connection => {
-        jsPlumbInstance.connect({
-          source: connection.source_id,
-          target: connection.target_id,
-          anchors: ["Bottom", "Top"],
-          overlays: [
-            ["Label", { 
-              label: connection.connection_type, 
-              location: 0.5,
-              cssClass: "connection-label" 
-            }]
-          ]
-        });
+        try {
+          // Skip invalid connections
+          if (!connection || !connection.source_id || !connection.target_id) {
+            console.warn('Skipping invalid connection:', connection);
+            return;
+          }
+          
+          // Check if source and target components exist
+          const sourceElement = document.getElementById(connection.source_id);
+          const targetElement = document.getElementById(connection.target_id);
+          
+          if (!sourceElement) {
+            console.warn(`Source component not found for connection: ${connection.source_id}`);
+            return;
+          }
+          
+          if (!targetElement) {
+            console.warn(`Target component not found for connection: ${connection.target_id}`);
+            return;
+          }
+          
+          jsPlumbInstance.connect({
+            source: connection.source_id,
+            target: connection.target_id,
+            anchors: ["Bottom", "Top"],
+            overlays: [
+              ["Label", { 
+                label: connection.connection_type || 'default', 
+                location: 0.5,
+                cssClass: "connection-label" 
+              }]
+            ]
+          });
+        } catch (err) {
+          console.error('Error creating connection:', err);
+        }
       });
       
       // Set next component ID to avoid conflicts
-      nextComponentId = Math.max(...data.components.map(comp => {
-        const idNum = parseInt(comp.id.split('-')[1]);
-        return isNaN(idNum) ? 1 : idNum;
-      }), 0) + 1;
+      try {
+        if (data.components.length > 0) {
+          const componentIds = data.components
+            .filter(comp => comp && comp.id) // Only valid components
+            .map(comp => {
+              const parts = (comp.id || '').split('-');
+              if (parts.length < 2) return 1;
+              const idNum = parseInt(parts[1]);
+              return isNaN(idNum) ? 1 : idNum;
+            });
+          
+          nextComponentId = componentIds.length > 0 ? 
+            Math.max(...componentIds) + 1 : 1;
+        } else {
+          nextComponentId = 1;
+        }
+      } catch (err) {
+        console.error('Error calculating next component ID:', err);
+        nextComponentId = 1; // Default fallback
+      }
     })
     .catch(error => {
       console.error('Error loading agent:', error);
