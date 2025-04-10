@@ -1225,6 +1225,15 @@ def agent_wizard(agent_id=None, step=1):
                 "response_generation": agent.get_response_generation_prompt() or ""
             }
             
+        # Add response_format for step 4 (response formats)
+        response_format = {}
+        if step == 4:
+            # Get response formats from agent's configuration or provide an empty default
+            formats = agent.get_response_formats() or []
+            if formats:
+                # Use the first format as the default if available
+                response_format = formats[0] if len(formats) > 0 else {}
+            
         return render_template(
             'agent_wizard.html',
             agent=agent,
@@ -1234,7 +1243,8 @@ def agent_wizard(agent_id=None, step=1):
             step_template=wizard_templates.get(step, 'agent_wizard_step1.html'),
             step_data=step_data,
             total_steps=len(wizard_templates),
-            prompts=prompts  # Add prompts variable
+            prompts=prompts,  # Add prompts variable
+            response_format=response_format  # Add response_format variable
         )
         
     except Exception as e:
