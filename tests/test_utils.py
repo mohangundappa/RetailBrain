@@ -48,20 +48,26 @@ class MockChatModel(BaseChatModel):
         class ChatCompletionsAPI:
             """Mock completions API interface"""
             
-            @staticmethod
-            def create(model=None, messages=None, **kwargs):
+            def __init__(self, parent):
+                self.parent = parent
+            
+            def create(self, model=None, messages=None, **kwargs):
                 """Mock create method for chat completions"""
-                message_content = "0.9"  # Default confidence score
+                # Initialize with a default confidence score
+                message_content = str(self.parent._confidence_score)
                 
                 # Handle case where messages is None or empty
                 if messages:
                     for msg in messages:
                         if isinstance(msg, dict) and msg.get("role") == "user" and isinstance(msg.get("content"), str):
                             content = msg.get("content", "")
-                            if "confidence" in content.lower() or "can you handle" in content.lower():
-                                # This is a confidence check, return a high score
-                                message_content = "0.9"
+                            if "confidence" in content.lower() or "can you handle" in content.lower() or "rate your confidence" in content.lower():
+                                # This is a confidence check for an agent, use the configured confidence score
+                                message_content = str(self.parent._confidence_score)
                                 break
+                            else:
+                                # For regular content responses, use the next in sequence
+                                message_content = self.parent._get_content_based_on_message(messages) or self.parent._get_next_response()
                 
                 # Mock response object with OpenAI-style structure
                 class MockChoice:
@@ -71,20 +77,26 @@ class MockChatModel(BaseChatModel):
                     
                     def __init__(self, content):
                         self.message = self.Message(content)
+                        self.index = 0
+                        self.finish_reason = "stop"
                         
                 class MockResponse:
                     def __init__(self, choices):
                         self.choices = choices
+                        self.id = "mock-response-id"
+                        self.model = "mock-model"
+                        self.usage = {"total_tokens": 10, "prompt_tokens": 5, "completion_tokens": 5}
                         
                 return MockResponse([MockChoice(message_content)])
                 
         # Create a chat namespace with completions API
         class ChatNamespace:
-            def __init__(self):
-                self.completions = ChatCompletionsAPI()
+            def __init__(self, parent):
+                self.parent = parent
+                self.completions = ChatCompletionsAPI(parent)
                 
         # Assign chat namespace to client 
-        self.chat = ChatNamespace()
+        self.chat = ChatNamespace(self)
     
     def _is_can_handle_call(self, messages: List[Any]) -> bool:
         """Check if this is a can_handle capability call"""
@@ -167,49 +179,67 @@ class MockChatModel(BaseChatModel):
         chunk = ChatGenerationChunk(message=message)
         return ChatResult(generations=[chunk])
         
-    # Adding newer OpenAI client compatibility
-    class chat:
-        """Mock chat namespace for newer OpenAI client interface"""
-        
-        def __init__(self, parent):
-            self.parent = parent
-            
-        class completions:
-            """Mock completions namespace for newer OpenAI client interface"""
-            
-            @staticmethod
-            def create(model=None, messages=None, **kwargs):
-                """
-                Mock implementation of chat.completions.create method for compatibility
-                with newer OpenAI client interface.
-                """
-                # Simple response object similar to new OpenAI style
-                message_content = "0.9"  # Default confidence score
+    # This class property is added for backward compatibility with some test code
+    # The actual implementation is handled by the instance-based chat namespace
+    @property
+    def chat(self):
+        """Mock chat namespace (class property) for older code compatibility"""
+        if not hasattr(self, "_chat"):
+            # Create the ChatNamespace on first access
+            class ChatCompletionsAPI:
+                """Mock completions API interface"""
                 
-                # Handle case where messages is None
-                if messages:
-                    for msg in messages:
-                        if isinstance(msg, dict) and msg.get("role") == "user" and isinstance(msg.get("content"), str):
-                            content = msg.get("content", "")
-                            if "confidence" in content.lower() or "can you handle" in content.lower():
-                                # This is a confidence check, return a high score
-                                message_content = "0.9"
-                                break
+                def __init__(self, parent):
+                    self.parent = parent
                 
-                # Mock response object with OpenAI-style structure
-                class MockChoice:
-                    class Message:
-                        def __init__(self, content):
-                            self.content = content
+                def create(self, model=None, messages=None, **kwargs):
+                    """Mock create method for chat completions"""
+                    # Initialize with a default confidence score
+                    message_content = str(self.parent._confidence_score)
                     
-                    def __init__(self, content):
-                        self.message = self.Message(content)
+                    # Handle case where messages is None or empty
+                    if messages:
+                        for msg in messages:
+                            if isinstance(msg, dict) and msg.get("role") == "user" and isinstance(msg.get("content"), str):
+                                content = msg.get("content", "")
+                                if "confidence" in content.lower() or "can you handle" in content.lower() or "rate your confidence" in content.lower():
+                                    # This is a confidence check for an agent, use the configured confidence score
+                                    message_content = str(self.parent._confidence_score)
+                                    break
+                                else:
+                                    # For regular content responses, use the next in sequence
+                                    message_content = self.parent._get_content_based_on_message(messages) or self.parent._get_next_response()
+                    
+                    # Mock response object with OpenAI-style structure
+                    class MockChoice:
+                        class Message:
+                            def __init__(self, content):
+                                self.content = content
                         
-                class MockResponse:
-                    def __init__(self, choices):
-                        self.choices = choices
-                        
-                return MockResponse([MockChoice(message_content)])
+                        def __init__(self, content):
+                            self.message = self.Message(content)
+                            self.index = 0
+                            self.finish_reason = "stop"
+                            
+                    class MockResponse:
+                        def __init__(self, choices):
+                            self.choices = choices
+                            self.id = "mock-response-id"
+                            self.model = "mock-model"
+                            self.usage = {"total_tokens": 10, "prompt_tokens": 5, "completion_tokens": 5}
+                            
+                    return MockResponse([MockChoice(message_content)])
+                    
+            # Create a chat namespace with completions API
+            class ChatNamespace:
+                def __init__(self, parent):
+                    self.parent = parent
+                    self.completions = ChatCompletionsAPI(parent)
+                    
+            # Cache the namespace
+            self._chat = ChatNamespace(self)
+            
+        return self._chat
 
 
 def create_mock_chat_model(responses=None, confidence_score=0.9):
