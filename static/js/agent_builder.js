@@ -609,10 +609,8 @@ function createNewAgent() {
     return;
   }
   
-  resetToNewAgent();
-  
-  // Update URL to remove agent ID
-  history.pushState(null, '', '/agent-builder');
+  // Instead of just resetting, redirect to the agent wizard to create a new agent
+  window.location.href = '/agent-wizard';
 }
 
 /**
