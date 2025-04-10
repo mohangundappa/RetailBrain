@@ -307,7 +307,15 @@ class PackageTrackingAgent(BaseAgent):
             # If we have all the required entities or we exited collection for another reason
             try:
                 # Extract tracking information from user input to catch any values not found by entity collection
-                tracking_result = await self.tracking_chain.arun(user_input=user_input)
+                tracking_result_obj = await self.tracking_chain.ainvoke({"user_input": user_input})
+                
+                # Extract the result text
+                if isinstance(tracking_result_obj, dict) and "text" in tracking_result_obj:
+                    tracking_result = tracking_result_obj["text"]
+                elif isinstance(tracking_result_obj, str):
+                    tracking_result = tracking_result_obj
+                else:
+                    tracking_result = str(tracking_result_obj)
                 
                 # Clean up the tracking result to handle potential whitespace in JSON keys
                 tracking_result = tracking_result.replace('\n', '').replace('  ', ' ').strip()
@@ -400,11 +408,19 @@ class PackageTrackingAgent(BaseAgent):
                 }
             
             # Format the response with customer service persona
-            formatted_response = await self.formatting_chain.arun(
-                tracking_info=json.dumps(tracking_info, indent=2),
-                package_status=json.dumps(package_status, indent=2),
-                user_input=user_input
-            )
+            formatting_result = await self.formatting_chain.ainvoke({
+                "tracking_info": json.dumps(tracking_info, indent=2),
+                "package_status": json.dumps(package_status, indent=2),
+                "user_input": user_input
+            })
+            
+            # Extract the formatted response
+            if isinstance(formatting_result, dict) and "text" in formatting_result:
+                formatted_response = formatting_result["text"]
+            elif isinstance(formatting_result, str):
+                formatted_response = formatting_result
+            else:
+                formatted_response = str(formatting_result)
             
             # Apply guardrails to ensure appropriate responses
             corrected_response, violations = self.apply_response_guardrails(formatted_response)
