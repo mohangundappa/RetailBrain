@@ -1019,37 +1019,9 @@ Next steps:
   
   // AI Assist functionality
   document.addEventListener('DOMContentLoaded', function() {
-    // Initialize AI Assist buttons
-    const aiAssistButtons = document.querySelectorAll('.ai-assist-btn');
-    if (aiAssistButtons.length > 0) {
-      aiAssistButtons.forEach(button => {
-        button.addEventListener('click', function() {
-          const targetId = this.getAttribute('data-target');
-          const assistType = this.getAttribute('data-type');
-          let targetElement = document.getElementById(targetId);
-          
-          // Special handling for entity assistance
-          if (assistType === 'entity_definition' && targetId === 'entity-assistant') {
-            // No specific target, the result will be used to create new entities
-            targetElement = document.createElement('div');
-            targetElement.id = 'entity-assistant';
-          }
-          
-          if (!targetElement) {
-            console.error('Target element not found:', targetId);
-            return;
-          }
-      
-          // Get agent type from the form
-          let agentType = 'custom';
-          const agentTypeSelect = document.querySelector('select[name="agent_type"]');
-          if (agentTypeSelect) {
-            agentType = agentTypeSelect.value;
-          }
-      
-          // Create AI assist dialog with input field
-          if (!document.getElementById('ai-assist-modal')) {
-            const modalHTML = `
+    // Create AI assist modal dynamically if it doesn't exist
+    if (!document.getElementById('ai-assist-modal')) {
+      const modalHTML = `
           <div class="modal fade" id="ai-assist-modal" tabindex="-1" aria-labelledby="aiAssistModalLabel" aria-hidden="true">
             <div class="modal-dialog">
               <div class="modal-content">
@@ -1322,6 +1294,34 @@ Next steps:
         });
       }
       
+    // Initialize the AI Assist buttons
+    const aiAssistButtons = document.querySelectorAll('.ai-assist-btn');
+    if (aiAssistButtons.length > 0) {
+      aiAssistButtons.forEach(button => {
+        button.addEventListener('click', function() {
+          const targetId = this.getAttribute('data-target');
+          const assistType = this.getAttribute('data-type');
+          let targetElement = document.getElementById(targetId);
+          
+          // Special handling for entity assistance
+          if (assistType === 'entity_definition' && targetId === 'entity-assistant') {
+            // No specific target, the result will be used to create new entities
+            targetElement = document.createElement('div');
+            targetElement.id = 'entity-assistant';
+          }
+          
+          if (!targetElement && targetId !== 'entity-assistant') {
+            console.error('Target element not found:', targetId);
+            return;
+          }
+          
+          // Get agent type from the form
+          let agentType = 'custom';
+          const agentTypeSelect = document.querySelector('select[name="agent_type"]');
+          if (agentTypeSelect) {
+            agentType = agentTypeSelect.value;
+          }
+          
           // Set modal attributes for current context
           const modal = document.getElementById('ai-assist-modal');
           modal.setAttribute('data-target', targetId);
@@ -1347,6 +1347,9 @@ Next steps:
           // Show modal
           const bsModal = new bootstrap.Modal(modal);
           bsModal.show();
+        });
+      });
+    }
     });
   });
 </script>
