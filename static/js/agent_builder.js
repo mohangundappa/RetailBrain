@@ -104,39 +104,69 @@ function initEventListeners() {
   });
   
   // Run test button
-  document.getElementById('run-test').addEventListener('click', testAgent);
+  const runTestBtn = document.getElementById('run-test');
+  if (runTestBtn) {
+    runTestBtn.addEventListener('click', testAgent);
+  }
   
   // Agent name input
-  document.getElementById('agent-name').addEventListener('input', function(event) {
-    currentAgent.name = event.target.value;
-    document.getElementById('current-agent-name').textContent = currentAgent.name;
-  });
+  const agentNameInput = document.getElementById('agent-name');
+  if (agentNameInput) {
+    agentNameInput.addEventListener('input', function(event) {
+      currentAgent.name = event.target.value;
+      const currentAgentName = document.getElementById('current-agent-name');
+      if (currentAgentName) {
+        currentAgentName.textContent = currentAgent.name;
+      }
+    });
+  }
   
   // Agent description input
-  document.getElementById('agent-description').addEventListener('input', function(event) {
-    currentAgent.description = event.target.value;
-  });
+  const agentDescInput = document.getElementById('agent-description');
+  if (agentDescInput) {
+    agentDescInput.addEventListener('input', function(event) {
+      currentAgent.description = event.target.value;
+    });
+  }
   
   // Create new agent button
-  document.getElementById('create-new-agent').addEventListener('click', createNewAgent);
+  const createNewAgentBtn = document.getElementById('create-new-agent');
+  if (createNewAgentBtn) {
+    createNewAgentBtn.addEventListener('click', createNewAgent);
+  }
   
   // Delete agent confirmation
-  document.getElementById('confirm-delete-agent').addEventListener('click', confirmDeleteAgent);
+  const confirmDeleteAgentBtn = document.getElementById('confirm-delete-agent');
+  if (confirmDeleteAgentBtn) {
+    confirmDeleteAgentBtn.addEventListener('click', confirmDeleteAgent);
+  }
   
   // Save connection button
-  document.getElementById('save-connection').addEventListener('click', saveConnection);
+  const saveConnectionBtn = document.getElementById('save-connection');
+  if (saveConnectionBtn) {
+    saveConnectionBtn.addEventListener('click', saveConnection);
+  }
   
   // Initialize temperature sliders
-  document.querySelector('input[data-config-key="temperature"]').addEventListener('input', function(event) {
-    document.getElementById('temperature-value').textContent = event.target.value;
-  });
+  const temperatureSlider = document.querySelector('input[data-config-key="temperature"]');
+  if (temperatureSlider) {
+    temperatureSlider.addEventListener('input', function(event) {
+      const tempValue = document.getElementById('temperature-value');
+      if (tempValue) {
+        tempValue.textContent = event.target.value;
+      }
+    });
+  }
   
   // Canvas click event to deselect components
-  document.getElementById('agent-canvas').addEventListener('click', function(event) {
-    if (event.target.id === 'agent-canvas') {
-      deselectComponent();
-    }
-  });
+  const agentCanvas = document.getElementById('agent-canvas');
+  if (agentCanvas) {
+    agentCanvas.addEventListener('click', function(event) {
+      if (event.target.id === 'agent-canvas') {
+        deselectComponent();
+      }
+    });
+  }
 }
 
 /**
