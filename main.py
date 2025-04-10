@@ -1206,10 +1206,14 @@ def agent_wizard(agent_id=None, step=1):
                 "business_rules": agent.get_business_rules() or []
             }
         
+        # Get current step from session or use the step parameter
+        current_step = session.get('current_wizard_step', step)
+        
         return render_template(
             'agent_wizard.html',
             agent=agent,
             step=step,
+            current_step=current_step,  # Pass current_step to the template
             step_template=wizard_templates.get(step, 'agent_wizard_step1.html'),
             step_data=step_data,
             total_steps=len(wizard_templates)
