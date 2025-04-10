@@ -245,9 +245,21 @@ class AgentTemplate(db.Model):
     configuration = Column(Text, nullable=False)  # JSON string of complete agent configuration
     category = Column(String(50), nullable=True)
     icon = Column(String(100), nullable=True)
+    tags = Column(Text, nullable=True)  # Comma-separated tags for filtering
     is_system = Column(Boolean, default=False)
+    is_featured = Column(Boolean, default=False)
+    downloads = Column(Integer, default=0)
+    rating = Column(Float, default=0.0)
+    rating_count = Column(Integer, default=0)
+    screenshot = Column(String(255), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    def get_tags_list(self):
+        """Get tags as a list."""
+        if not self.tags:
+            return []
+        return [tag.strip() for tag in self.tags.split(',')]
     
     def __repr__(self):
         return f"<AgentTemplate {self.id}: {self.name}>"

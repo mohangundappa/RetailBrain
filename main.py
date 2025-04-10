@@ -1320,17 +1320,19 @@ def template_gallery():
     """Render the agent template gallery."""
     try:
         # Get all templates
-        templates = AgentTemplate.query.all()
+        all_templates = AgentTemplate.query.all()
         
-        # Group templates by category
-        template_categories = {}
-        for template in templates:
-            category = template.category or "Uncategorized"
-            if category not in template_categories:
-                template_categories[category] = []
-            template_categories[category].append(template)
+        # Filter featured templates
+        featured_templates = [t for t in all_templates if t.is_featured]
         
-        return render_template('template_gallery.html', template_categories=template_categories)
+        # Filter remaining templates (not featured)
+        templates = [t for t in all_templates if not t.is_featured]
+        
+        return render_template(
+            'template_gallery.html', 
+            featured_templates=featured_templates,
+            templates=templates
+        )
         
     except Exception as e:
         logger.error(f"Error in template gallery: {e}")
