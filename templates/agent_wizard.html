@@ -1150,6 +1150,12 @@ Next steps:
         }
         
         // Call the AI assist API
+        console.log("Sending request to AI assist API with:", {
+          assistance_type: currentAssistType,
+          description: description,
+          agent_type: agentType
+        });
+        
         fetch('/api/builder/llm-assist', {
           method: 'POST',
           headers: {
@@ -1162,8 +1168,15 @@ Next steps:
             existing_context: existingContext ? { content: existingContext } : {}
           })
         })
-        .then(response => response.json())
+        .then(response => {
+          console.log("Received response from AI assist API:", response.status, response.statusText);
+          if (!response.ok) {
+            throw new Error(`Network response was not ok: ${response.status} ${response.statusText}`);
+          }
+          return response.json();
+        })
         .then(data => {
+          console.log("Processed API response data:", data);
           // Hide loading state
           document.getElementById('ai-assist-loading').classList.add('d-none');
           
@@ -1173,22 +1186,36 @@ Next steps:
           
           // Format and display the result
           let resultContent = data.suggestion;
+          console.log("Result content type:", typeof resultContent);
+          
           if (typeof resultContent === 'object') {
             resultContent = JSON.stringify(resultContent, null, 2);
+            console.log("Formatted object result:", resultContent);
           }
           
           const contentElement = document.getElementById('ai-assist-content');
+          if (!contentElement) {
+            console.error("AI assist content element not found");
+            alert("Error: Could not display the results.");
+            return;
+          }
+          
           if (currentAssistType === 'response_schema') {
             contentElement.innerHTML = `<pre class="mb-0">${resultContent}</pre>`;
           } else {
             contentElement.textContent = resultContent;
           }
+          console.log("Content displayed successfully");
         })
         .catch(error => {
           console.error('Error generating AI assistance:', error);
-          document.getElementById('ai-assist-loading').classList.add('d-none');
-          document.getElementById('ai-assist-generate').classList.remove('d-none');
-          alert('Failed to generate suggestion. Please try again.');
+          const loadingElement = document.getElementById('ai-assist-loading');
+          const generateButton = document.getElementById('ai-assist-generate');
+          
+          if (loadingElement) loadingElement.classList.add('d-none');
+          if (generateButton) generateButton.classList.remove('d-none');
+          
+          alert(`Failed to generate suggestion: ${error.message}. Please try again.`);
         });
       });
     }
