@@ -1376,7 +1376,7 @@ def get_template(template_id):
         template = AgentTemplate.query.get_or_404(template_id)
         
         # Format the complete response
-        result = {
+        template_data = {
             "id": template.id,
             "name": template.name,
             "description": template.description,
@@ -1396,6 +1396,12 @@ def get_template(template_id):
             "prompt_templates": template.get_prompt_templates(),
             "response_formats": template.get_response_formats(),
             "business_rules": template.get_business_rules()
+        }
+        
+        # Wrap response in success object with template data
+        result = {
+            "success": True,
+            "template": template_data
         }
         
         # Increment download count
