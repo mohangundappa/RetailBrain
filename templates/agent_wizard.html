@@ -1161,19 +1161,147 @@ Next steps:
         
         document.getElementById('ai-assist-apply').addEventListener('click', function() {
           const currentTargetId = document.getElementById('ai-assist-modal').getAttribute('data-target');
+          const currentAssistType = document.getElementById('ai-assist-modal').getAttribute('data-type');
           const currentTargetElement = document.getElementById(currentTargetId);
           
-          if (currentTargetElement && document.getElementById('ai-assist-use-suggestion').checked) {
-            const contentElement = document.getElementById('ai-assist-content');
-            let content = '';
-            
-            // Get content based on whether it's a pre element or regular text
-            if (contentElement.querySelector('pre')) {
-              content = contentElement.querySelector('pre').textContent;
-            } else {
-              content = contentElement.textContent;
+          // Get content from AI suggestion
+          const contentElement = document.getElementById('ai-assist-content');
+          let content = '';
+          
+          // Get content based on whether it's a pre element or regular text
+          if (contentElement.querySelector('pre')) {
+            content = contentElement.querySelector('pre').textContent;
+          } else {
+            content = contentElement.textContent;
+          }
+          
+          // Special handling for entity-assistant
+          if (currentAssistType === 'entity_definition' && currentTargetId === 'entity-assistant' && 
+              document.getElementById('ai-assist-use-suggestion').checked) {
+            try {
+              // Parse the entity definitions
+              let entityDefinitions;
+              try {
+                entityDefinitions = JSON.parse(content);
+              } catch(e) {
+                // Try to extract JSON from the text
+                const jsonMatch = content.match(/```json\n([\s\S]*?)\n```/) || 
+                                 content.match(/```\n([\s\S]*?)\n```/) || 
+                                 content.match(/\{[\s\S]*\}/);
+                
+                if (jsonMatch) {
+                  entityDefinitions = JSON.parse(jsonMatch[0]);
+                } else {
+                  throw new Error("Could not parse JSON from content");
+                }
+              }
+              
+              // Process each entity and add it to the form
+              if (Array.isArray(entityDefinitions)) {
+                const entityContainer = document.getElementById('entity-container');
+                const entityCountField = document.getElementById('entity_count');
+                let entityCount = parseInt(entityCountField.value || '0');
+                
+                // Add each entity to the form
+                entityDefinitions.forEach(entity => {
+                  const entityIndex = entityCount;
+                  const entityHtml = `
+                    <div class="card mb-3 entity-card" data-entity-index="${entityIndex}">
+                      <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">Entity #${entityIndex + 1}</h5>
+                        <button type="button" class="btn btn-sm btn-outline-danger remove-entity" data-index="${entityIndex}">
+                          <i class="bi bi-trash"></i>
+                        </button>
+                      </div>
+                      <div class="card-body">
+                        <div class="row">
+                          <div class="col-md-6 mb-3">
+                            <label class="form-label">Entity Name</label>
+                            <input type="text" class="form-control entity-name" name="entities[${entityIndex}][name]" value="${entity.name || ''}" required>
+                          </div>
+                          <div class="col-md-6 mb-3">
+                            <label class="form-label">Description</label>
+                            <input type="text" class="form-control" name="entities[${entityIndex}][description]" value="${entity.description || ''}">
+                          </div>
+                        </div>
+                        
+                        <div class="row">
+                          <div class="col-md-6 mb-3">
+                            <label class="form-label">Validation Pattern (Regex)</label>
+                            <input type="text" class="form-control font-monospace" name="entities[${entityIndex}][validation_pattern]" value="${entity.validation_pattern || ''}">
+                            <div class="form-text">Regular expression for validating user input</div>
+                          </div>
+                          <div class="col-md-6 mb-3">
+                            <label class="form-label">Error Message</label>
+                            <input type="text" class="form-control" name="entities[${entityIndex}][error_message]" value="${entity.error_message || ''}">
+                          </div>
+                        </div>
+                        
+                        <div class="row">
+                          <div class="col-md-12 mb-3">
+                            <label class="form-label">Examples</label>
+                            <input type="text" class="form-control" name="entities[${entityIndex}][examples]" value="${Array.isArray(entity.examples) ? entity.examples.join(', ') : ''}" placeholder="Example1, Example2, Example3">
+                            <div class="form-text">Comma-separated list of examples</div>
+                          </div>
+                        </div>
+                        
+                        <div class="form-check">
+                          <input class="form-check-input" type="checkbox" name="entities[${entityIndex}][required]" id="entity-required-${entityIndex}" ${entity.required ? 'checked' : ''}>
+                          <label class="form-check-label" for="entity-required-${entityIndex}">
+                            Required Entity
+                          </label>
+                        </div>
+                      </div>
+                    </div>
+                  `;
+                  
+                  // Append the new entity form
+                  const tempDiv = document.createElement('div');
+                  tempDiv.innerHTML = entityHtml;
+                  entityContainer.appendChild(tempDiv.firstElementChild);
+                  
+                  // Add event listener to the new remove button
+                  const newRemoveButton = entityContainer.querySelector(`.entity-card[data-entity-index="${entityIndex}"] .remove-entity`);
+                  if (newRemoveButton) {
+                    newRemoveButton.addEventListener('click', function() {
+                      const index = this.dataset.index;
+                      const entityCard = document.querySelector(`.entity-card[data-entity-index="${index}"]`);
+                      
+                      if (entityCard) {
+                        entityCard.remove();
+                        // Update entity count
+                        const newCount = document.querySelectorAll('.entity-card').length;
+                        entityCountField.value = newCount;
+                      }
+                    });
+                  }
+                  
+                  entityCount++;
+                });
+                
+                // Update the entity count
+                entityCountField.value = entityCount;
+                
+                // Hide modal
+                const modal = bootstrap.Modal.getInstance(document.getElementById('ai-assist-modal'));
+                modal.hide();
+                
+                // Show success message
+                const alertHtml = `
+                  <div class="alert alert-success alert-dismissible fade show mb-3" role="alert">
+                    Added ${entityDefinitions.length} AI-generated entities successfully!
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                  </div>
+                `;
+                entityContainer.parentElement.insertAdjacentHTML('beforebegin', alertHtml);
+              } else {
+                throw new Error("Entity definition must be an array");
+              }
+            } catch (error) {
+              console.error('Error processing entity definitions:', error);
+              alert('Failed to process entity definitions. Please make sure the AI generated content is in the correct format.');
             }
-            
+          } else if (currentTargetElement && document.getElementById('ai-assist-use-suggestion').checked) {
             // Set the content in the target field
             currentTargetElement.value = content;
             

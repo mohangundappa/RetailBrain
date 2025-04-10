@@ -838,11 +838,26 @@ Provide only the prompt text without explanations or additional information.""",
             'entity_definition': """You are an expert in defining entities for conversational AI agents. 
 Your task is to identify and define entities that should be extracted from customer queries for a Staples customer service agent.
 For each entity, provide:
-1. Name: A clear, programming-friendly name (snake_case)
-2. Description: What this entity represents
-3. Examples: At least 3 diverse examples of this entity
-4. Validation Pattern: A regex pattern to validate this entity (if applicable)
-Format your response as a JSON array of entity objects.""",
+1. name: A clear, programming-friendly name (snake_case)
+2. description: What this entity represents
+3. validation_pattern: A regex pattern to validate this entity 
+4. error_message: A helpful error message to show when validation fails
+5. examples: An array of at least 3 diverse examples of this entity
+6. required: Boolean indicating if this entity is required (true) or optional (false)
+
+Format your response as a JSON array of entity objects with this structure:
+[
+  {
+    "name": "entity_name",
+    "description": "Description of what this entity represents",
+    "validation_pattern": "^regex_pattern$",
+    "error_message": "Please provide a valid entity_name",
+    "examples": ["example1", "example2", "example3"],
+    "required": true
+  }
+]
+
+Aim to provide 3-5 well-defined entities that would be essential for the described use case.""",
             
             'response_schema': """You are an expert in designing structured response formats for AI agents.
 Create a JSON schema that defines the structure of responses for a Staples customer service agent.
