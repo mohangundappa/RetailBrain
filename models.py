@@ -316,6 +316,39 @@ class CustomAgent(db.Model):
         except:
             return []
             
+    def get_system_prompt(self):
+        """Get system prompt from configuration."""
+        try:
+            if not self.configuration:
+                return ""
+            config = json.loads(self.configuration)
+            prompts = config.get('prompts', {})
+            return prompts.get('system', "")
+        except:
+            return ""
+            
+    def get_entity_extraction_prompt(self):
+        """Get entity extraction prompt from configuration."""
+        try:
+            if not self.configuration:
+                return ""
+            config = json.loads(self.configuration)
+            prompts = config.get('prompts', {})
+            return prompts.get('entity_extraction', "")
+        except:
+            return ""
+            
+    def get_response_generation_prompt(self):
+        """Get response generation prompt from configuration."""
+        try:
+            if not self.configuration:
+                return ""
+            config = json.loads(self.configuration)
+            prompts = config.get('prompts', {})
+            return prompts.get('response_generation', "")
+        except:
+            return ""
+            
     def __repr__(self):
         return f"<CustomAgent {self.id}: {self.name}>"
 

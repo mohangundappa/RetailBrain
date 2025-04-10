@@ -1188,7 +1188,12 @@ def agent_wizard(agent_id=None, step=1):
         elif step == 3:
             # Prompt templates
             step_data = {
-                "prompt_templates": agent.get_prompt_templates() or []
+                "prompt_templates": agent.get_prompt_templates() or [],
+                "prompts": {
+                    "system": agent.get_system_prompt() or "",
+                    "entity_extraction": agent.get_entity_extraction_prompt() or "",
+                    "response_generation": agent.get_response_generation_prompt() or ""
+                }
             }
         elif step == 4:
             # Response formats
