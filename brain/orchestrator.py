@@ -466,10 +466,57 @@ class AgentOrchestrator:
         # Select the agent with the highest adjusted confidence
         if agent_scores:
             agent_scores.sort(key=lambda x: x[1], reverse=True)  # Sort by adjusted confidence
-            best_agent, best_adjusted_confidence, base_confidence, used_context = agent_scores[0]
+            
+            # Check if we have a tie or very close scores at the top
+            if len(agent_scores) >= 2:
+                top_agent, top_confidence, top_base, top_used_context = agent_scores[0]
+                second_agent, second_confidence, second_base, second_used_context = agent_scores[1]
+                
+                # If the top two scores are very close (within 0.1) and one is the Store Locator
+                # and the input contains location patterns, prioritize the Store Locator
+                if abs(top_confidence - second_confidence) <= 0.1:
+                    logger.info(f"Close agent scores: {top_agent.name} ({top_confidence:.2f}) vs {second_agent.name} ({second_confidence:.2f})")
+                    
+                    # Check for city names, zip codes or location-related keywords
+                    location_keywords = ["store", "location", "find", "nearest", "close", "near me", "nearby", "directions"]
+                    location_pattern = re.search(r'\b\d{5}(-\d{4})?\b', user_input) # Zip code
+                    has_location_keyword = any(kw in user_input.lower() for kw in location_keywords)
+                    
+                    city_names = ["natick", "boston", "new york", "chicago", "philadelphia", "los angeles", "san francisco"]
+                    has_city_name = any(city in user_input.lower() for city in city_names)
+                    
+                    # If input has location indicators, prioritize Store Locator
+                    if (location_pattern or has_location_keyword or has_city_name):
+                        if top_agent.name == "Store Locator Agent":
+                            # Store Locator already on top, just increase confidence slightly
+                            best_agent = top_agent
+                            best_adjusted_confidence = min(top_confidence + 0.05, 0.99)
+                            context_used = top_used_context
+                            logger.info(f"Prioritizing Store Locator Agent for location-related query")
+                        elif second_agent.name == "Store Locator Agent":
+                            # Promote Store Locator to the top for location queries
+                            best_agent = second_agent
+                            best_adjusted_confidence = min(second_confidence + 0.1, 0.99)
+                            context_used = second_used_context
+                            logger.info(f"Promoting Store Locator Agent for location-related query")
+                        else:
+                            # No Store Locator in top 2, proceed with highest score
+                            best_agent, best_adjusted_confidence, base_confidence, used_context = agent_scores[0]
+                            context_used = used_context
+                    else:
+                        # No location indicators, use highest confidence
+                        best_agent, best_adjusted_confidence, base_confidence, used_context = agent_scores[0]
+                        context_used = used_context
+                else:
+                    # Clear winner, use highest confidence
+                    best_agent, best_adjusted_confidence, base_confidence, used_context = agent_scores[0]
+                    context_used = used_context
+            else:
+                # Only one agent, use it
+                best_agent, best_adjusted_confidence, base_confidence, used_context = agent_scores[0]
+                context_used = used_context
             
             if best_adjusted_confidence >= self.confidence_threshold:
-                context_used = used_context
                 return best_agent, best_adjusted_confidence, context_used
         
         # No agent reached the confidence threshold
