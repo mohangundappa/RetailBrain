@@ -398,19 +398,33 @@ function selectComponent(componentId) {
  */
 function deselectComponent() {
   if (selectedComponent) {
-    document.getElementById(selectedComponent).classList.remove('component-selected');
+    const componentElement = document.getElementById(selectedComponent);
+    if (componentElement) {
+      componentElement.classList.remove('component-selected');
+    }
     selectedComponent = null;
     
     // Show agent properties, hide component properties
-    document.getElementById('agent-properties').classList.remove('d-none');
-    document.getElementById('component-properties').classList.add('d-none');
+    const agentProperties = document.getElementById('agent-properties');
+    const componentProperties = document.getElementById('component-properties');
+    
+    if (agentProperties) {
+      agentProperties.classList.remove('d-none');
+    }
+    
+    if (componentProperties) {
+      componentProperties.classList.add('d-none');
+    }
   }
   
   // Reset connecting state
   if (connectingFrom) {
     const elem = document.getElementById(connectingFrom);
     if (elem) {
-      elem.querySelector(`.connection-point[data-point-type="${connectingPointType}"]`).classList.remove('connecting');
+      const connectionPoint = elem.querySelector(`.connection-point[data-point-type="${connectingPointType}"]`);
+      if (connectionPoint) {
+        connectionPoint.classList.remove('connecting');
+      }
     }
     connectingFrom = null;
     connectingPointType = null;
