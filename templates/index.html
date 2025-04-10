@@ -128,8 +128,8 @@
     </a>
 </div>
 
-<div class="row">
-    <div class="col-md-6">
+<div class="row mb-4">
+    <div class="col-md-6 mb-4">
         <div class="card agent-card bg-dark text-light h-100">
             <div class="card-body text-center">
                 <div class="agent-icon">
@@ -141,7 +141,7 @@
             </div>
         </div>
     </div>
-    <div class="col-md-6">
+    <div class="col-md-6 mb-4">
         <div class="card agent-card bg-dark text-light h-100">
             <div class="card-body text-center">
                 <div class="agent-icon">
@@ -150,6 +150,33 @@
                 <h3 class="card-title">Password Reset</h3>
                 <p class="card-text">Reset your password and recover your account</p>
                 <button class="btn btn-outline-info" onclick="setPrompt('I need to reset my password for user@example.com')">Try Password Reset</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6 mb-4">
+        <div class="card agent-card bg-dark text-light h-100">
+            <div class="card-body text-center">
+                <div class="agent-icon">
+                    <i class="fas fa-store"></i>
+                </div>
+                <h3 class="card-title">Store Locator</h3>
+                <p class="card-text">Find Staples stores near you</p>
+                <button class="btn btn-outline-info" onclick="setPrompt('Find Staples stores near 10001')">Try Store Locator</button>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 mb-4">
+        <div class="card agent-card bg-dark text-light h-100">
+            <div class="card-body text-center">
+                <div class="agent-icon">
+                    <i class="fas fa-info-circle"></i>
+                </div>
+                <h3 class="card-title">Product Information</h3>
+                <p class="card-text">Get information about Staples products</p>
+                <button class="btn btn-outline-info" onclick="setPrompt('Tell me about Staples Hyken Mesh Task Chair')">Try Product Info</button>
             </div>
         </div>
     </div>
