@@ -23,11 +23,25 @@
       <h5>Key Components:</h5>
       <ul>
         <li><strong>External Systems:</strong> Kore.ai, Slack, Facebook, and Email systems that integrate with Staples Brain.</li>
-        <li><strong>Staples Brain:</strong> The complete system including the core components and specialized agents along with the PostgreSQL database.</li>
-        <li><strong>Core Components:</strong> The central processing units containing the Intent Handler, Orchestrator, and Memory System.</li>
-        <li><strong>Agents:</strong> Specialized modules for Package Tracking, Password Reset, Store Locator, and custom user-defined agents.</li>
-        <li><strong>PostgreSQL Database:</strong> Integrated persistent storage for conversations, agent configurations, and templates.</li>
+        <li><strong>Staples Brain:</strong> The complete system with the following components:
+          <ul>
+            <li><strong>Core Components:</strong> A group containing the Intent Handler, Orchestrator, and Memory System that work together to process requests.</li>
+            <li><strong>Agent Components:</strong> Specialized modules including Package Tracking, Password Reset, Store Locator, and custom user-defined agents.</li>
+            <li><strong>PostgreSQL Database:</strong> Integrated persistent storage for conversations, agent configurations, and templates.</li>
+          </ul>
+        </li>
+        <li><strong>Staples API Services:</strong> External API endpoints that agents call to retrieve real-time data (Order API, Customer API, Product API, Store API).</li>
         <li><strong>Observability:</strong> Monitoring and telemetry systems for tracking performance and diagnosing issues.</li>
+      </ul>
+    </div>
+    
+    <div class="mt-3">
+      <h5>Key Interactions:</h5>
+      <ul>
+        <li><strong>Intent Handler to Agents:</strong> The Intent Handler identifies user intent and passes requests to the appropriate agent.</li>
+        <li><strong>Orchestrator to Agents:</strong> The Orchestrator manages agent workflows and coordinates complex multi-agent tasks.</li> 
+        <li><strong>Memory System to Agents:</strong> Bidirectional flow where agents both read from and write to the Memory System for conversation context.</li>
+        <li><strong>Agents to Staples API Services:</strong> Agents make calls to external Staples APIs to retrieve real-time data needed to fulfill requests.</li>
       </ul>
     </div>
   </section>
