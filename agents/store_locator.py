@@ -286,7 +286,14 @@ class StoreLocatorAgent(BaseAgent):
                 "query": user_input,
                 "store_info": json.dumps(store_info)
             })
-            response_text = formatting_result["text"]
+            
+            # Handle different response formats from the formatting chain
+            if isinstance(formatting_result, dict) and "text" in formatting_result:
+                response_text = formatting_result["text"]
+            elif isinstance(formatting_result, str):
+                response_text = formatting_result
+            else:
+                response_text = str(formatting_result)
             
             # Apply guardrails to the response
             corrected_response, violations = self.apply_response_guardrails(response_text)
