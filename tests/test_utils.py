@@ -344,6 +344,35 @@ def create_mock_chat_model(responses=None, confidence_score=0.9):
     return MockChatModel(responses=responses, confidence_score=confidence_score)
 
 
+def create_async_chain_mock(response_text=None):
+    """
+    Create a mock chain with proper async support.
+    
+    Args:
+        response_text: The text to return in the response
+        
+    Returns:
+        A mock chain with async support
+    """
+    if response_text is None:
+        response_text = '{"product_name": "Test Product", "brand": "Test Brand", "price": "$19.99"}'
+    
+    # Create a mock with a properly awaitable ainvoke method
+    mock_chain = MagicMock()
+    
+    async def mock_ainvoke(*args, **kwargs):
+        await asyncio.sleep(0)  # Make it actually awaitable
+        return {"text": response_text}
+    
+    # Set up the ainvoke method to be awaitable
+    mock_chain.ainvoke = MagicMock(side_effect=mock_ainvoke)
+    
+    # Regular invoke method
+    mock_chain.invoke = MagicMock(return_value={"text": response_text})
+    
+    return mock_chain
+
+
 def patch_llm_in_brain(brain, mock_llm=None):
     """
     Patch the LLM in a StaplesBrain instance.
@@ -368,8 +397,60 @@ def patch_llm_in_brain(brain, mock_llm=None):
         # Replace LLMs in all chains
         if hasattr(agent, "classifier_chain") and hasattr(agent.classifier_chain, "llm"):
             agent.classifier_chain.llm = mock_llm
-        if hasattr(agent, "extraction_chain") and hasattr(agent.extraction_chain, "llm"):
-            agent.extraction_chain.llm = mock_llm
+        
+        # For all chain types that use async invoke, we need to mock them properly
+        
+        # Extract agent class name for easier reference
+        agent_class_name = agent.__class__.__name__
+        
+        # For extraction chains, we need special handling for async calls
+        if hasattr(agent, "_extraction_chain"):
+            extraction_response = None
+            
+            # Product info agent needs product info response
+            if agent_class_name == "ProductInfoAgent":
+                extraction_response = '{"product_name": "Test Desk Chair", "brand": "Staples", "price": "$199.99", "features": ["ergonomic", "adjustable height"], "availability": "in-stock"}'
+            # Package tracking agent needs tracking response
+            elif agent_class_name == "PackageTrackingAgent":
+                extraction_response = '{"tracking_number": "TRACK123456", "shipping_carrier": "UPS", "order_number": null, "time_frame": "3 days"}'
+            # Reset password agent needs email response
+            elif agent_class_name == "ResetPasswordAgent":
+                extraction_response = '{"email": "user@example.com", "username": null, "account_type": "Staples.com", "issue": "forgot password"}'
+            # Store locator agent needs location response
+            elif agent_class_name == "StoreLocatorAgent":
+                extraction_response = '{"location": "Boston, MA", "radius": "10 miles", "store_type": "Staples"}'
+                
+            # Replace the chain with a properly awaitable mock
+            agent._extraction_chain = create_async_chain_mock(extraction_response)
+        
+        # For formatting chains
+        if hasattr(agent, "_formatting_chain"):
+            formatting_response = None
+            
+            # Product info agent needs formatted product response
+            if agent_class_name == "ProductInfoAgent":
+                formatting_response = "Here are the details for the Test Desk Chair from Staples: It's priced at $199.99, features an ergonomic design and adjustable height, and is currently in stock."
+            # Package tracking agent needs formatted tracking response
+            elif agent_class_name == "PackageTrackingAgent":
+                formatting_response = "Your package with tracking number TRACK123456 from UPS is currently in transit and expected to be delivered in 3 days."
+            # Reset password agent needs formatted password reset response
+            elif agent_class_name == "ResetPasswordAgent":
+                formatting_response = "I've sent password reset instructions to your email address (user@example.com). Please check your inbox."
+            # Store locator agent needs formatted store location response
+            elif agent_class_name == "StoreLocatorAgent":
+                formatting_response = "I found 3 Staples stores within 10 miles of Boston, MA. The closest one is at 100 Main Street, Boston, MA 02108, which is 1.2 miles away."
+                
+            # Replace the chain with a properly awaitable mock
+            agent._formatting_chain = create_async_chain_mock(formatting_response)
+            
+        # For all other chains that might use ainvoke
+        for chain_attr in ["_entity_collection_chain", "_entity_extraction_chain", "_address_validation_chain", "_response_generation_chain"]:
+            if hasattr(agent, chain_attr):
+                # Create a generic response based on the chain type
+                response = f"Mock response for {chain_attr}"
+                setattr(agent, chain_attr, create_async_chain_mock(response))
+        
+        # For response chains
         if hasattr(agent, "response_chain") and hasattr(agent.response_chain, "llm"):
             agent.response_chain.llm = mock_llm
     
