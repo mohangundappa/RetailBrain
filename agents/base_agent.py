@@ -597,6 +597,43 @@ class BaseAgent(ABC):
         # Check if input is just a simple greeting
         is_greeting = any(re.search(pattern, user_input.lower()) for pattern in greeting_patterns)
         
+        # Check for conversation closings (thanks, etc.)
+        closing_patterns = [
+            r'^thanks?\b', r'^thank you\b', r'^thx\b', r'^ty\b', 
+            r'^got it\b', r'^understood\b', r'^appreciate\b',
+            r'^great\b', r'^awesome\b', r'^perfect\b', r'^excellent\b',
+            r'^ok\b', r'^okay\b', r'^sure\b', r'^sounds good\b'
+        ]
+        
+        # Check if the input indicates the user is closing the conversation with a thank you or acknowledgment
+        is_closing = any(re.search(pattern, user_input.lower()) for pattern in closing_patterns)
+        
+        # Also check for very short responses which might indicate closure
+        words = user_input.strip().split()
+        if len(words) <= 3 and any(word.lower() in ['thanks', 'thank', 'ok', 'okay', 'good', 'great'] for word in words):
+            is_closing = True
+        
+        # If the user is just saying thank you or acknowledging, provide a closing response
+        if is_closing and len(user_input.split()) <= 5:
+            # Return a concise closing response
+            closing_responses = [
+                "Glad I could help! Feel free to reach out if you need anything else.",
+                "You're welcome! Is there anything else I can assist with?",
+                "Happy to help! Have a great day!",
+                "Anytime! Let me know if you need anything else from Staples."
+            ]
+            import random
+            closing_response = random.choice(closing_responses)
+            
+            return {
+                "success": True,
+                "response": closing_response,
+                "agent": self.name,
+                "confidence": 1.0,
+                "is_closing": True,
+                "continue_with_same_agent": False  # Allow switching after a closing
+            }
+        
         if is_greeting and len(user_input.split()) <= 3:
             # Return a concise greeting specific to this agent's domain
             greeting_response = f"Hi! How can I help with {self.name.replace(' Agent', '')}?"
