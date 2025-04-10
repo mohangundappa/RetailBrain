@@ -369,16 +369,25 @@ document.addEventListener('DOMContentLoaded', function() {
                                 </div>
                                 <div class="template-tags">
                                     <strong>Tags:</strong><br>
-                                    ${Array.isArray(template.tags) 
-                                      ? template.tags.map(tag => 
-                                        `<span class="badge bg-secondary me-1">${tag.trim()}</span>`
-                                      ).join('') 
-                                      : (typeof template.tags === 'string' && template.tags 
-                                        ? template.tags.split(',').map(tag => 
-                                            `<span class="badge bg-secondary me-1">${tag.trim()}</span>`
-                                          ).join('') 
-                                        : 'No tags')
-                                    }
+                                    ${(() => {
+                                        // Log the tags data to help debug
+                                        console.log('Template tags:', template.tags);
+                                        
+                                        // Handle tags
+                                        if (Array.isArray(template.tags)) {
+                                            if (template.tags.length === 0) return 'No tags';
+                                            return template.tags.map(tag => 
+                                                `<span class="badge bg-secondary me-1">${typeof tag === 'string' ? tag.trim() : tag}</span>`
+                                            ).join('');
+                                        } else if (typeof template.tags === 'string') {
+                                            if (!template.tags) return 'No tags';
+                                            return template.tags.split(',').map(tag => 
+                                                `<span class="badge bg-secondary me-1">${tag.trim()}</span>`
+                                            ).join('');
+                                        } else {
+                                            return 'No tags';
+                                        }
+                                    })()}
                                 </div>
                             </div>
                             <div class="col-md-6">
