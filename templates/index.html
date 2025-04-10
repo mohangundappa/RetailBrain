@@ -155,7 +155,7 @@
     </div>
 </div>
 
-<div class="row">
+<div class="row mb-4">
     <div class="col-md-6 mb-4">
         <div class="card agent-card bg-dark text-light h-100">
             <div class="card-body text-center">
@@ -177,6 +177,21 @@
                 <h3 class="card-title">Product Information</h3>
                 <p class="card-text">Get information about Staples products</p>
                 <button class="btn btn-outline-info" onclick="setPrompt('Tell me about Staples Hyken Mesh Task Chair')">Try Product Info</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6 offset-md-3 mb-4">
+        <div class="card agent-card bg-dark text-light h-100">
+            <div class="card-body text-center">
+                <div class="agent-icon">
+                    <i class="fas fa-undo"></i>
+                </div>
+                <h3 class="card-title">Returns Processing</h3>
+                <p class="card-text">Process returns for Staples orders and purchases</p>
+                <button class="btn btn-outline-info" onclick="setPrompt('I need to return an order I placed last week')">Try Returns Processing</button>
             </div>
         </div>
     </div>
@@ -296,7 +311,10 @@
                 "success": true,
                 "agents": [
                     "Package Tracking Agent",
-                    "Reset Password Agent"
+                    "Reset Password Agent",
+                    "Store Locator Agent",
+                    "Product Information Agent",
+                    "Returns Processing Agent"
                 ]
             }
         </div>
@@ -313,7 +331,10 @@
                 "version": "1.0.0",
                 "agents": [
                     "Package Tracking Agent",
-                    "Reset Password Agent"
+                    "Reset Password Agent",
+                    "Store Locator Agent",
+                    "Product Information Agent",
+                    "Returns Processing Agent"
                 ]
             }
         </div>
