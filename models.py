@@ -1,7 +1,7 @@
 import os
 import json
 from datetime import datetime
-from db import db
+from app import db
 
 
 class Conversation(db.Model):
