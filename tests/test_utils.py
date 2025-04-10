@@ -17,6 +17,16 @@ class MockChatModel(BaseChatModel):
     This model provides configurable responses for testing.
     Compatible with both older and newer OpenAI API versions.
     """
+    
+    model_name: str = "gpt-4-mock"  # Define this as a class attribute for pydantic
+    _client = None  # Private attribute for storing self reference
+    
+    # Add a property for client access
+    @property
+    def client(self):
+        if self._client is None:
+            self._client = self
+        return self._client
 
     def __init__(self, 
                  responses: Optional[List[str]] = None,
@@ -28,7 +38,10 @@ class MockChatModel(BaseChatModel):
             responses: List of responses to return in sequence
             confidence_score: Default confidence score for can_handle calls
         """
-        super().__init__()
+        # Since BaseChatModel is a pydantic model, we need to initialize it properly
+        super().__init__(callbacks=None)  # Initialize with required args
+        
+        # Store our custom attributes
         self._responses = responses or [
             # Default sequence of responses
             str(confidence_score),  # For confidence checks
@@ -39,10 +52,10 @@ class MockChatModel(BaseChatModel):
             "I've sent password reset instructions to your email address (user@example.com). Please check your inbox."
         ]
         self._response_counter = 0
-        # Add attributes needed for compatibility with newer API
-        self.model_name = "gpt-4-mock"
-        # Handle client attribute for testing
-        self.client = self  # Make self.client point to self for compatibility
+        self._confidence_score = confidence_score
+        
+        # The client property will handle the self-reference
+        self._client = self
         
         # Initialize the chat attribute for the client
         class ChatCompletionsAPI:
@@ -96,7 +109,7 @@ class MockChatModel(BaseChatModel):
                 self.completions = ChatCompletionsAPI(parent)
                 
         # Assign chat namespace to client 
-        self.chat = ChatNamespace(self)
+        self._chat_instance = ChatNamespace(self)
     
     def _is_can_handle_call(self, messages: List[Any]) -> bool:
         """Check if this is a can_handle capability call"""

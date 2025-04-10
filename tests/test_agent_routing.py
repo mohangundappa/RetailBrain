@@ -31,13 +31,47 @@ class TestAgentRouting(unittest.TestCase):
     
     def setUp(self):
         """Set up the test environment."""
-        # We'll use a patch for the LLM import to avoid actual API calls
-        self.llm_patcher = patch('langchain_community.chat_models.ChatOpenAI')
-        self.mock_llm = self.llm_patcher.start()
+        # We need to patch multiple LLM imports to avoid actual API calls
+        self.patchers = []
         
-        # Mock can_handle to return predictable values
-        self.mock_llm.return_value = MagicMock()
-        self.mock_llm.return_value._generate.return_value.generations[0].message.content = "0.7"
+        # Patch langchain_community.chat_models.ChatOpenAI
+        self.llm_community_patcher = patch('langchain_community.chat_models.ChatOpenAI')
+        self.mock_community_llm = self.llm_community_patcher.start()
+        self.patchers.append(self.llm_community_patcher)
+        
+        # Patch langchain_openai.chat_models.ChatOpenAI
+        self.llm_openai_patcher = patch('langchain_openai.chat_models.ChatOpenAI')
+        self.mock_openai_llm = self.llm_openai_patcher.start()
+        self.patchers.append(self.llm_openai_patcher)
+        
+        # Mock the create method for both
+        for mock_llm in [self.mock_community_llm, self.mock_openai_llm]:
+            mock_llm.return_value = MagicMock()
+            mock_llm.return_value._generate.return_value.generations[0].message.content = "0.7"
+            # Setup instance attributes
+            mock_llm.return_value.client = MagicMock()
+            mock_llm.return_value.model_name = "gpt-4-mock"
+            # Mock chat completions create method
+            mock_chat = MagicMock()
+            mock_completions = MagicMock()
+            mock_llm.return_value.client.chat = mock_chat
+            mock_chat.completions = mock_completions
+            mock_choice = MagicMock()
+            mock_choice.message.content = "0.7"
+            mock_completions.create.return_value.choices = [mock_choice]
+        
+        # Patch direct openai usage
+        self.openai_patcher = patch('openai.OpenAI')
+        self.mock_openai = self.openai_patcher.start()
+        self.patchers.append(self.openai_patcher)
+        
+        # Mock the OpenAI client
+        mock_client = MagicMock()
+        self.mock_openai.return_value = mock_client
+        mock_client.chat.completions.create.return_value.choices = [MagicMock(message=MagicMock(content="0.7"))]
+        
+        # Import our test utilities and use them for consistent mocking
+        from tests.test_utils import create_mock_chat_model, patch_llm_in_brain
         
         # Set environment variables for initialization
         os.environ["OPENAI_API_KEY"] = "test_api_key"
@@ -45,12 +79,18 @@ class TestAgentRouting(unittest.TestCase):
         # Initialize the brain
         self.brain = initialize_staples_brain()
         
+        # Use our test_utils to patch the LLM in the brain
+        self.mock_llm = create_mock_chat_model()
+        patch_llm_in_brain(self.brain, self.mock_llm)
+        
         # For some tests, we need direct access to the orchestrator
         self.orchestrator = self.brain.orchestrator
     
     def tearDown(self):
         """Clean up after the test."""
-        self.llm_patcher.stop()
+        # Stop all patchers
+        for patcher in self.patchers:
+            patcher.stop()
     
     def test_intent_routing_logic(self):
         """Test that the intent routing logic correctly maps intents to agents."""
