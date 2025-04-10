@@ -727,12 +727,18 @@
     const addEntityButton = document.getElementById('add-entity');
     const entityCountField = document.getElementById('entity_count');
     
+    console.log("Entity management - container:", entityContainer ? "found" : "missing", 
+                "button:", addEntityButton ? "found" : "missing", 
+                "count field:", entityCountField ? "found" : "missing");
+    
     if (entityContainer && addEntityButton && entityCountField) {
       let entityCount = {{ entities|length if entities is defined else 0 }};
+      console.log(`Starting with ${entityCount} entities`);
       
       // Update entity count in the hidden field
       const updateEntityCount = () => {
         entityCountField.value = entityCount;
+        console.log(`Updated entity count to ${entityCount}`);
       };
       
       // Initialize the entity count field
@@ -740,6 +746,7 @@
       
       // Add a new entity form
       addEntityButton.addEventListener('click', function() {
+      console.log("Add Entity button clicked");
       const entityIndex = entityCount;
       const entityHtml = `
         <div class="card mb-3 entity-card" data-entity-index="${entityIndex}">
@@ -1323,8 +1330,11 @@ Next steps:
     const aiAssistButtons = document.querySelectorAll('.ai-assist-btn');
     console.log(`Found ${aiAssistButtons.length} AI assist buttons`);
     
-    aiAssistButtons.forEach(button => {
-      button.addEventListener('click', function() {
+    if (aiAssistButtons.length > 0) {
+      aiAssistButtons.forEach(button => {
+        if (button) {
+          console.log(`Adding click listener to button: ${button.id}`);
+          button.addEventListener('click', function() {
         console.log("AI assist button clicked");
         const targetId = this.getAttribute('data-target');
         const assistType = this.getAttribute('data-type');
