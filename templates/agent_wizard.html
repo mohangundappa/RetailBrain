@@ -80,7 +80,7 @@
             {% endif %}
             
             <!-- Step 2: Entity Definitions -->
-            {% if current_step == 2 %}
+            {% if step == 2 %}
             <div class="step-content" id="step-2">
               <div class="mb-4">
                 <h4 class="mb-3">Entity Definitions</h4>
@@ -155,7 +155,7 @@
             {% endif %}
             
             <!-- Step 3: Prompt Templates -->
-            {% if current_step == 3 %}
+            {% if step == 3 %}
             <div class="step-content" id="step-3">
               <div class="mb-4">
                 <h4 class="mb-3">Prompt Templates</h4>
@@ -198,7 +198,7 @@
             {% endif %}
             
             <!-- Step 4: Response Format -->
-            {% if current_step == 4 %}
+            {% if step == 4 %}
             <div class="step-content" id="step-4">
               <div class="mb-4">
                 <h4 class="mb-3">Response Format</h4>
@@ -243,7 +243,7 @@
             {% endif %}
             
             <!-- Step 5: Review -->
-            {% if current_step == 5 %}
+            {% if step == 5 %}
             <div class="step-content" id="step-5">
               <div class="mb-4">
                 <h4 class="mb-3">Review Configuration</h4>
@@ -382,8 +382,8 @@
             
             <!-- Navigation Buttons -->
             <div class="d-flex justify-content-between mt-4">
-              {% if current_step > 1 %}
-              <a href="{{ url_for('agent_wizard', agent_id=agent_id, step=current_step-1) }}" class="btn btn-outline-secondary">
+              {% if step > 1 %}
+              <a href="{{ url_for('agent_wizard', agent_id=agent_id, step=step-1) }}" class="btn btn-outline-secondary">
                 <i class="bi bi-arrow-left"></i> Previous
               </a>
               {% else %}
@@ -391,13 +391,13 @@
               {% endif %}
               
               <div class="d-flex">
-                {% if current_step > 1 %}
+                {% if step > 1 %}
                 <button type="button" id="save-as-template-btn" class="btn btn-outline-info me-2">
                   <i class="bi bi-save"></i> Save as Template
                 </button>
                 {% endif %}
                 
-                {% if current_step < 5 %}
+                {% if step < 5 %}
                 <button type="submit" class="btn btn-primary">
                   Save & Continue <i class="bi bi-arrow-right"></i>
                 </button>
@@ -537,7 +537,7 @@
         modal.show();
       });
     }
-    {% if current_step == 2 %}
+    {% if step == 2 %}
     // Entity management for Step 2
     const entityContainer = document.getElementById('entity-container');
     const addEntityButton = document.getElementById('add-entity');
@@ -626,7 +626,7 @@
     {% endif %}
     
     // Suggestion templates for step 3
-    {% if current_step == 3 %}
+    {% if step == 3 %}
     const systemPromptTemplate = document.getElementById('system-prompt');
     const entityExtractionTemplate = document.getElementById('entity-extraction-prompt');
     const responseGenerationTemplate = document.getElementById('response-generation-prompt');
