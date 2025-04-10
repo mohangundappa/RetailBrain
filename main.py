@@ -1391,7 +1391,10 @@ def agent_wizard_save(agent_id=None, step=1):
                 "max_tokens": int(request.form.get('max_tokens', 1000)),
                 "top_p": float(request.form.get('top_p', 1.0)),
                 "frequency_penalty": float(request.form.get('frequency_penalty', 0.0)),
-                "presence_penalty": float(request.form.get('presence_penalty', 0.0))
+                "presence_penalty": float(request.form.get('presence_penalty', 0.0)),
+                # Add empty components and connections arrays to make the agent compatible with the builder
+                "components": [],
+                "connections": []
             }
             agent.configuration = json.dumps(agent_config)
             

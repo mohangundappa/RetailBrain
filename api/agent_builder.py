@@ -211,40 +211,51 @@ def get_agent(agent_id):
             
         logger.debug(f"Agent found: {agent.name}, has configuration: {bool(agent.configuration)}")
         
-        # If we have stored configuration, use that as the base
-        if agent.configuration:
+        # Check if this is a wizard-created agent with wizard_completed=True 
+        # but no components or connections (wizard agents have a different structure)
+        is_wizard_agent = agent.wizard_completed and len(agent.components) == 0 and len(agent.connections) == 0
+        
+        # If we have stored configuration and it's not a wizard agent, use that as the base
+        if agent.configuration and not is_wizard_agent:
             try:
                 config = json.loads(agent.configuration)
                 logger.debug(f"Loaded configuration JSON successfully")
                 
-                # Update basic properties
-                config['id'] = agent.id
-                config['name'] = agent.name
-                config['description'] = agent.description
-                config['is_active'] = agent.is_active
-                config['created_at'] = agent.created_at.isoformat() if agent.created_at else None
-                config['updated_at'] = agent.updated_at.isoformat() if agent.updated_at else None
-                
-                # Validate required fields for component rendering
-                for idx, component in enumerate(config.get('components', [])):
-                    if 'template' not in component:
-                        logger.warning(f"Component {idx} missing template field, adding default")
-                        component_type = component.get('component_type', 'unknown')
-                        if component_type == 'prompt':
-                            component['template'] = 'custom_prompt'
-                        elif component_type == 'llm':
-                            component['template'] = 'openai_gpt4'
-                        elif component_type == 'output':
-                            component['template'] = 'json_formatter'
-                        else:
-                            component['template'] = f"{component_type}_default"
-                
-                return jsonify(config), 200
+                # Check if the configuration has components and connections arrays
+                # This helps us identify wizard-created agents that might lack these
+                if not config.get('components') or not config.get('connections'):
+                    logger.debug("Configuration missing components or connections arrays, falling back to building from relationships")
+                    # Fall through to the component builder code
+                else:
+                    # Update basic properties
+                    config['id'] = agent.id
+                    config['name'] = agent.name
+                    config['description'] = agent.description
+                    config['is_active'] = agent.is_active
+                    config['created_at'] = agent.created_at.isoformat() if agent.created_at else None
+                    config['updated_at'] = agent.updated_at.isoformat() if agent.updated_at else None
+                    
+                    # Validate required fields for component rendering
+                    for idx, component in enumerate(config.get('components', [])):
+                        if 'template' not in component:
+                            logger.warning(f"Component {idx} missing template field, adding default")
+                            component_type = component.get('component_type', 'unknown')
+                            if component_type == 'prompt':
+                                component['template'] = 'custom_prompt'
+                            elif component_type == 'llm':
+                                component['template'] = 'openai_gpt4'
+                            elif component_type == 'output':
+                                component['template'] = 'json_formatter'
+                            else:
+                                component['template'] = f"{component_type}_default"
+                    
+                    return jsonify(config), 200
             except json.JSONDecodeError as e:
                 logger.error(f"Failed to parse agent configuration JSON: {str(e)}")
                 # If JSON parsing fails, fall back to building config from components
-            
-        # Otherwise build the configuration from components and connections
+        
+        # For wizard-created agents or if the above conditions aren't met,
+        # build the configuration from components and connections
         logger.debug(f"Building configuration from components: {len(agent.components)} and connections: {len(agent.connections)}")
         components = []
         for comp in agent.components:
