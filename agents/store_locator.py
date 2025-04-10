@@ -297,8 +297,36 @@ class StoreLocatorAgent(BaseAgent):
         """
         try:
             # Use the classifier to determine confidence
-            result = self._classifier_chain.invoke({"query": user_input})
-            confidence = float(result["text"].strip())
+            try:
+                # Try newer invoke method first
+                result = self._classifier_chain.invoke({"query": user_input})
+                # Handle various result formats
+                if isinstance(result, dict) and "text" in result:
+                    confidence_str = result["text"].strip()
+                elif isinstance(result, str):
+                    confidence_str = result.strip()
+                else:
+                    confidence_str = str(result).strip()
+                    
+                confidence = float(confidence_str)
+            except (AttributeError, TypeError) as e:
+                logger.debug(f"Primary classification method failed: {str(e)}")
+                # Fallback for older API versions
+                try:
+                    # Try direct LLM call as backup
+                    client = self.llm.client
+                    prompt = "Rate your confidence (0-1) in handling this store location query: " + user_input
+                    messages = [{"role": "user", "content": prompt}]
+                    
+                    response = client.chat.completions.create(
+                        model=self.llm.model_name,
+                        messages=messages
+                    )
+                    confidence_str = response.choices[0].message.content.strip()
+                    confidence = float(confidence_str)
+                except Exception as e2:
+                    logger.error(f"Fallback classification method also failed: {str(e2)}")
+                    confidence = 0.5  # Default to reasonable confidence
             
             # Check if the query explicitly mentions stores or locations
             store_keywords = ["store", "location", "branch", "shop", "retail", "hours", "open", "close", "nearby"]

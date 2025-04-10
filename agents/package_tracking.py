@@ -473,9 +473,18 @@ class PackageTrackingAgent(BaseAgent):
             A confidence score between 0 and 1
         """
         try:
-            # Use the classifier chain to determine confidence
-            confidence_str = self.classifier_chain.run(user_input=user_input).strip()
-            confidence = float(confidence_str)
+            # Use the classifier chain to determine confidence with updated LangChain API
+            try:
+                # First try newer 'invoke' pattern
+                result = self.classifier_chain.invoke({"user_input": user_input})
+                # Result might be a string or a dict with a 'text' field
+                confidence_str = result.get("text", result) if isinstance(result, dict) else result
+                confidence = float(str(confidence_str).strip())
+            except (AttributeError, TypeError):
+                # Fall back to older 'run' pattern for compatibility
+                confidence_str = self.classifier_chain.run(user_input=user_input).strip()
+                confidence = float(confidence_str)
+                
             logger.debug(f"Order tracking confidence: {confidence} for input: {user_input}")
             return min(max(confidence, 0.0), 1.0)  # Ensure confidence is between 0 and 1
         except Exception as e:

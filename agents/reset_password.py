@@ -300,8 +300,36 @@ class ResetPasswordAgent(BaseAgent):
         """
         try:
             # Use the classifier chain to determine confidence
-            result = self.classifier_chain.invoke({"user_input": user_input})
-            confidence = float(result["text"].strip())
+            try:
+                # First try newer ChatOpenAI API method
+                result = self.classifier_chain.invoke({"user_input": user_input})
+                # Handle various result formats
+                if isinstance(result, dict) and "text" in result:
+                    confidence_str = result["text"].strip()
+                elif isinstance(result, str):
+                    confidence_str = result.strip()
+                else:
+                    confidence_str = str(result).strip()
+                    
+                confidence = float(confidence_str)
+            except AttributeError:
+                # Fallback for older method
+                client = self.llm.client
+                prompt = "Rate your confidence (0-1) in handling this password reset request: " + user_input
+                messages = [{"role": "user", "content": prompt}]
+                
+                # Try the completion create method (older clients)
+                try:
+                    response = client.chat.completions.create(
+                        model=self.llm.model_name,
+                        messages=messages
+                    )
+                    confidence_str = response.choices[0].message.content.strip()
+                    confidence = float(confidence_str)
+                except Exception as e2:
+                    logger.error(f"Fallback method also failed: {str(e2)}")
+                    confidence = 0.0
+                
             logger.debug(f"Password reset confidence: {confidence} for input: {user_input}")
             return min(max(confidence, 0.0), 1.0)  # Ensure confidence is between 0 and 1
         except Exception as e:
