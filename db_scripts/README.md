@@ -1,30 +1,32 @@
 # Staples Brain Database Scripts
 
-This directory contains SQL scripts and utilities for setting up, managing, and maintaining the Staples Brain database.
+This directory contains SQL scripts and utilities for managing the Staples Brain database.
 
-## Available Scripts
+## Enterprise Database Management
 
-### Database Setup
+For real-world enterprise environments like Staples, databases are typically managed following established practices:
 
-- **setup_database.sql**: Creates the database, user, and grants necessary privileges for specific environments
+- **Enterprise Guidelines**: See [enterprise_setup.md](enterprise_setup.md) for the recommended approach to database management in production environments.
+
+## Development Scripts
+
+The following scripts are provided for **local development environments only**:
+
+### Local Database Setup
+
+- **setup_database.sql**: Creates a local development database, user, and grants necessary privileges
   ```bash
   # Set the environment and execute as postgres superuser
   # Development environment (default)
   export APP_ENV=development
   psql -U postgres -f setup_database.sql
   
-  # QA environment
-  export APP_ENV=qa
-  psql -U postgres -f setup_database.sql
-  
-  # Staging environment
-  export APP_ENV=staging
-  psql -U postgres -f setup_database.sql
-  
-  # Production environment
-  export APP_ENV=production
+  # Testing environment
+  export APP_ENV=testing
   psql -U postgres -f setup_database.sql
   ```
+  
+  > **IMPORTANT**: This script is designed for local development only. For QA, staging, and production environments, database provisioning should be handled by database administrators according to organizational policy.
 
 - **create_tables.sql**: Creates all required tables for the application
   ```bash
