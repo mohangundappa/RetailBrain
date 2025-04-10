@@ -1231,9 +1231,10 @@ def agent_wizard_save(agent_id=None, step=1):
     try:
         # Get the agent or create if agent_id is None or doesn't exist
         if agent_id is None:
-            # Create a new agent
+            # Create a new agent with a unique timestamp
+            unique_timestamp = datetime.utcnow().strftime('%Y%m%d%H%M%S')
             agent = CustomAgent(
-                name=f"New Agent {datetime.utcnow().strftime('%Y%m%d%H%M%S')}",
+                name=f"New Agent {unique_timestamp}",
                 description="Custom agent created through the wizard",
                 is_active=False,
                 creator=request.args.get('creator', 'Unknown')
@@ -1246,11 +1247,31 @@ def agent_wizard_save(agent_id=None, step=1):
         
         # Process form data based on step
         if step == 1:
-            # Save basic information
-            agent.name = request.form.get('name', agent.name)
-            agent.description = request.form.get('description', agent.description)
-            agent.creator = request.form.get('creator', agent.creator)
-            agent.icon = request.form.get('icon', agent.icon)
+            try:
+                # Save basic information
+                agent.name = request.form.get('name', agent.name)
+                agent.description = request.form.get('description', agent.description)
+                agent.creator = request.form.get('creator', agent.creator)
+                agent.icon = request.form.get('icon', agent.icon)
+                
+                # Try a flush to check for name uniqueness constraints
+                db.session.flush()
+            except sqlalchemy.exc.IntegrityError as ie:
+                # Roll back the transaction
+                db.session.rollback()
+                
+                # If it's a uniqueness constraint violation
+                if "unique constraint" in str(ie).lower() and "custom_agents_name_key" in str(ie):
+                    # Make the name unique by appending a timestamp
+                    unique_timestamp = datetime.utcnow().strftime('%Y%m%d%H%M%S')
+                    original_name = request.form.get('name', agent.name)
+                    agent.name = f"{original_name} {unique_timestamp}"
+                    
+                    # Add a flash message
+                    flash(f"An agent with the name '{original_name}' already exists. Your agent has been named '{agent.name}' instead.", "warning")
+                else:
+                    # Re-raise the exception if it's not a name uniqueness issue
+                    raise
         
         elif step == 2:
             # Save entity definitions
