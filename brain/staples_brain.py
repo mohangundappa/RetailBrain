@@ -47,30 +47,48 @@ class StaplesBrain:
                 logger.info(f"Using langchain-openai version: {langchain_openai_version}")
                 
                 # Handle compatibility issues between different versions of LangChain and OpenAI
+                # Particularly for Python 3.12.7 where 'proxies' parameter is causing issues
+                
                 try:
-                    # First, create a dedicated OpenAI client to avoid proxy issues
-                    from openai import OpenAI
-                    openai_client = OpenAI(api_key=OPENAI_API_KEY)
+                    import platform
+                    python_version = platform.python_version()
+                    logger.info(f"Python version: {python_version}")
                     
-                    # Try initializing with the client parameter first (newer approach)
-                    try:
+                    # For Python 3.12+ specific handling
+                    if python_version.startswith("3.12"):
+                        logger.info("Using Python 3.12+ compatibility mode for OpenAI client")
+                        # Directly initialize with minimal parameters to avoid proxies param
                         self.llm = ChatOpenAI(
                             model_name=OPENAI_MODEL,
-                            client=openai_client,
-                            temperature=0.3
+                            temperature=0.3,
+                            openai_api_key=OPENAI_API_KEY
                         )
-                        logger.info("Initialized with custom OpenAI client")
-                    except (TypeError, ValueError) as client_error:
-                        logger.warning(f"Error initializing with client parameter: {client_error}")
-                        # Fall back to direct initialization (older approach)
-                        self.llm = ChatOpenAI(
-                            model_name=OPENAI_MODEL,
-                            openai_api_key=OPENAI_API_KEY,
-                            temperature=0.3
-                        )
-                        logger.info("Initialized with direct API key")
-                except (TypeError, ValueError) as e:
-                    # If we still have the proxies error, try one last approach
+                        logger.info("Initialized with minimal parameters for Python 3.12+")
+                    else:
+                        # Standard initialization for other Python versions
+                        from openai import OpenAI
+                        try:
+                            # Create a dedicated OpenAI client for newer versions
+                            openai_client = OpenAI(api_key=OPENAI_API_KEY)
+                            
+                            # Try initializing with the client parameter first (newer approach)
+                            self.llm = ChatOpenAI(
+                                model_name=OPENAI_MODEL,
+                                client=openai_client,
+                                temperature=0.3
+                            )
+                            logger.info("Initialized with custom OpenAI client")
+                        except (TypeError, ValueError) as client_error:
+                            logger.warning(f"Error initializing with client parameter: {client_error}")
+                            # Fall back to direct initialization (older approach)
+                            self.llm = ChatOpenAI(
+                                model_name=OPENAI_MODEL,
+                                openai_api_key=OPENAI_API_KEY,
+                                temperature=0.3
+                            )
+                            logger.info("Initialized with direct API key")
+                except Exception as e:
+                    logger.warning(f"LLM initialization error: {str(e)}")
                     if "proxies" in str(e):
                         logger.warning("Detected proxies compatibility issue. Using minimal initialization.")
                         # Try with absolute minimum parameters
