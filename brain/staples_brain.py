@@ -20,6 +20,27 @@ from agents.returns_processing import ReturnsProcessingAgent
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
 OPENAI_MODEL = os.environ.get("OPENAI_MODEL", "gpt-4o")
 
+def get_openai_client():
+    """
+    Returns an initialized OpenAI client using the API key from environment.
+    
+    This function is used by various components that need direct access to the OpenAI API,
+    including the agent builder's LLM assist feature.
+    
+    Returns:
+        OpenAI client instance
+    """
+    try:
+        from openai import OpenAI
+        client = OpenAI(api_key=OPENAI_API_KEY)
+        return client
+    except ImportError:
+        logger.error("OpenAI package not installed. Please install it with 'pip install openai'.")
+        raise
+    except Exception as e:
+        logger.error(f"Error initializing OpenAI client: {str(e)}")
+        raise
+
 logger = logging.getLogger(__name__)
 
 class StaplesBrain:
