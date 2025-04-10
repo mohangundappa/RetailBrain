@@ -226,6 +226,9 @@
                 <p class="text-muted">Define the data points your agent needs to collect from users.</p>
               </div>
               
+              <!-- Hidden input to track the number of entities -->
+              <input type="hidden" id="entity_count" name="entity_count" value="{{ entities|length }}">
+              
               <div id="entity-container">
                 {% for entity in entities %}
                 <div class="card mb-3 entity-card" data-entity-index="{{ loop.index0 }}">
@@ -710,8 +713,14 @@
     // Entity management for Step 2
     const entityContainer = document.getElementById('entity-container');
     const addEntityButton = document.getElementById('add-entity');
+    const entityCountField = document.getElementById('entity_count');
     
     let entityCount = {{ entities|length }};
+    
+    // Update entity count in the hidden field
+    const updateEntityCount = () => {
+      entityCountField.value = entityCount;
+    };
     
     // Add a new entity form
     addEntityButton.addEventListener('click', function() {

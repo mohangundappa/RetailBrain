@@ -1224,11 +1224,23 @@ def agent_wizard(agent_id=None, step=1):
         return render_template('error.html', error=str(e))
 
 @app.route('/agent-wizard/<int:agent_id>/step/<int:step>', methods=['POST'])
-def agent_wizard_save(agent_id, step):
+def agent_wizard_save(agent_id=None, step=1):
     """Save the current step of the agent wizard and move to the next."""
     try:
-        # Get the agent
-        agent = CustomAgent.query.get_or_404(agent_id)
+        # Get the agent or create if agent_id is None or doesn't exist
+        if agent_id is None:
+            # Create a new agent
+            agent = CustomAgent(
+                name=f"New Agent {datetime.utcnow().strftime('%Y%m%d%H%M%S')}",
+                description="Custom agent created through the wizard",
+                is_active=False,
+                creator=request.args.get('creator', 'Unknown')
+            )
+            db.session.add(agent)
+            db.session.commit()
+            agent_id = agent.id
+        else:
+            agent = CustomAgent.query.get_or_404(agent_id)
         
         # Process form data based on step
         if step == 1:
