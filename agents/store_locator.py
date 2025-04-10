@@ -139,13 +139,12 @@ class StoreLocatorAgent(BaseAgent):
         Store information: {store_info}
         
         RESPONSE GUIDELINES:
-        - Be extremely concise - max 3-4 short sentences
-        - For multiple stores, only list top 2 closest locations
-        - Always include address and hours in the briefest format possible
-        - No greetings, pleasantries, or unnecessary explanations
-        - Format: "Store at [address]. Open [hours]. [One key service if relevant]."
-        - Never mention if information is simulated
-        - Speak as Staples using "we" not "I"
+        - EXTREMELY BRIEF - absolute maximum 2 short sentences per store
+        - List only 1-2 closest locations with only essential details
+        - Format ONLY: "Staples at [short address]. Open [weekday hours only]."
+        - NO greetings, pleasantries, or explanations
+        - NEVER mention data is simulated
+        - IF no store data: "Please provide a zip code to find a store."
         """
         
         return self._create_chain(template, ["query", "store_info"])
@@ -208,7 +207,7 @@ class StoreLocatorAgent(BaseAgent):
                 if not location and not location_info.get("location"):
                     return {
                         "success": True,
-                        "response": "I'd be happy to help you find a Staples store. Could you please provide a specific location such as a city, zip code, or address?",
+                        "response": "Please provide a zip code or city name to find a store.",
                         "intent": "store_locator",
                         "entities": {},
                         "continue_with_same_agent": True
@@ -228,7 +227,7 @@ class StoreLocatorAgent(BaseAgent):
                     # Return a default response asking for location
                     return {
                         "success": True,
-                        "response": "I'd be happy to help you find a Staples store. Could you please provide a specific location such as a city, zip code, or address?",
+                        "response": "Please provide a zip code or city name to find a store.",
                         "intent": "store_locator",
                         "entities": {},
                         "continue_with_same_agent": True
@@ -272,9 +271,7 @@ class StoreLocatorAgent(BaseAgent):
         except Exception as e:
             logger.error(f"Error processing store locator query: {str(e)}", exc_info=True)
             
-            error_response = """I apologize, but I'm having trouble finding store information right now. 
-            Please try again with a specific city or zip code, or visit our store locator at Staples.com. 
-            Alternatively, you can call our customer service at 1-800-STAPLES (1-800-782-7537) for immediate assistance."""
+            error_response = "Sorry, can't find stores right now. Try a specific zip code or visit Staples.com. Need help? Call 1-800-STAPLES."
             
             corrected_response, violations = self.apply_response_guardrails(error_response)
             
