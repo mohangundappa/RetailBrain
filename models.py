@@ -165,6 +165,7 @@ class CustomAgent(db.Model):
     is_active = Column(Boolean, default=True)
     wizard_completed = Column(Boolean, default=False)  # Whether the setup wizard has been completed
     creator = Column(String(100), nullable=True)
+    icon = Column(String(100), nullable=True, default="fas fa-robot")  # Font Awesome icon class
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
@@ -172,6 +173,46 @@ class CustomAgent(db.Model):
     components = relationship("AgentComponent", back_populates="agent", cascade="all, delete-orphan")
     connections = relationship("ComponentConnection", back_populates="agent", cascade="all, delete-orphan")
     
+    def get_entity_definitions(self):
+        """Get entity definitions from configuration."""
+        try:
+            if not self.configuration:
+                return []
+            config = json.loads(self.configuration)
+            return config.get('entity_definitions', [])
+        except:
+            return []
+    
+    def get_prompt_templates(self):
+        """Get prompt templates from configuration."""
+        try:
+            if not self.configuration:
+                return []
+            config = json.loads(self.configuration)
+            return config.get('prompt_templates', [])
+        except:
+            return []
+    
+    def get_response_formats(self):
+        """Get response formats from configuration."""
+        try:
+            if not self.configuration:
+                return []
+            config = json.loads(self.configuration)
+            return config.get('response_formats', [])
+        except:
+            return []
+    
+    def get_business_rules(self):
+        """Get business rules from configuration."""
+        try:
+            if not self.configuration:
+                return []
+            config = json.loads(self.configuration)
+            return config.get('business_rules', [])
+        except:
+            return []
+            
     def __repr__(self):
         return f"<CustomAgent {self.id}: {self.name}>"
 

@@ -1429,6 +1429,15 @@ def save_as_template():
         # Get the agent
         agent = CustomAgent.query.get_or_404(agent_id)
         
+        # Create a template configuration from agent data
+        template_config = {
+            "entity_definitions": agent.get_entity_definitions(),
+            "prompt_templates": agent.get_prompt_templates(),
+            "response_formats": agent.get_response_formats(),
+            "business_rules": agent.get_business_rules(),
+            "components": []
+        }
+        
         # Create a new template
         template = AgentTemplate(
             name=data.get('name', f"Template from {agent.name}"),
@@ -1440,11 +1449,7 @@ def save_as_template():
             tags=data.get('tags', ""),
             is_featured=False,
             is_system=False,
-            entity_definitions=agent.entity_definitions,
-            prompt_templates=agent.prompt_templates,
-            response_formats=agent.response_formats,
-            business_rules=agent.business_rules,
-            configuration=agent.configuration
+            configuration=json.dumps(template_config)
         )
         
         db.session.add(template)
