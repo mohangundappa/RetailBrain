@@ -357,6 +357,64 @@ def reset_password():
             "response": "An error occurred while processing your password reset request"
         }), 500
         
+@api_bp.route("/mock/reset-password", methods=["POST"])
+def mock_reset_password():
+    """
+    Mock endpoint for password reset API.
+    
+    This endpoint simulates a password reset request to an external API.
+    It accepts an email and returns a success message.
+    
+    Request body:
+    {
+        "email": "user@example.com",
+        "username": "optional-username",
+        "account_type": "optional-account-type"
+    }
+    
+    Returns:
+        Mock password reset response
+    """
+    try:
+        data = request.json
+        
+        if not data:
+            return jsonify({
+                "status": "error",
+                "message": "Missing request body"
+            }), 400
+        
+        email = data.get("email")
+        username = data.get("username")
+        
+        if not email and not username:
+            return jsonify({
+                "status": "error",
+                "message": "Email or username required"
+            }), 400
+        
+        # Log the request
+        logger.info(f"Mock password reset requested for: {email or username}")
+        
+        # Return success response
+        return jsonify({
+            "status": "success",
+            "message": "We have sent an email with instructions to reset your password.",
+            "reset_link_sent": True,
+            "instructions": [
+                "Check your email inbox for a password reset link.",
+                "Click the link in the email to set a new password.",
+                "If you don't see the email, check your spam or junk folder."
+            ]
+        })
+        
+    except Exception as e:
+        logger.error(f"Error in mock reset password endpoint: {str(e)}", exc_info=True)
+        return jsonify({
+            "status": "error",
+            "message": f"Error processing request: {str(e)}"
+        }), 500
+
 @api_bp.route("/chat", methods=["POST"])
 def chat():
     """

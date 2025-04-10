@@ -11,7 +11,7 @@ from typing import Dict, Any
 PACKAGE_TRACKING_ENDPOINT = os.environ.get("PACKAGE_TRACKING_ENDPOINT", "https://api.staples.com/tracking/v1")
 STORE_LOCATOR_ENDPOINT = os.environ.get("STORE_LOCATOR_ENDPOINT", "https://api.staples.com/stores/v1")
 PRODUCT_INFO_ENDPOINT = os.environ.get("PRODUCT_INFO_ENDPOINT", "https://api.staples.com/products/v1")
-PASSWORD_RESET_ENDPOINT = os.environ.get("PASSWORD_RESET_ENDPOINT", "https://api.staples.com/accounts/v1/reset")
+PASSWORD_RESET_ENDPOINT = os.environ.get("PASSWORD_RESET_ENDPOINT", "http://localhost:5000/api/mock/reset-password")
 
 # Base configuration class with common settings
 class Config:
