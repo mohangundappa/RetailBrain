@@ -722,6 +722,9 @@
       entityCountField.value = entityCount;
     };
     
+    // Initialize the entity count field
+    updateEntityCount();
+    
     // Add a new entity form
     addEntityButton.addEventListener('click', function() {
       const entityIndex = entityCount;
@@ -785,6 +788,7 @@
       newRemoveButton.addEventListener('click', handleRemoveEntity);
       
       entityCount++;
+      updateEntityCount(); // Update the hidden field
     });
     
     // Handle entity removal
@@ -794,6 +798,8 @@
       
       if (entityCard) {
         entityCard.remove();
+        entityCount--; // Decrease entity count
+        updateEntityCount(); // Update hidden field
       }
     }
     

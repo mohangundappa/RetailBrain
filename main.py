@@ -1255,15 +1255,19 @@ def agent_wizard_save(agent_id=None, step=1):
             entity_definitions = []
             entity_count = int(request.form.get('entity_count', 0))
             
+            # Process form data with the new naming convention
             for i in range(entity_count):
-                entity = {
-                    "name": request.form.get(f'entity_name_{i}', ''),
-                    "description": request.form.get(f'entity_description_{i}', ''),
-                    "required": request.form.get(f'entity_required_{i}') == 'on',
-                    "validation_pattern": request.form.get(f'entity_validation_{i}', ''),
-                    "error_message": request.form.get(f'entity_error_message_{i}', '')
-                }
-                entity_definitions.append(entity)
+                entity_name = request.form.get(f'entities[{i}][name]', '')
+                if entity_name:  # Only add entities that have a name
+                    entity = {
+                        "name": entity_name,
+                        "description": request.form.get(f'entities[{i}][description]', ''),
+                        "required": request.form.get(f'entities[{i}][required]') == 'on',
+                        "validation_pattern": request.form.get(f'entities[{i}][validation_pattern]', ''),
+                        "error_message": request.form.get(f'entities[{i}][error_message]', ''),
+                        "examples": request.form.get(f'entities[{i}][examples]', '').split(',')
+                    }
+                    entity_definitions.append(entity)
             
             agent.entity_definitions = json.dumps(entity_definitions)
         
