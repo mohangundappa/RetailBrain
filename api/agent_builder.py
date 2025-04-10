@@ -86,14 +86,17 @@ def create_agent():
     """
     try:
         data = request.json
+        logger.debug("Received request to create new agent")
         
         # Basic validation
         if not data.get('name'):
+            logger.warning("Missing required field: name")
             return jsonify({'error': 'Agent name is required'}), 400
             
         # Check if name already exists
         existing = CustomAgent.query.filter_by(name=data['name']).first()
         if existing:
+            logger.warning(f"Agent with name '{data['name']}' already exists")
             return jsonify({'error': f"Agent with name '{data['name']}' already exists"}), 409
             
         # Create agent
@@ -107,16 +110,39 @@ def create_agent():
         db.session.add(agent)
         db.session.flush()  # Get the agent ID
         
+        # Validate required fields for component handling
+        for idx, component in enumerate(data.get('components', [])):
+            if 'template' not in component:
+                logger.warning(f"Component {idx} missing template field, adding default")
+                component_type = component.get('component_type', 'unknown')
+                if component_type == 'prompt':
+                    component['template'] = 'custom_prompt'
+                elif component_type == 'llm':
+                    component['template'] = 'openai_gpt4'
+                elif component_type == 'output':
+                    component['template'] = 'json_formatter'
+                else:
+                    component['template'] = f"{component_type}_default"
+        
         # Add components
         component_id_map = {}
         for comp_data in data.get('components', []):
+            # Build additional metadata for component storage
+            metadata = {
+                'template': comp_data.get('template')
+            }
+            
+            # Create configuration by combining explicit config with metadata
+            config = comp_data.get('configuration', {})
+            config['_metadata'] = metadata
+            
             component = AgentComponent(
                 agent_id=agent.id,
                 component_type=comp_data['component_type'],
                 name=comp_data['name'],
                 position_x=comp_data['position_x'],
                 position_y=comp_data['position_y'],
-                configuration=json.dumps(comp_data.get('configuration', {}))
+                configuration=json.dumps(config)
             )
             
             db.session.add(component)
@@ -124,6 +150,7 @@ def create_agent():
             
             # Keep a mapping of frontend IDs to database IDs
             component_id_map[comp_data['id']] = component.id
+            logger.debug(f"Added component: {comp_data['name']} (ID: {component.id})")
         
         # Add connections
         for conn_data in data.get('connections', []):
@@ -143,11 +170,13 @@ def create_agent():
             )
             
             db.session.add(connection)
+            logger.debug(f"Added connection from {conn_data['source_id']} to {conn_data['target_id']}")
         
         # Store the original configuration as JSON
         agent.configuration = json.dumps(data)
         
         db.session.commit()
+        logger.info(f"Agent {agent.name} (ID: {agent.id}) created successfully")
         
         return jsonify({
             'id': agent.id,
@@ -279,21 +308,26 @@ def update_agent(agent_id):
         JSON with the updated agent information
     """
     try:
+        logger.debug(f"Updating agent with ID: {agent_id}")
         agent = CustomAgent.query.get(agent_id)
         
         if not agent:
+            logger.warning(f"Agent not found with ID: {agent_id}")
             return jsonify({'error': 'Agent not found'}), 404
             
         data = request.json
+        logger.debug(f"Received update data for agent: {agent.name}")
         
         # Basic validation
         if not data.get('name'):
+            logger.warning("Missing required field: name")
             return jsonify({'error': 'Agent name is required'}), 400
             
         # Check if name already exists (if changed)
         if data['name'] != agent.name:
             existing = CustomAgent.query.filter_by(name=data['name']).first()
             if existing:
+                logger.warning(f"Agent with name '{data['name']}' already exists")
                 return jsonify({'error': f"Agent with name '{data['name']}' already exists"}), 409
         
         # Delete existing components and connections
@@ -305,16 +339,40 @@ def update_agent(agent_id):
         agent.description = data.get('description', '')
         agent.updated_at = datetime.utcnow()
         
+        # Validate required fields for component handling
+        for idx, component in enumerate(data.get('components', [])):
+            if 'template' not in component:
+                logger.warning(f"Component {idx} missing template field, adding default")
+                component_type = component.get('component_type', 'unknown')
+                if component_type == 'prompt':
+                    component['template'] = 'custom_prompt'
+                elif component_type == 'llm':
+                    component['template'] = 'openai_gpt4'
+                elif component_type == 'output':
+                    component['template'] = 'json_formatter'
+                else:
+                    component['template'] = f"{component_type}_default"
+        
         # Add new components
         component_id_map = {}
         for comp_data in data.get('components', []):
+            # Build additional metadata for component storage
+            metadata = {
+                'template': comp_data.get('template')
+            }
+            
+            # Create configuration by combining explicit config with metadata
+            config = comp_data.get('configuration', {})
+            config['_metadata'] = metadata
+            
+            # Create the component
             component = AgentComponent(
                 agent_id=agent.id,
                 component_type=comp_data['component_type'],
                 name=comp_data['name'],
                 position_x=comp_data['position_x'],
                 position_y=comp_data['position_y'],
-                configuration=json.dumps(comp_data.get('configuration', {}))
+                configuration=json.dumps(config)
             )
             
             db.session.add(component)
@@ -322,6 +380,7 @@ def update_agent(agent_id):
             
             # Keep a mapping of frontend IDs to database IDs
             component_id_map[comp_data['id']] = component.id
+            logger.debug(f"Added component: {comp_data['name']} (ID: {component.id})")
         
         # Add connections
         for conn_data in data.get('connections', []):
@@ -341,11 +400,13 @@ def update_agent(agent_id):
             )
             
             db.session.add(connection)
+            logger.debug(f"Added connection from {conn_data['source_id']} to {conn_data['target_id']}")
         
         # Store the updated configuration as JSON
         agent.configuration = json.dumps(data)
         
         db.session.commit()
+        logger.info(f"Agent {agent.name} (ID: {agent.id}) updated successfully")
         
         return jsonify({
             'id': agent.id,
