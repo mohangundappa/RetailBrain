@@ -9,7 +9,7 @@ from typing import Any, Dict, List, Optional, Union
 from urllib.parse import urljoin
 
 import requests
-from utils.observability import log_api_call
+from utils.observability import log_api_call, record_error
 
 logger = logging.getLogger(__name__)
 

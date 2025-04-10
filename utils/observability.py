@@ -297,6 +297,36 @@ def record_http_request(method: str, endpoint: str, status: int, latency: float)
     metrics_store.add_request(method, endpoint, status, latency)
 
 
+# Function to record API calls
+def log_api_call(api_name: str, endpoint: str, method: str, status_code: int, duration: float, error: Optional[str] = None):
+    """
+    Record metrics for an API call.
+    
+    Args:
+        api_name: Name of the API service
+        endpoint: API endpoint path
+        method: HTTP method used
+        status_code: HTTP status code received
+        duration: Request duration in seconds
+        error: Optional error message if the request failed
+    """
+    # Log the API call
+    if error:
+        logger.error(f"API call to {api_name}/{endpoint} failed: {error}")
+    else:
+        logger.debug(f"API call to {api_name}/{endpoint} completed in {duration:.3f}s with status {status_code}")
+    
+    # Record as HTTP request for metrics
+    record_http_request(method, f"{api_name}/{endpoint}", status_code, duration)
+    
+    # If there was an error, record it
+    if error:
+        record_error("api_error", f"{api_name}/{endpoint}: {error}")
+        
+    # Store the metrics in the API specific counter/histogram if needed
+    # This could be extended to create API-specific metrics
+
+
 # Function to record intent classification
 def record_intent_classification(intent: str, confidence: float):
     """Record metrics for intent classification."""

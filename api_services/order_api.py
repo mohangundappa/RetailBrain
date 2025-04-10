@@ -121,7 +121,7 @@ class OrderApiClient(StaplesApiClient):
         
         return self.get(endpoint, params=params, mock_response=mock_response)
 
-    def get_customer_orders(self, customer_id: str, limit: int = 10) -> List[Dict[str, Any]]:
+    def get_customer_orders(self, customer_id: str, limit: int = 10) -> Dict[str, Any]:
         """
         Get a list of orders for a customer.
 
@@ -130,7 +130,7 @@ class OrderApiClient(StaplesApiClient):
             limit: Maximum number of orders to return.
 
         Returns:
-            List of order summaries.
+            Dictionary containing a list of order summaries and metadata.
         """
         endpoint = "/orders"
         params = {"customer_id": customer_id, "limit": limit}
