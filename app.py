@@ -26,6 +26,21 @@ def create_app(config_override=None):
     config_class = config_override or get_config()
     app.config.from_object(config_class)
     
+    # Set a secure secret key (prioritize environment variable)
+    if not app.secret_key:
+        env_secret_key = os.environ.get("SECRET_KEY")
+        if env_secret_key:
+            app.secret_key = env_secret_key
+        else:
+            # Generate a random secret key for development
+            import secrets
+            app.secret_key = secrets.token_hex(32)
+            app.logger.warning(
+                "SECRET_KEY environment variable not set. "
+                "Using a randomly generated key, which will change with each restart. "
+                "For persistent sessions, set SECRET_KEY in your .env file."
+            )
+    
     # Configure logging
     log_level = getattr(logging, app.config.get('LOG_LEVEL', 'INFO'))
     logging.basicConfig(
@@ -35,6 +50,18 @@ def create_app(config_override=None):
     
     # Set up the proxy fix to work behind reverse proxies in production
     app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
+    
+    # Check database configuration
+    database_url = os.environ.get("DATABASE_URL")
+    if not database_url:
+        # For local development, provide a default SQLite database
+        default_db_path = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'staples_brain_dev.db')
+        app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{default_db_path}"
+        app.logger.warning(
+            "DATABASE_URL not found in environment variables. "
+            f"Using SQLite database at {default_db_path} instead. "
+            "This is only suitable for development."
+        )
     
     # Initialize database
     db.init_app(app)

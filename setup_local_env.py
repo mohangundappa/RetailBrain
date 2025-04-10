@@ -153,24 +153,39 @@ def check_installation():
 def create_env_file():
     """Create a template .env file if it doesn't exist."""
     env_path = Path(".env")
+    env_example_path = Path(".env.example")
     
     if env_path.exists():
         print("\n.env file already exists. Skipping creation.")
         return
     
     print("\nCreating template .env file...")
-    with open(env_path, "w") as f:
-        f.write("""# Required environment variables
+    
+    # Use .env.example if it exists, otherwise create a basic template
+    if env_example_path.exists():
+        with open(env_example_path, "r") as example, open(env_path, "w") as env:
+            env.write(example.read())
+        print("Created .env file from .env.example template.")
+    else:
+        with open(env_path, "w") as f:
+            f.write("""# Staples Brain Environment Configuration
+# Required environment variables
+APP_ENV=development
+SECRET_KEY=development_secret_key_change_this_in_production
 DATABASE_URL=postgresql://username:password@localhost:5432/staples_brain
 OPENAI_API_KEY=your_openai_api_key
 
 # Optional environment variables
+LOG_LEVEL=DEBUG
+OPENAI_MODEL=gpt-4o
 LANGSMITH_API_KEY=your_langsmith_api_key
 DATABRICKS_HOST=your_databricks_host
 DATABRICKS_TOKEN=your_databricks_token
 """)
+        print("Created basic .env template file.")
     
-    print("Template .env file created. Please edit it with your actual values.")
+    print("\nIMPORTANT: Edit your .env file with your actual values before running the application.")
+    print("See ENVIRONMENT_VARIABLES.md for detailed configuration instructions.")
 
 def main():
     """Main function to set up the local environment."""
