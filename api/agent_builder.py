@@ -10,7 +10,7 @@ import logging
 from datetime import datetime
 from flask import Blueprint, request, jsonify
 from app import db
-from models import CustomAgent, AgentComponent, ComponentConnection, ComponentTemplate
+from models import CustomAgent, AgentComponent, ComponentConnection, ComponentTemplate, AgentTemplate
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -557,6 +557,192 @@ def test_agent(agent_id):
         
     except Exception as e:
         logger.error(f"Error testing agent: {str(e)}", exc_info=True)
+        return jsonify({'error': str(e)}), 500
+
+
+@agent_builder_bp.route('/templates', methods=['GET'])
+def get_agent_templates():
+    """
+    Get available agent templates.
+    
+    Returns:
+        JSON list of agent templates
+    """
+    try:
+        templates = AgentTemplate.query.all()
+        
+        if not templates:
+            # If no templates in the database, return some predefined ones
+            return jsonify([
+                {
+                    "id": "agent-template-1",
+                    "name": "Customer Support Agent",
+                    "description": "General purpose customer support agent with FAQ capabilities",
+                    "category": "customer_support",
+                    "icon": "headset",
+                    "is_featured": True,
+                    "author": "Staples",
+                    "downloads": 120,
+                    "rating": 4.5,
+                    "configuration": {
+                        "system_prompt": "You are a helpful customer support agent for Staples. Answer questions professionally and accurately.",
+                        "tools": ["find_store_locations", "get_order_status", "search_products"],
+                        "fields": ["name", "description", "prompt_template"]
+                    }
+                },
+                {
+                    "id": "agent-template-2",
+                    "name": "Order Tracking Specialist",
+                    "description": "Specialized agent for order tracking and shipment inquiries",
+                    "category": "orders",
+                    "icon": "package",
+                    "is_featured": True,
+                    "author": "Staples",
+                    "downloads": 85,
+                    "rating": 4.7,
+                    "configuration": {
+                        "system_prompt": "You are an order tracking specialist for Staples. Help customers track their orders and provide shipment information.",
+                        "tools": ["get_order_status", "get_tracking_info"],
+                        "fields": ["name", "description", "prompt_template"]
+                    }
+                },
+                {
+                    "id": "agent-template-3",
+                    "name": "Store Finder",
+                    "description": "Agent that helps customers find nearby Staples stores",
+                    "category": "locations",
+                    "icon": "map-pin",
+                    "is_featured": True,
+                    "author": "Staples",
+                    "downloads": 65,
+                    "rating": 4.8,
+                    "configuration": {
+                        "system_prompt": "You are a store finder assistant for Staples. Help customers locate the nearest Staples stores and provide information about services offered.",
+                        "tools": ["find_store_locations"],
+                        "fields": ["name", "description", "prompt_template"]
+                    }
+                }
+            ]), 200
+        
+        # Otherwise, return the templates from the database
+        return jsonify([{
+            "id": template.id,
+            "name": template.name,
+            "description": template.description,
+            "category": template.category,
+            "icon": template.icon or "puzzle-piece",
+            "is_featured": template.is_featured,
+            "author": template.author or "Staples",
+            "downloads": template.downloads,
+            "rating": template.rating,
+            "configuration": json.loads(template.configuration) if template.configuration else {}
+        } for template in templates]), 200
+        
+    except Exception as e:
+        logger.error(f"Error getting agent templates: {str(e)}", exc_info=True)
+        return jsonify({'error': str(e)}), 500
+
+
+@agent_builder_bp.route('/templates/<template_id>', methods=['GET'])
+def get_agent_template(template_id):
+    """
+    Get a specific agent template by ID.
+    
+    Args:
+        template_id: The ID of the template to get
+        
+    Returns:
+        JSON with the complete template configuration
+    """
+    try:
+        # Handle hard-coded templates from the default list
+        if template_id in ["agent-template-1", "agent-template-2", "agent-template-3"]:
+            # Return the template based on ID
+            templates = {
+                "agent-template-1": {
+                    "id": "agent-template-1",
+                    "name": "Customer Support Agent",
+                    "description": "General purpose customer support agent with FAQ capabilities",
+                    "category": "customer_support",
+                    "icon": "headset",
+                    "is_featured": True,
+                    "author": "Staples",
+                    "downloads": 120,
+                    "rating": 4.5,
+                    "configuration": {
+                        "system_prompt": "You are a helpful customer support agent for Staples. Answer questions professionally and accurately.",
+                        "tools": ["find_store_locations", "get_order_status", "search_products"],
+                        "fields": ["name", "description", "prompt_template"]
+                    }
+                },
+                "agent-template-2": {
+                    "id": "agent-template-2",
+                    "name": "Order Tracking Specialist",
+                    "description": "Specialized agent for order tracking and shipment inquiries",
+                    "category": "orders",
+                    "icon": "package",
+                    "is_featured": True,
+                    "author": "Staples",
+                    "downloads": 85,
+                    "rating": 4.7,
+                    "configuration": {
+                        "system_prompt": "You are an order tracking specialist for Staples. Help customers track their orders and provide shipment information.",
+                        "tools": ["get_order_status", "get_tracking_info"],
+                        "fields": ["name", "description", "prompt_template"]
+                    }
+                },
+                "agent-template-3": {
+                    "id": "agent-template-3",
+                    "name": "Store Finder",
+                    "description": "Agent that helps customers find nearby Staples stores",
+                    "category": "locations",
+                    "icon": "map-pin",
+                    "is_featured": True,
+                    "author": "Staples",
+                    "downloads": 65,
+                    "rating": 4.8,
+                    "configuration": {
+                        "system_prompt": "You are a store finder assistant for Staples. Help customers locate the nearest Staples stores and provide information about services offered.",
+                        "tools": ["find_store_locations"],
+                        "fields": ["name", "description", "prompt_template"]
+                    }
+                }
+            }
+            return jsonify(templates.get(template_id)), 200
+        
+        # Handle database templates
+        try:
+            template_id_int = int(template_id)
+            template = AgentTemplate.query.get(template_id_int)
+        except ValueError:
+            # Not an integer ID
+            logger.warning(f"Invalid template ID format: {template_id}")
+            return jsonify({'error': 'Template not found'}), 404
+        
+        if not template:
+            logger.warning(f"Template not found with ID: {template_id}")
+            return jsonify({'error': 'Template not found'}), 404
+        
+        # Increment download count
+        template.downloads += 1
+        db.session.commit()
+        
+        # Return template data
+        return jsonify({
+            "id": template.id,
+            "name": template.name,
+            "description": template.description,
+            "category": template.category,
+            "icon": template.icon or "puzzle-piece",
+            "is_featured": template.is_featured,
+            "author": template.author or "Staples",
+            "downloads": template.downloads,
+            "rating": template.rating,
+            "configuration": json.loads(template.configuration) if template.configuration else {}
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Error getting agent template: {str(e)}", exc_info=True)
         return jsonify({'error': str(e)}), 500
 
 
