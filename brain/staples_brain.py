@@ -180,8 +180,7 @@ class StaplesBrain:
                 "package_tracking", 
                 "reset_password", 
                 "store_locator", 
-                "product_info",
-                "returns_processing"
+                # Removed product_info and returns_processing agents as requested
             ]
             
             # Create each agent using the factory method for standardized naming
