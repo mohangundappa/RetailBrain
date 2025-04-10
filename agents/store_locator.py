@@ -225,67 +225,76 @@ class StoreLocatorAgent(BaseAgent):
             collected_entities = self.get_collected_entity_values()
             location = collected_entities.get("location") if "location" in collected_entities else None
             
-            # Extract location info
-            extraction_result = await self._extraction_chain.ainvoke({"query": user_input})
-            logger.info(f"Raw extraction result: {extraction_result}")
+            # First try to get location from the entity collection
+            query_location = None
             
-            # Handle empty or invalid JSON responses
-            try:
-                # Handle different response formats from the extraction chain
-                if isinstance(extraction_result, dict) and "text" in extraction_result:
-                    location_text = extraction_result["text"]
-                elif isinstance(extraction_result, str):
-                    location_text = extraction_result
+            # Log collected entities for debugging
+            logger.info(f"Collected entities: {collected_entities}")
+            
+            if location:
+                query_location = location
+                logger.info(f"Using location from entity collection: {query_location}")
+            else:
+                # Try to extract zip code pattern directly
+                zip_pattern = r'\b\d{5}\b'
+                zip_matches = re.findall(zip_pattern, user_input)
+                if zip_matches:
+                    query_location = zip_matches[0]
+                    logger.info(f"Extracted zip code from input: {query_location}")
                 else:
-                    location_text = str(extraction_result)
+                    # Try to extract city, state pattern (e.g., "Natick, MA")
+                    city_state_pattern = r'\b([A-Za-z\s]+),\s*([A-Z]{2})\b'
+                    city_state_matches = re.findall(city_state_pattern, user_input)
+                    if city_state_matches:
+                        city, state = city_state_matches[0]
+                        query_location = f"{city.strip()}, {state.strip()}"
+                        logger.info(f"Extracted city, state from input: {query_location}")
+                    else:
+                        # Fall back to extraction chain
+                        try:
+                            extraction_result = await self._extraction_chain.ainvoke({"query": user_input})
+                            logger.info(f"Raw extraction result: {extraction_result}")
+                            
+                            # Handle different response formats from the extraction chain
+                            if isinstance(extraction_result, dict) and "text" in extraction_result:
+                                location_text = extraction_result["text"]
+                            elif isinstance(extraction_result, str):
+                                location_text = extraction_result
+                            else:
+                                location_text = str(extraction_result)
+                            
+                            # Try to parse the location information as JSON
+                            location_info = json.loads(location_text)
+                            logger.info(f"Extracted location information: {location_info}")
+                            
+                            if "location" in location_info and location_info["location"]:
+                                query_location = location_info["location"]
+                                logger.info(f"Using location from extraction chain: {query_location}")
+                        except Exception as e:
+                            logger.error(f"Error processing extraction chain: {str(e)}")
+                            # We'll handle the None case below
+            
+            # Create location_info structure with default values
+            location_info = {
+                "location": query_location,
+                "radius": 10,
+                "service": None,
+                "hours": False
+            }
+            
+            # If we don't have a location at all, return a prompt
+            if not query_location:
+                return {
+                    "success": True,
+                    "response": "Please provide a zip code or city name to find a store.",
+                    "intent": "store_locator",
+                    "entities": {},
+                    "continue_with_same_agent": True
+                }
                 
-                # Try to parse the location information as JSON
-                location_info = json.loads(location_text)
-                logger.info(f"Extracted location information: {location_info}")
-                
-                # If we have a location from entity collection, use it instead
-                if location:
-                    location_info["location"] = location
-                
-                # If we don't have a location at all, return a prompt
-                if not location and not location_info.get("location"):
-                    return {
-                        "success": True,
-                        "response": "Please provide a zip code or city name to find a store.",
-                        "intent": "store_locator",
-                        "entities": {},
-                        "continue_with_same_agent": True
-                    }
-            except (json.JSONDecodeError, TypeError) as err:
-                logger.warning(f"Failed to parse location data: {err}. Raw extraction result: {extraction_result}")
-                
-                # If the user input looks like a location, use it directly
-                if any(kw in user_input.lower() for kw in ['zip', 'code', 'store', 'location', 'city', 'town']):
-                    # Extract potential location
-                    potential_location = user_input
-                    location_info = {
-                        "location": potential_location,
-                        "radius": 10,
-                        "service": None,
-                        "hours": False
-                    }
-                # If we have a location from entity collection, create a simple location_info
-                elif location:
-                    location_info = {
-                        "location": location,
-                        "radius": 10,
-                        "service": None,
-                        "hours": False
-                    }
-                else:
-                    # Return a default response asking for location
-                    return {
-                        "success": True,
-                        "response": "Please provide a zip code or city name to find a store.",
-                        "intent": "store_locator",
-                        "entities": {},
-                        "continue_with_same_agent": True
-                    }
+            # The rest of the code will run when we have a valid location            
+            # Get store information
+            store_info = self._get_store_info(location_info, context)
             
             # Get store information
             store_info = self._get_store_info(location_info, context)
