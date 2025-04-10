@@ -1708,25 +1708,10 @@ def find_store():
 def agent_diagrams():
     """Show agent builder diagrams HTML page."""
     try:
-        return send_file('agent_diagrams.html')
+        return render_template('agent_diagrams.html')
     except Exception as e:
         logger.error(f"Error showing agent diagrams: {e}")
         return jsonify({"error": str(e)}), 500
-
-@app.route('/agent_builder_architecture.svg')
-def serve_architecture_diagram():
-    """Serve the architecture diagram SVG file."""
-    return send_file('agent_builder_architecture.svg')
-
-@app.route('/agent_data_flow.svg')
-def serve_data_flow_diagram():
-    """Serve the data flow diagram SVG file."""
-    return send_file('agent_data_flow.svg')
-
-@app.route('/agent_component_diagram.svg')
-def serve_component_diagram():
-    """Serve the component diagram SVG file."""
-    return send_file('agent_component_diagram.svg')
 
 @app.route('/api/product-info', methods=["POST"])
 def product_info():
