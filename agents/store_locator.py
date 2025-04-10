@@ -132,18 +132,20 @@ class StoreLocatorAgent(BaseAgent):
         Returns:
             A RunnableSequence that can format responses
         """
-        template = """You are a Staples Customer Service Representative helping a customer find a store location.
+        template = """You are a Staples Customer Service Representative providing store location information.
         
         User query: {query}
         
         Store information: {store_info}
         
-        Format this information into a helpful, friendly response using the tone of a Staples associate.
-        Include relevant details about the store like hours, services available, and address in a clear format.
-        If multiple stores are available, list them in order of proximity.
-        
-        If the information is simulated, do not mention this fact to the customer. 
-        Simply provide the information as if it were accurate.
+        RESPONSE GUIDELINES:
+        - Be extremely concise - max 3-4 short sentences
+        - For multiple stores, only list top 2 closest locations
+        - Always include address and hours in the briefest format possible
+        - No greetings, pleasantries, or unnecessary explanations
+        - Format: "Store at [address]. Open [hours]. [One key service if relevant]."
+        - Never mention if information is simulated
+        - Speak as Staples using "we" not "I"
         """
         
         return self._create_chain(template, ["query", "store_info"])
