@@ -235,62 +235,29 @@ class StoreLocatorAgent(BaseAgent):
                 query_location = location
                 logger.info(f"Using location from entity collection: {query_location}")
             else:
-                # Try to extract zip code pattern directly
-                zip_pattern = r'\b\d{5}\b'
-                zip_matches = re.findall(zip_pattern, user_input)
-                if zip_matches:
-                    query_location = zip_matches[0]
-                    logger.info(f"Extracted zip code from input: {query_location}")
-                else:
-                    # Try to extract city, state pattern (e.g., "Natick, MA")
-                    city_state_pattern = r'\b([A-Za-z\s]+),\s*([A-Z]{2})\b'
-                    city_state_matches = re.findall(city_state_pattern, user_input)
-                    if city_state_matches:
-                        city, state = city_state_matches[0]
-                        query_location = f"{city.strip()}, {state.strip()}"
-                        logger.info(f"Extracted city, state from input: {query_location}")
+                # If still no match from base extraction, fall back to extraction chain
+                try:
+                    extraction_result = await self._extraction_chain.ainvoke({"query": user_input})
+                    logger.info(f"Raw extraction result: {extraction_result}")
+                    
+                    # Handle different response formats from the extraction chain
+                    if isinstance(extraction_result, dict) and "text" in extraction_result:
+                        location_text = extraction_result["text"]
+                    elif isinstance(extraction_result, str):
+                        location_text = extraction_result
                     else:
-                        # Check for common city names
-                        common_cities = {
-                            "natick": "Natick, MA",
-                            "boston": "Boston, MA",
-                            "cambridge": "Cambridge, MA",
-                            "somerville": "Somerville, MA",
-                            "framingham": "Framingham, MA",
-                            "brookline": "Brookline, MA",
-                            "newton": "Newton, MA",
-                            "wellesley": "Wellesley, MA"
-                        }
-                        
-                        for city_name, full_location in common_cities.items():
-                            if city_name in user_input.lower():
-                                query_location = full_location
-                                logger.info(f"Matched common city name: {query_location}")
-                                break
-                                
-                        # If still no match, fall back to extraction chain
-                        try:
-                            extraction_result = await self._extraction_chain.ainvoke({"query": user_input})
-                            logger.info(f"Raw extraction result: {extraction_result}")
-                            
-                            # Handle different response formats from the extraction chain
-                            if isinstance(extraction_result, dict) and "text" in extraction_result:
-                                location_text = extraction_result["text"]
-                            elif isinstance(extraction_result, str):
-                                location_text = extraction_result
-                            else:
-                                location_text = str(extraction_result)
-                            
-                            # Try to parse the location information as JSON
-                            location_info = json.loads(location_text)
-                            logger.info(f"Extracted location information: {location_info}")
-                            
-                            if "location" in location_info and location_info["location"]:
-                                query_location = location_info["location"]
-                                logger.info(f"Using location from extraction chain: {query_location}")
-                        except Exception as e:
-                            logger.error(f"Error processing extraction chain: {str(e)}")
-                            # We'll handle the None case below
+                        location_text = str(extraction_result)
+                    
+                    # Try to parse the location information as JSON
+                    location_info = json.loads(location_text)
+                    logger.info(f"Extracted location information: {location_info}")
+                    
+                    if "location" in location_info and location_info["location"]:
+                        query_location = location_info["location"]
+                        logger.info(f"Using location from extraction chain: {query_location}")
+                except Exception as e:
+                    logger.error(f"Error processing extraction chain: {str(e)}")
+                    # We'll handle the None case below
             
             # Create location_info structure with default values
             location_info = {

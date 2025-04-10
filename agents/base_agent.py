@@ -938,6 +938,41 @@ Remember: Your goal is to provide excellent customer service while representing 
                 zip_match_std = re.search(zip_pattern_standard, user_input)
                 if zip_match_std:
                     extracted_values['zip_code'] = zip_match_std.group(1)
+        
+        # Location patterns - For Store Locator Agent
+        if 'location' in self.entity_collection_state.entities:
+            # Try to extract zip code pattern directly (5-digit US zip)
+            zip_pattern = r'\b(\d{5})\b'
+            zip_matches = re.findall(zip_pattern, user_input)
+            if zip_matches:
+                extracted_values['location'] = zip_matches[0]
+                logger.info(f"Extracted zip code as location: {extracted_values['location']}")
+            else:
+                # Try to extract city, state pattern (e.g., "Natick, MA")
+                city_state_pattern = r'\b([A-Za-z\s]+),\s*([A-Z]{2})\b'
+                city_state_matches = re.findall(city_state_pattern, user_input)
+                if city_state_matches:
+                    city, state = city_state_matches[0]
+                    extracted_values['location'] = f"{city.strip()}, {state.strip()}"
+                    logger.info(f"Extracted city, state as location: {extracted_values['location']}")
+                else:
+                    # Check for common city names
+                    common_cities = {
+                        "natick": "Natick, MA",
+                        "boston": "Boston, MA",
+                        "cambridge": "Cambridge, MA",
+                        "somerville": "Somerville, MA",
+                        "framingham": "Framingham, MA",
+                        "brookline": "Brookline, MA",
+                        "newton": "Newton, MA",
+                        "wellesley": "Wellesley, MA"
+                    }
+                    
+                    for city_name, full_location in common_cities.items():
+                        if city_name.lower() in user_input.lower():
+                            extracted_values['location'] = full_location
+                            logger.info(f"Matched common city name: {extracted_values['location']}")
+                            break
             
         # Email pattern - Improved
         if 'email' in self.entity_collection_state.entities:
