@@ -46,27 +46,36 @@ class StaplesBrain:
                 logger.info(f"Using OpenAI version: {openai_version}")
                 logger.info(f"Using langchain-openai version: {langchain_openai_version}")
                 
-                # Check if we have the compatibility issue with proxies parameter
+                # Handle compatibility issues between different versions of LangChain and OpenAI
                 try:
-                    # First attempt with only the core parameters
-                    self.llm = ChatOpenAI(
-                        model_name=OPENAI_MODEL,
-                        openai_api_key=OPENAI_API_KEY,
-                        temperature=0.3
-                    )
-                except TypeError as e:
-                    if "proxies" in str(e):
-                        # Handle the specific compatibility issue with older OpenAI client versions
-                        logger.warning("Detected version compatibility issue with ChatOpenAI. Updating client configuration.")
-                        from openai import OpenAI
-                        # Create a custom client without proxy settings
-                        openai_client = OpenAI(api_key=OPENAI_API_KEY)
-                        # Initialize with the custom client
+                    # First, create a dedicated OpenAI client to avoid proxy issues
+                    from openai import OpenAI
+                    openai_client = OpenAI(api_key=OPENAI_API_KEY)
+                    
+                    # Try initializing with the client parameter first (newer approach)
+                    try:
                         self.llm = ChatOpenAI(
                             model_name=OPENAI_MODEL,
                             client=openai_client,
                             temperature=0.3
                         )
+                        logger.info("Initialized with custom OpenAI client")
+                    except (TypeError, ValueError) as client_error:
+                        logger.warning(f"Error initializing with client parameter: {client_error}")
+                        # Fall back to direct initialization (older approach)
+                        self.llm = ChatOpenAI(
+                            model_name=OPENAI_MODEL,
+                            openai_api_key=OPENAI_API_KEY,
+                            temperature=0.3
+                        )
+                        logger.info("Initialized with direct API key")
+                except (TypeError, ValueError) as e:
+                    # If we still have the proxies error, try one last approach
+                    if "proxies" in str(e):
+                        logger.warning("Detected proxies compatibility issue. Using minimal initialization.")
+                        # Try with absolute minimum parameters
+                        self.llm = ChatOpenAI(temperature=0.3)
+                        logger.info("Initialized with minimal parameters")
                     else:
                         # If it's a different error, re-raise it
                         raise
