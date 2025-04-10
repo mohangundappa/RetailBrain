@@ -252,6 +252,14 @@ class AgentOrchestrator:
             memory.update_working_memory('continue_with_same_agent', 
                                         response.get('continue_with_same_agent', False))
             
+            # Check if this is a closing response (thank you, etc.)
+            if response.get('is_closing', False):
+                logger.info(f"Agent {best_agent.name} has issued a closing response. Ending conversation.")
+                memory.update_working_memory('conversation_ended', True)
+                memory.update_working_memory('continue_with_same_agent', False)
+                # Add a flag to indicate this was a closing message
+                response['conversation_ended'] = True
+            
             return response
             
         except Exception as e:
