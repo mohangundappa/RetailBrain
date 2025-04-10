@@ -1085,6 +1085,11 @@ def documentation():
     """Render the comprehensive user documentation."""
     return render_template('documentation.html')
 
+@app.route('/architecture', methods=["GET"])
+def architecture():
+    """Render the architecture documentation with block diagrams."""
+    return render_template('architecture.html')
+
 @app.route('/setup-guide', methods=["GET"])
 def setup_guide():
     """Render the local setup guide."""
