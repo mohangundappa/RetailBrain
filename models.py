@@ -252,6 +252,8 @@ class AgentTemplate(db.Model):
     rating = Column(Float, default=0.0)
     rating_count = Column(Integer, default=0)
     screenshot = Column(String(255), nullable=True)
+    author = Column(String(100), nullable=True)
+    author_email = Column(String(100), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
@@ -260,6 +262,40 @@ class AgentTemplate(db.Model):
         if not self.tags:
             return []
         return [tag.strip() for tag in self.tags.split(',')]
+    
+    def get_entity_definitions(self):
+        """Get entity definitions from configuration."""
+        try:
+            config = json.loads(self.configuration)
+            return config.get('entity_definitions', [])
+        except:
+            return []
+    
+    def get_prompt_templates(self):
+        """Get prompt templates from configuration."""
+        try:
+            config = json.loads(self.configuration)
+            prompts = [c for c in config.get('components', []) if c.get('type') == 'prompt']
+            return prompts
+        except:
+            return []
+    
+    def get_response_formats(self):
+        """Get response formats from configuration."""
+        try:
+            config = json.loads(self.configuration)
+            parsers = [c for c in config.get('components', []) if c.get('type') == 'output_parser']
+            return parsers
+        except:
+            return []
+    
+    def get_business_rules(self):
+        """Get business rules from configuration."""
+        try:
+            config = json.loads(self.configuration)
+            return config.get('business_rules', [])
+        except:
+            return []
     
     def __repr__(self):
         return f"<AgentTemplate {self.id}: {self.name}>"

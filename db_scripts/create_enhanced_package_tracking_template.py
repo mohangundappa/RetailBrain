@@ -24,6 +24,8 @@ ENHANCED_PACKAGE_TRACKING_TEMPLATE = {
     "downloads": 0,
     "rating": 4.8,
     "rating_count": 12,
+    "author": "Staples AI Team",
+    "author_email": "ai-team@staples.com",
     "configuration": json.dumps({
         "agent_type": "package_tracking",
         "name": "Enhanced Package Tracking Agent",

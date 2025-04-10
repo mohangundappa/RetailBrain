@@ -48,6 +48,16 @@ def update_agent_templates_schema():
         if 'screenshot' not in columns:
             print("Adding 'screenshot' column to agent_templates table...")
             conn.execute(db.text("ALTER TABLE agent_templates ADD COLUMN screenshot VARCHAR(255)"))
+            
+        # Add author column if it doesn't exist
+        if 'author' not in columns:
+            print("Adding 'author' column to agent_templates table...")
+            conn.execute(db.text("ALTER TABLE agent_templates ADD COLUMN author VARCHAR(100)"))
+            
+        # Add author_email column if it doesn't exist
+        if 'author_email' not in columns:
+            print("Adding 'author_email' column to agent_templates table...")
+            conn.execute(db.text("ALTER TABLE agent_templates ADD COLUMN author_email VARCHAR(100)"))
         
         # Commit the changes
         conn.commit()
