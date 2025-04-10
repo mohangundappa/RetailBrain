@@ -1,7 +1,7 @@
 import logging
 import json
+import importlib
 from flask import Blueprint, request, jsonify, current_app
-from brain.staples_brain import initialize_staples_brain
 from api.agent_builder import agent_builder_bp
 import asyncio
 
@@ -25,6 +25,8 @@ def get_brain():
     """
     global _brain
     if _brain is None:
+        # Import here to avoid circular imports
+        from brain.staples_brain import initialize_staples_brain
         _brain = initialize_staples_brain()
     return _brain
 

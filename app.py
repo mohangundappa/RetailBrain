@@ -44,9 +44,11 @@ def create_app(config_override=None):
     # Initialize the database
     db.init_app(app)
     
-    # Register blueprints 
-    from api.routes import api_bp
-    app.register_blueprint(api_bp, url_prefix='/api')
+    # Register blueprints - do it inside a function to avoid circular imports
+    with app.app_context():
+        # Lazy import to avoid circular dependencies
+        from api.routes import api_bp
+        app.register_blueprint(api_bp)
     
     return app
 

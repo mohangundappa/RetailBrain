@@ -29,6 +29,12 @@ except ImportError:
     print("WARNING: python-dotenv package not installed. Environment variables may not load correctly.")
     print("Install with: pip install python-dotenv")
 
+# Import the app from app.py
+from app import app as application
+
+# This allows gunicorn to find the app
+app = application
+
 # Now import other modules
 import logging
 import asyncio
