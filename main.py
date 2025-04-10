@@ -1214,6 +1214,7 @@ def agent_wizard(agent_id=None, step=1):
         return render_template(
             'agent_wizard.html',
             agent=agent,
+            agent_id=agent.id if agent else None,  # Pass agent_id explicitly
             step=step,
             current_step=current_step,  # Pass current_step to the template
             step_template=wizard_templates.get(step, 'agent_wizard_step1.html'),

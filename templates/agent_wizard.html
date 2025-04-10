@@ -668,7 +668,7 @@
                 'Content-Type': 'application/json'
               },
               body: JSON.stringify({
-                agent_id: {{ agent_id }},
+                agent_id: {{ agent_id|tojson }},
                 name: templateName,
                 description: templateDescription,
                 category: templateCategory,
