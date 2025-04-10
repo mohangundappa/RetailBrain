@@ -153,7 +153,7 @@ class AgentOrchestrator:
                     # Check if we're in an application context
                     if current_app:
                         # Use direct SQL query with proper SQLAlchemy formatting
-                        from db import db
+                        from app import db
                         from sqlalchemy import text
                         result = db.session.execute(text("SELECT id, name, description FROM custom_agent WHERE is_active = TRUE AND wizard_completed = TRUE")).fetchall()
                         

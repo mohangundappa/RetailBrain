@@ -220,7 +220,14 @@ class ResetPasswordAgent(BaseAgent):
             
             # Extract account information from user input to get any entities we didn't collect
             extraction_result = await self.extraction_chain.ainvoke({"user_input": user_input})
-            account_info = json.loads(extraction_result["text"])
+            
+            # extraction_result is a string, not a dictionary
+            try:
+                account_info = json.loads(extraction_result)
+            except (json.JSONDecodeError, TypeError):
+                # If the result isn't valid JSON, create an empty dict
+                account_info = {}
+                logger.warning(f"Couldn't parse extraction result as JSON: {extraction_result}")
             
             # Update account_info with collected entities if present
             if 'email' in collected_entities:
