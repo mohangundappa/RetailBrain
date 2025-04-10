@@ -387,7 +387,13 @@
               </div>
               
               <div class="mb-3">
-                <label for="output-format-template" class="form-label">Output Format Template</label>
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                  <label for="output-format-template" class="form-label mb-0">Output Format Template</label>
+                  <button type="button" class="btn btn-sm btn-outline-primary ai-assist-btn" 
+                          data-target="output-format-template" data-type="output_template">
+                    <i class="bi bi-magic"></i> AI Assist
+                  </button>
+                </div>
                 <textarea class="form-control" id="output-format-template" name="response_format[template]" rows="6">{{ response_format.template }}</textarea>
                 <div class="form-text">
                   Template with placeholders for structuring the final user-facing response

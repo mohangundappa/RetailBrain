@@ -852,6 +852,12 @@ Format your response as a JSON schema object with appropriate types and descript
             'prompt_template': """You are an expert prompt engineer specializing in creating templates for specific customer service scenarios.
 Create a prompt template for handling a specific type of customer inquiry at Staples.
 The template should include placeholders for dynamic content in the format {placeholder_name}.
+Provide only the template text without explanations.""",
+            
+            'output_template': """You are an expert in designing output templates for AI agent responses.
+Create a template that will format structured data into a user-friendly response.
+The template should include placeholders in the format {field_name} that correspond to fields in the response schema.
+Focus on creating a clear, professional response that presents information in a logical order.
 Provide only the template text without explanations."""
         }
         
