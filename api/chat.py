@@ -92,17 +92,23 @@ def process_chat_request():
                 
                 # Add extra telemetry events in case the brain didn't track them
                 if selected_agent:
-                    # Track the agent selection
+                    # Track the agent selection with the right parameters
                     telemetry_collector.track_agent_selection(
-                        session_id, selected_agent, confidence or 0.5, 
-                        {"manual_tracking": True, "source": "chat_api"}, 
-                        None
+                        session_id=session_id, 
+                        agent_name=selected_agent, 
+                        confidence=confidence or 0.5, 
+                        selection_method="manual_tracking_from_chat_api", 
+                        parent_id=None
                     )
                 
-                # Track response generation
+                # Track response generation with the right parameters
                 telemetry_collector.track_response_generation(
-                    session_id, response_text, selected_agent or "unknown",
-                    0.5, None
+                    session_id=session_id, 
+                    agent_name=selected_agent or "unknown",
+                    success=True, 
+                    response_type="text", 
+                    processing_time=0.5, 
+                    parent_id=None
                 )
             else:
                 # Fallback response if brain is not available
