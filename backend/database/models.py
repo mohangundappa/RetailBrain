@@ -104,3 +104,147 @@ class TelemetryEvent(Base):
     session: Mapped[TelemetrySession] = relationship(
         "TelemetrySession", back_populates="events"
     )
+
+
+class CustomAgent(Base):
+    """Custom agent model to store user-created agents."""
+    __tablename__ = "custom_agents"
+    
+    id: Mapped[int] = mapped_column(sa.Integer, primary_key=True, autoincrement=True)
+    name: Mapped[str] = mapped_column(sa.String(100), nullable=False, unique=True)
+    description: Mapped[Optional[str]] = mapped_column(sa.Text, nullable=True)
+    creator: Mapped[str] = mapped_column(sa.String(100), nullable=False)
+    is_active: Mapped[bool] = mapped_column(sa.Boolean, default=True, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        sa.DateTime, server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        sa.DateTime, 
+        server_default=func.now(), 
+        onupdate=func.now(),
+        nullable=False
+    )
+    configuration: Mapped[Optional[str]] = mapped_column(sa.Text, nullable=True)
+    wizard_completed: Mapped[bool] = mapped_column(sa.Boolean, default=False, nullable=False)
+    
+    # Relationships
+    components: Mapped[List["AgentComponent"]] = relationship(
+        "AgentComponent", back_populates="agent", cascade="all, delete"
+    )
+    connections: Mapped[List["ComponentConnection"]] = relationship(
+        "ComponentConnection", back_populates="agent", cascade="all, delete"
+    )
+
+
+class AgentComponent(Base):
+    """Agent component model to store components of custom agents."""
+    __tablename__ = "agent_components"
+    
+    id: Mapped[int] = mapped_column(sa.Integer, primary_key=True, autoincrement=True)
+    agent_id: Mapped[int] = mapped_column(
+        sa.Integer, sa.ForeignKey("custom_agents.id"), nullable=False
+    )
+    component_type: Mapped[str] = mapped_column(sa.String(50), nullable=False)
+    name: Mapped[str] = mapped_column(sa.String(100), nullable=False)
+    position_x: Mapped[float] = mapped_column(sa.Float, nullable=False)
+    position_y: Mapped[float] = mapped_column(sa.Float, nullable=False)
+    configuration: Mapped[Optional[str]] = mapped_column(sa.Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        sa.DateTime, server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        sa.DateTime, 
+        server_default=func.now(), 
+        onupdate=func.now(),
+        nullable=False
+    )
+    
+    # Relationships
+    agent: Mapped[CustomAgent] = relationship(
+        "CustomAgent", back_populates="components"
+    )
+    source_connections: Mapped[List["ComponentConnection"]] = relationship(
+        "ComponentConnection", 
+        foreign_keys="ComponentConnection.source_id", 
+        back_populates="source",
+        cascade="all, delete"
+    )
+    target_connections: Mapped[List["ComponentConnection"]] = relationship(
+        "ComponentConnection", 
+        foreign_keys="ComponentConnection.target_id", 
+        back_populates="target",
+        cascade="all, delete"
+    )
+
+
+class ComponentConnection(Base):
+    """Component connection model to store connections between agent components."""
+    __tablename__ = "component_connections"
+    
+    id: Mapped[int] = mapped_column(sa.Integer, primary_key=True, autoincrement=True)
+    agent_id: Mapped[int] = mapped_column(
+        sa.Integer, sa.ForeignKey("custom_agents.id"), nullable=False
+    )
+    source_id: Mapped[int] = mapped_column(
+        sa.Integer, sa.ForeignKey("agent_components.id"), nullable=False
+    )
+    target_id: Mapped[int] = mapped_column(
+        sa.Integer, sa.ForeignKey("agent_components.id"), nullable=False
+    )
+    connection_type: Mapped[str] = mapped_column(sa.String(50), default="default", nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        sa.DateTime, server_default=func.now(), nullable=False
+    )
+    
+    # Relationships
+    agent: Mapped[CustomAgent] = relationship(
+        "CustomAgent", back_populates="connections"
+    )
+    source: Mapped[AgentComponent] = relationship(
+        "AgentComponent", foreign_keys=[source_id], back_populates="source_connections"
+    )
+    target: Mapped[AgentComponent] = relationship(
+        "AgentComponent", foreign_keys=[target_id], back_populates="target_connections"
+    )
+
+
+class ComponentTemplate(Base):
+    """Component template model to store reusable component templates."""
+    __tablename__ = "component_templates"
+    
+    id: Mapped[int] = mapped_column(sa.Integer, primary_key=True, autoincrement=True)
+    name: Mapped[str] = mapped_column(sa.String(100), nullable=False, unique=True)
+    component_type: Mapped[str] = mapped_column(sa.String(50), nullable=False)
+    description: Mapped[Optional[str]] = mapped_column(sa.Text, nullable=True)
+    configuration_schema: Mapped[Dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    default_configuration: Mapped[Dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    is_system: Mapped[bool] = mapped_column(sa.Boolean, default=False, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        sa.DateTime, server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        sa.DateTime, 
+        server_default=func.now(), 
+        onupdate=func.now(),
+        nullable=False
+    )
+
+
+class AgentTemplate(Base):
+    """Agent template model to store reusable agent templates."""
+    __tablename__ = "agent_templates"
+    
+    id: Mapped[int] = mapped_column(sa.Integer, primary_key=True, autoincrement=True)
+    name: Mapped[str] = mapped_column(sa.String(100), nullable=False, unique=True)
+    description: Mapped[Optional[str]] = mapped_column(sa.Text, nullable=True)
+    is_system: Mapped[bool] = mapped_column(sa.Boolean, default=False, nullable=False)
+    configuration: Mapped[Dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        sa.DateTime, server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        sa.DateTime, 
+        server_default=func.now(), 
+        onupdate=func.now(),
+        nullable=False
+    )

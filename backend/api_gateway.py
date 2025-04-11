@@ -14,6 +14,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.api.chat import router as chat_router
+from backend.api.agent_builder_fastapi import agent_builder_router
 from backend.database.db import get_db
 from backend.dependencies import get_chat_service, get_telemetry_service
 from backend.services.chat_service import ChatService
@@ -57,6 +58,7 @@ class AgentListResponse(BaseModel):
 
 # Include routers
 app.include_router(chat_router, prefix="/api/v1")
+app.include_router(agent_builder_router, prefix="/api/v1/agent-builder")
 
 
 # API Routes
