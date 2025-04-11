@@ -8,7 +8,7 @@ import asyncio
 from flask import Blueprint, jsonify, request, current_app
 
 # Import the telemetry system directly for consistency
-from brain.restructured.telemetry import telemetry_system, collector as telemetry_collector
+from brain.telemetry import telemetry_system, collector as telemetry_collector
 
 logger = logging.getLogger(__name__)
 
