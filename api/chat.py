@@ -41,11 +41,52 @@ def process_chat_request():
         
         # Get context from memory if available
         brain = current_app.staples_brain
-        context = brain.memory.get_context(session_id) if brain.memory else None
+        # Safely check for memory attribute and get context
+        context = None
+        try:
+            if hasattr(brain, 'memory') and brain.memory:
+                context = brain.memory.get_context(session_id)
+        except Exception as e:
+            logger.warning(f"Could not retrieve memory context: {e}")
         
-        # Process request through main processing function
-        # This adds all the telemetry automatically
-        result = current_app.process_request(user_input=user_input, session_id=session_id, context=context)
+        # Process request using the Staples Brain directly
+        result = {}
+        try:
+            # Process with orchestrator directly, which handles telemetry internally
+            brain = current_app.staples_brain
+            response_text = "I'm sorry, I couldn't process your request properly."
+            
+            if brain:
+                # This will use the orchestrator with telemetry
+                # Try to use process_request, which is the correct method name
+                import asyncio
+                # Set the session_id if exists in brain.process_request signature
+                try:
+                    import inspect
+                    # Check if session_id is accepted in process_request
+                    sig = inspect.signature(brain.process_request)
+                    if 'session_id' in sig.parameters:
+                        response = asyncio.run(brain.process_request(user_input, session_id=session_id, context=context))
+                    else:
+                        # If not, just pass the user input and context
+                        response = asyncio.run(brain.process_request(user_input, context=context))
+                except Exception as e:
+                    logger.warning(f"Error inspecting brain.process_request: {e}")
+                    # Fall back to just the basic parameters
+                    response = asyncio.run(brain.process_request(user_input, context=context))
+                response_text = response.get('response', response_text)
+                result = {
+                    "response": response_text,
+                    "agent": response.get('selected_agent'),
+                    "confidence": response.get('confidence')
+                }
+            else:
+                # Fallback response if brain is not available
+                result = {"response": "I'm having trouble accessing my brain right now."}
+                
+        except Exception as e:
+            logger.error(f"Error processing with brain: {e}", exc_info=True)
+            result = {"response": "I'm having trouble processing your request right now."}
         
         # Extract the response text
         response_text = result.get('response', "I'm sorry, I'm having trouble processing your request right now.")
