@@ -1,1 +1,3 @@
-# Utils package initialization
+"""
+Utility modules for the backend application.
+"""

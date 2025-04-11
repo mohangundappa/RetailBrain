@@ -29,9 +29,10 @@ logger = logging.getLogger("staples_brain")
 
 # Import configuration
 from backend.config.config import (
-    APP_NAME, APP_DESCRIPTION, APP_VERSION, 
-    CORS_ORIGINS, API_VERSION, API_PREFIX
+    APP_NAME, APP_DESCRIPTION, APP_VERSION, APP_ENV,
+    CORS_ORIGINS, API_VERSION, API_PREFIX, API_VERSIONS
 )
+from backend.utils.api_utils import create_success_response, create_error_response
 
 # Create FastAPI app
 app = FastAPI(
@@ -98,28 +99,30 @@ async def health_check(db: AsyncSession = Depends(get_db)):
         
         # Additional checks could be added here (LLM service, etc.)
         
-        return {
-            "success": True,
-            "data": {
+        return create_success_response(
+            data={
                 "status": "ok",
                 "health": "healthy",
-                "version": "1.0.0",
-                "environment": "development",
+                "version": APP_VERSION,
+                "environment": APP_ENV,
                 "database": "connected",
                 "openai_api": "configured"
+            },
+            metadata={
+                "api_version": API_VERSION,
+                "deprecation": API_VERSIONS.get(API_VERSION, {})
             }
-        }
+        )
         
     except Exception as e:
-        logger.error(f"Health check failed: {str(e)}", exc_info=True)
-        return {
-            "success": False,
-            "error": str(e),
-            "data": {
+        return create_error_response(
+            error_message=f"Health check failed: {str(e)}",
+            data={
                 "status": "error",
                 "health": "unhealthy"
-            }
-        }
+            },
+            log_error=True
+        )
 
 
 @app.get(f"{API_PREFIX}/agents", response_model=AgentListResponse)
@@ -129,15 +132,24 @@ async def list_agents(
     """List all available agents"""
     try:
         result = await chat_service.list_agents()
+        
+        # Ensure result is standardized
+        if not isinstance(result, dict) or "success" not in result:
+            result = create_success_response(
+                data=result,
+                metadata={
+                    "api_version": API_VERSION
+                }
+            )
+            
         return result
         
     except Exception as e:
-        logger.error(f"Error listing agents: {str(e)}", exc_info=True)
-        return {
-            "success": False,
-            "error": str(e),
-            "data": {"agents": []}
-        }
+        return create_error_response(
+            error_message=f"Error listing agents: {str(e)}",
+            data={"agents": []},
+            log_error=True
+        )
 
 
 @app.get(f"{API_PREFIX}/telemetry/sessions")
@@ -154,15 +166,33 @@ async def get_telemetry_sessions(
             limit=limit,
             offset=offset
         )
+        
+        # Check if result is already in standard format
+        if not isinstance(result, dict) or "success" not in result:
+            result = create_success_response(
+                data={"sessions": result} if result else {"sessions": []},
+                metadata={
+                    "count": len(result) if result else 0,
+                    "limit": limit,
+                    "offset": offset,
+                    "days": days,
+                    "api_version": API_VERSION
+                }
+            )
+            
         return result
         
     except Exception as e:
-        logger.error(f"Error getting telemetry sessions: {str(e)}", exc_info=True)
-        return {
-            "success": False,
-            "error": str(e),
-            "sessions": []
-        }
+        return create_error_response(
+            error_message=f"Error getting telemetry sessions: {str(e)}",
+            data={"sessions": []},
+            metadata={
+                "limit": limit,
+                "offset": offset,
+                "days": days
+            },
+            log_error=True
+        )
 
 
 @app.get(f"{API_PREFIX}/telemetry/sessions/{{session_id}}/events")
@@ -173,19 +203,34 @@ async def get_session_events(
     """Get events for a telemetry session"""
     try:
         result = await telemetry_service.get_session_events(session_id)
+        
+        # Check if result is already in standard format
+        if not isinstance(result, dict) or "success" not in result:
+            result = create_success_response(
+                data={
+                    "session_id": session_id,
+                    "events": result if result else []
+                },
+                metadata={
+                    "count": len(result) if result else 0,
+                    "api_version": API_VERSION
+                }
+            )
+            
         return result
         
     except Exception as e:
-        logger.error(f"Error getting session events: {str(e)}", exc_info=True)
-        return {
-            "success": False,
-            "error": str(e),
-            "session_id": session_id,
-            "events": []
-        }
+        return create_error_response(
+            error_message=f"Error getting session events: {str(e)}",
+            data={
+                "session_id": session_id,
+                "events": []
+            },
+            log_error=True
+        )
 
 
-@app.get("/api/v1/stats")
+@app.get(f"{API_PREFIX}/stats")
 async def get_system_stats(
     days: int = 7,
     chat_service: ChatService = Depends(get_chat_service)
@@ -193,16 +238,34 @@ async def get_system_stats(
     """Get system statistics"""
     try:
         result = await chat_service.get_system_stats(days)
+        
+        # Check if result is already in standard format
+        if not isinstance(result, dict) or "success" not in result:
+            result = create_success_response(
+                data=result if result else {
+                    "total_conversations": 0,
+                    "agent_distribution": {}
+                },
+                metadata={
+                    "days": days,
+                    "api_version": API_VERSION
+                }
+            )
+            
         return result
         
     except Exception as e:
-        logger.error(f"Error getting system stats: {str(e)}", exc_info=True)
-        return {
-            "success": False,
-            "error": str(e),
-            "total_conversations": 0,
-            "agent_distribution": {}
-        }
+        return create_error_response(
+            error_message=f"Error getting system stats: {str(e)}",
+            data={
+                "total_conversations": 0,
+                "agent_distribution": {}
+            },
+            metadata={
+                "days": days
+            },
+            log_error=True
+        )
 
 
 # Middleware
@@ -221,11 +284,12 @@ async def add_process_time_header(request: Request, call_next):
 async def custom_404_handler(request, exc):
     return JSONResponse(
         status_code=404,
-        content={
-            "success": False,
-            "error": "Not found",
-            "data": None
-        }
+        content=create_error_response(
+            error_message="Not found",
+            data={"path": request.url.path},
+            metadata={"request_id": request.headers.get("X-Request-ID", "")},
+            log_error=False
+        )
     )
 
 
@@ -234,11 +298,15 @@ async def global_exception_handler(request, exc):
     logger.error(f"Unhandled exception: {str(exc)}", exc_info=True)
     return JSONResponse(
         status_code=500,
-        content={
-            "success": False,
-            "error": str(exc),
-            "data": None
-        }
+        content=create_error_response(
+            error_message=str(exc),
+            data={"path": request.url.path},
+            metadata={
+                "request_id": request.headers.get("X-Request-ID", ""),
+                "api_version": API_VERSION
+            },
+            log_error=False  # Already logged above
+        )
     )
 
 
