@@ -6,9 +6,9 @@ import requests
 from langchain_core.prompts import ChatPromptTemplate, PromptTemplate
 from langchain_core.runnables import RunnableSequence
 from langchain_core.output_parsers import StrOutputParser
-from agents.base_agent import BaseAgent, EntityDefinition
+from backend.agents.base_agent import BaseAgent, EntityDefinition
 from config import PACKAGE_TRACKING_ENDPOINT
-from api_services.order_api import OrderApiClient
+from backend.api_services.order_api import OrderApiClient
 
 logger = logging.getLogger(__name__)
 
