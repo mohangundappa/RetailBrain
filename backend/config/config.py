@@ -28,6 +28,33 @@ APP_ENV = os.environ.get("APP_ENV", "development")
 DEBUG = os.environ.get("DEBUG", "True").lower() in ("true", "1", "t")
 LOG_LEVEL = os.environ.get("LOG_LEVEL", "DEBUG")
 
+# API Versioning
+API_VERSION = os.environ.get("API_VERSION", "v1")
+# Supported API versions and their deprecation status
+API_VERSIONS = {
+    "v1": {"deprecated": False, "sunset_date": None},
+    # When new versions are added, they should be included here
+    # "v2": {"deprecated": False, "sunset_date": None},
+}
+API_PREFIX = f"/api/{API_VERSION}"
+
+# Application version
+APP_VERSION = os.environ.get("APP_VERSION", "1.0.0")
+APP_NAME = "Staples Brain API"
+APP_DESCRIPTION = "API Gateway for Staples Brain"
+
+# Cors Settings
+CORS_ORIGINS = os.environ.get("CORS_ORIGINS", "*").split(",")
+if APP_ENV == "production" and CORS_ORIGINS == ["*"]:
+    logger.warning("CORS set to allow all origins (*) in production environment. This is insecure.")
+
+# Database connection settings
+DB_POOL_SIZE = int(os.environ.get("DB_POOL_SIZE", "5"))
+DB_MAX_OVERFLOW = int(os.environ.get("DB_MAX_OVERFLOW", "10"))
+DB_POOL_RECYCLE = int(os.environ.get("DB_POOL_RECYCLE", "300"))
+DB_POOL_TIMEOUT = int(os.environ.get("DB_POOL_TIMEOUT", "30"))
+DB_POOL_PRE_PING = os.environ.get("DB_POOL_PRE_PING", "True").lower() in ("true", "1", "t")
+
 # Define configuration classes for different environments
 class Config:
     """Base configuration."""
@@ -35,8 +62,11 @@ class Config:
     SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL')
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     SQLALCHEMY_ENGINE_OPTIONS = {
-        "pool_recycle": 300,
-        "pool_pre_ping": True,
+        "pool_size": DB_POOL_SIZE,
+        "max_overflow": DB_MAX_OVERFLOW,
+        "pool_recycle": DB_POOL_RECYCLE,
+        "pool_timeout": DB_POOL_TIMEOUT,
+        "pool_pre_ping": DB_POOL_PRE_PING,
     }
 
 class DevelopmentConfig(Config):

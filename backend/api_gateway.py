@@ -27,17 +27,26 @@ from backend.services.telemetry_service import TelemetryService
 # Set up logging
 logger = logging.getLogger("staples_brain")
 
+# Import configuration
+from backend.config.config import (
+    APP_NAME, APP_DESCRIPTION, APP_VERSION, 
+    CORS_ORIGINS, API_VERSION, API_PREFIX
+)
+
 # Create FastAPI app
 app = FastAPI(
-    title="Staples Brain API",
-    description="API Gateway for Staples Brain",
-    version="1.0.0"
+    title=APP_NAME,
+    description=APP_DESCRIPTION,
+    version=APP_VERSION,
+    docs_url=f"{API_PREFIX}/docs",
+    redoc_url=f"{API_PREFIX}/redoc",
+    openapi_url=f"{API_PREFIX}/openapi.json"
 )
 
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # In production, restrict to specific origins
+    allow_origins=CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -61,11 +70,11 @@ class AgentListResponse(BaseModel):
 
 
 # Include routers
-app.include_router(chat_router, prefix="/api/v1")
-app.include_router(agent_builder_router, prefix="/api/v1/agent-builder")
-app.include_router(circuit_breaker_router, prefix="/api/v1/circuit-breakers")
-app.include_router(telemetry_router, prefix="/api/v1/telemetry")
-app.include_router(api_router, prefix="/api/v1")
+app.include_router(chat_router, prefix=API_PREFIX)
+app.include_router(agent_builder_router, prefix=f"{API_PREFIX}/agent-builder")
+app.include_router(circuit_breaker_router, prefix=f"{API_PREFIX}/circuit-breakers")
+app.include_router(telemetry_router, prefix=f"{API_PREFIX}/telemetry")
+app.include_router(api_router, prefix=API_PREFIX)
 
 # Mount static directories
 app.mount("/static", StaticFiles(directory="backend/static"), name="static")
@@ -79,7 +88,7 @@ async def root():
 
 
 # API Routes
-@app.get("/api/v1/health", response_model=ApiResponse)
+@app.get(f"{API_PREFIX}/health", response_model=ApiResponse)
 async def health_check(db: AsyncSession = Depends(get_db)):
     """Health check endpoint"""
     try:
@@ -113,7 +122,7 @@ async def health_check(db: AsyncSession = Depends(get_db)):
         }
 
 
-@app.get("/api/v1/agents", response_model=AgentListResponse)
+@app.get(f"{API_PREFIX}/agents", response_model=AgentListResponse)
 async def list_agents(
     chat_service: ChatService = Depends(get_chat_service)
 ):
@@ -131,7 +140,7 @@ async def list_agents(
         }
 
 
-@app.get("/api/v1/telemetry/sessions")
+@app.get(f"{API_PREFIX}/telemetry/sessions")
 async def get_telemetry_sessions(
     limit: int = 20,
     offset: int = 0,
@@ -156,7 +165,7 @@ async def get_telemetry_sessions(
         }
 
 
-@app.get("/api/v1/telemetry/sessions/{session_id}/events")
+@app.get(f"{API_PREFIX}/telemetry/sessions/{{session_id}}/events")
 async def get_session_events(
     session_id: str,
     telemetry_service: TelemetryService = Depends(get_telemetry_service)
