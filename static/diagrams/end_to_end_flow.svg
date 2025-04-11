@@ -77,63 +77,103 @@
   <!-- Connections -->
   <!-- User Input to Frontend -->
   <path d="M 270 130 L 350 130" stroke="#5dade2" stroke-width="2" fill="none"/>
+  <circle cx="310" cy="130" r="12" fill="#444444" stroke="#ffffff" stroke-width="1"/>
+  <text x="310" y="134" font-family="Arial" font-size="12" fill="#ffffff" text-anchor="middle">1</text>
   
   <!-- Frontend to API Gateway -->
   <path d="M 550 130 L 630 130" stroke="#5dade2" stroke-width="2" fill="none"/>
+  <circle cx="590" cy="130" r="12" fill="#444444" stroke="#ffffff" stroke-width="1"/>
+  <text x="590" y="134" font-family="Arial" font-size="12" fill="#ffffff" text-anchor="middle">2</text>
   
   <!-- API Gateway to Brain Orchestrator -->
   <path d="M 730 170 L 730 190 L 450 190 L 450 200" stroke="#5dade2" stroke-width="2" fill="none"/>
+  <circle cx="730" cy="190" r="12" fill="#444444" stroke="#ffffff" stroke-width="1"/>
+  <text x="730" y="194" font-family="Arial" font-size="12" fill="#ffffff" text-anchor="middle">3</text>
   
   <!-- API Gateway to Security Layer -->
   <path d="M 630 130 L 600 130 L 600 170 L 170 170 L 170 200" stroke="#d2b4de" stroke-width="2" fill="none"/>
+  <circle cx="600" cy="170" r="12" fill="#444444" stroke="#ffffff" stroke-width="1"/>
+  <text x="600" y="174" font-family="Arial" font-size="12" fill="#ffffff" text-anchor="middle">4</text>
   
   <!-- API Gateway to Telemetry -->
   <path d="M 730 170 L 730 200" stroke="#d2b4de" stroke-width="2" fill="none"/>
+  <circle cx="730" cy="185" r="12" fill="#444444" stroke="#ffffff" stroke-width="1"/>
+  <text x="730" y="189" font-family="Arial" font-size="12" fill="#ffffff" text-anchor="middle">5</text>
   
   <!-- Security to Brain Orchestrator -->
   <path d="M 270 240 L 350 240" stroke="#d2b4de" stroke-width="2" fill="none"/>
+  <circle cx="310" cy="240" r="12" fill="#444444" stroke="#ffffff" stroke-width="1"/>
+  <text x="310" y="244" font-family="Arial" font-size="12" fill="#ffffff" text-anchor="middle">6</text>
   
   <!-- Brain Orchestrator to Telemetry -->
   <path d="M 550 240 L 630 240" stroke="#a569bd" stroke-width="2" fill="none"/>
+  <circle cx="590" cy="240" r="12" fill="#444444" stroke="#ffffff" stroke-width="1"/>
+  <text x="590" y="244" font-family="Arial" font-size="12" fill="#ffffff" text-anchor="middle">7</text>
   
   <!-- Brain Orchestrator to Agent Selection -->
   <path d="M 450 280 L 450 310" stroke="#a569bd" stroke-width="2" fill="none"/>
+  <circle cx="450" cy="295" r="12" fill="#444444" stroke="#ffffff" stroke-width="1"/>
+  <text x="450" y="299" font-family="Arial" font-size="12" fill="#ffffff" text-anchor="middle">8</text>
   
   <!-- Agent Selection to Specialized Agent -->
   <path d="M 450 390 L 450 420" stroke="#3498db" stroke-width="2" fill="none"/>
+  <circle cx="450" cy="405" r="12" fill="#444444" stroke="#ffffff" stroke-width="1"/>
+  <text x="450" y="409" font-family="Arial" font-size="12" fill="#ffffff" text-anchor="middle">9</text>
   
   <!-- Agent Selection to LLM Foundation -->
   <path d="M 350 350 L 250 350 L 250 420" stroke="#3498db" stroke-width="2" fill="none"/>
+  <circle cx="300" cy="350" r="12" fill="#444444" stroke="#ffffff" stroke-width="1"/>
+  <text x="300" y="354" font-family="Arial" font-size="12" fill="#ffffff" text-anchor="middle">10</text>
   
   <!-- Agent Selection to Database -->
   <path d="M 550 350 L 650 350 L 650 420" stroke="#3498db" stroke-width="2" fill="none"/>
+  <circle cx="600" cy="350" r="12" fill="#444444" stroke="#ffffff" stroke-width="1"/>
+  <text x="600" y="354" font-family="Arial" font-size="12" fill="#ffffff" text-anchor="middle">11</text>
   
   <!-- LLM to Specialized Agent -->
   <path d="M 350 460 L 250 460" stroke="#9b59b6" stroke-width="2" fill="none"/>
+  <circle cx="300" cy="460" r="12" fill="#444444" stroke="#ffffff" stroke-width="1"/>
+  <text x="300" y="464" font-family="Arial" font-size="12" fill="#ffffff" text-anchor="middle">12</text>
   
   <!-- Specialized Agent to Database -->
   <path d="M 550 460 L 650 460" stroke="#3498db" stroke-width="2" fill="none"/>
+  <circle cx="600" cy="460" r="12" fill="#444444" stroke="#ffffff" stroke-width="1"/>
+  <text x="600" y="464" font-family="Arial" font-size="12" fill="#ffffff" text-anchor="middle">13</text>
   
   <!-- Specialized Agent to External APIs -->
   <path d="M 450 500 L 450 530" stroke="#3498db" stroke-width="2" fill="none"/>
+  <circle cx="450" cy="515" r="12" fill="#444444" stroke="#ffffff" stroke-width="1"/>
+  <text x="450" y="519" font-family="Arial" font-size="12" fill="#ffffff" text-anchor="middle">14</text>
   
   <!-- External APIs to Response -->
   <path d="M 350 570 L 270 570" stroke="#f1c40f" stroke-width="2" fill="none"/>
+  <circle cx="310" cy="570" r="12" fill="#444444" stroke="#ffffff" stroke-width="1"/>
+  <text x="310" y="574" font-family="Arial" font-size="12" fill="#ffffff" text-anchor="middle">15</text>
   
   <!-- External APIs to Caching -->
   <path d="M 550 570 L 630 570" stroke="#f1c40f" stroke-width="2" fill="none"/>
+  <circle cx="590" cy="570" r="12" fill="#444444" stroke="#ffffff" stroke-width="1"/>
+  <text x="590" y="574" font-family="Arial" font-size="12" fill="#ffffff" text-anchor="middle">16</text>
   
   <!-- Response back to User (loop) -->
   <path d="M 70 570 L 50 570 L 50 130 L 70 130" stroke="#3498db" stroke-width="2" fill="none"/>
+  <circle cx="50" cy="350" r="12" fill="#444444" stroke="#ffffff" stroke-width="1"/>
+  <text x="50" y="354" font-family="Arial" font-size="12" fill="#ffffff" text-anchor="middle">20</text>
   
   <!-- Database to Caching -->
   <path d="M 650 500 L 650 520 L 730 520 L 730 530" stroke="#27ae60" stroke-width="2" fill="none"/>
+  <circle cx="690" cy="520" r="12" fill="#444444" stroke="#ffffff" stroke-width="1"/>
+  <text x="690" y="524" font-family="Arial" font-size="12" fill="#ffffff" text-anchor="middle">17</text>
   
   <!-- Caching to Response -->
   <path d="M 630 570 L 600 570 L 600 620 L 150 620 L 150 610" stroke="#27ae60" stroke-width="2" fill="none"/>
+  <circle cx="450" cy="620" r="12" fill="#444444" stroke="#ffffff" stroke-width="1"/>
+  <text x="450" y="624" font-family="Arial" font-size="12" fill="#ffffff" text-anchor="middle">18</text>
   
   <!-- LLM to Response -->
   <path d="M 250 500 L 250 520 L 170 520 L 170 530" stroke="#9b59b6" stroke-width="2" fill="none"/>
+  <circle cx="210" cy="520" r="12" fill="#444444" stroke="#ffffff" stroke-width="1"/>
+  <text x="210" y="524" font-family="Arial" font-size="12" fill="#ffffff" text-anchor="middle">19</text>
   
   <!-- Legend -->
   <rect x="60" y="660" width="20" height="10" fill="#3498db" rx="2" ry="2"/>
@@ -156,4 +196,8 @@
   
   <rect x="380" y="680" width="20" height="10" fill="#2980b9" rx="2" ry="2"/>
   <text x="405" y="690" font-family="Arial" font-size="12" fill="#ffffff">Agent Components</text>
+  
+  <!-- Title for the numeric flow -->
+  <text x="700" y="620" font-family="Arial" font-size="14" fill="#ffffff" text-anchor="middle" font-weight="bold">Flow Sequence (1-20)</text>
+  <text x="700" y="640" font-family="Arial" font-size="12" fill="#aaaaaa" text-anchor="middle">Follow numbered steps to trace the flow</text>
 </svg>
