@@ -4,7 +4,11 @@ This module provides endpoints for processing chat messages and returning teleme
 """
 import logging
 import uuid
+import asyncio
 from flask import Blueprint, jsonify, request, current_app
+
+# Import the telemetry system directly for consistency
+from brain.restructured.telemetry import telemetry_system, collector as telemetry_collector
 
 logger = logging.getLogger(__name__)
 
@@ -38,6 +42,9 @@ def process_chat_request():
         # Create a session ID if requested or if none provided
         if generate_session_id or not session_id:
             session_id = str(uuid.uuid4())
+            
+        # Create explicit telemetry entry for this request
+        telemetry_collector.track_request_received(session_id, user_input)
         
         # Get context from memory if available
         brain = current_app.staples_brain
@@ -75,11 +82,28 @@ def process_chat_request():
                     # Fall back to just the basic parameters
                     response = asyncio.run(brain.process_request(user_input, context=context))
                 response_text = response.get('response', response_text)
+                selected_agent = response.get('selected_agent')
+                confidence = response.get('confidence')
                 result = {
                     "response": response_text,
-                    "agent": response.get('selected_agent'),
-                    "confidence": response.get('confidence')
+                    "agent": selected_agent,
+                    "confidence": confidence
                 }
+                
+                # Add extra telemetry events in case the brain didn't track them
+                if selected_agent:
+                    # Track the agent selection
+                    telemetry_collector.track_agent_selection(
+                        session_id, selected_agent, confidence or 0.5, 
+                        {"manual_tracking": True, "source": "chat_api"}, 
+                        None
+                    )
+                
+                # Track response generation
+                telemetry_collector.track_response_generation(
+                    session_id, response_text, selected_agent or "unknown",
+                    0.5, None
+                )
             else:
                 # Fallback response if brain is not available
                 result = {"response": "I'm having trouble accessing my brain right now."}
