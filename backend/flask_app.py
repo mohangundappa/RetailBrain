@@ -42,7 +42,7 @@ def create_app(config_override=None):
     # Load configuration based on environment
     if config_override is None:
         # Default to loading environment-based config
-        from config import get_config
+        from backend.config import get_config
         config_class = get_config()
         app.config.from_object(config_class)
     else:
