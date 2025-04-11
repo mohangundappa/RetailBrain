@@ -11,9 +11,9 @@ class Orchestrator:
     This class coordinates between different specialized agents based on detected intents.
     """
     
-    def __init__(self):
+    def __init__(self, agents=None):
         """Initialize the orchestrator."""
-        self.agents = []
+        self.agents = agents or []
         
     def list_available_agents(self) -> List[Dict[str, Any]]:
         """
@@ -64,3 +64,18 @@ class Orchestrator:
             'agent': 'default',
             'session_id': session_id
         }
+        
+    async def process_request(self, message: str, session_id: str, context: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        """
+        Async version of process_message for FastAPI compatibility.
+        
+        Args:
+            message: User's message text
+            session_id: Session identifier
+            context: Additional context information
+            
+        Returns:
+            Response dictionary with agent output
+        """
+        user_id = context.get('user_id') if context else None
+        return self.process_message(message, session_id, user_id)

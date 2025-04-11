@@ -135,8 +135,8 @@ class StaplesBrain:
         self.agents = []
         self._initialize_agents()
         
-        # Initialize orchestrator
-        self.orchestrator = Orchestrator()
+        # Initialize orchestrator with the list of agents
+        self.orchestrator = Orchestrator(self.agents)
         
         logger.info(f"Staples Brain initialized with {len(self.agents)} agents")
     

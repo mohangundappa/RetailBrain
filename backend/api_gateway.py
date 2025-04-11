@@ -222,4 +222,27 @@ async def global_exception_handler(request, exc):
     )
 
 
+# Startup and shutdown events
+@app.on_event("startup")
+async def startup_db_client():
+    """Initialize database on startup."""
+    from sqlalchemy.ext.asyncio import AsyncEngine
+    from backend.database.db import engine, Base
+    from backend.database.models import (
+        Conversation, Message, TelemetrySession, 
+        TelemetryEvent, CustomAgent, AgentComponent,
+        ComponentConnection, ComponentTemplate, AgentTemplate
+    )
+    
+    logger.info("Initializing database tables...")
+    try:
+        # Create all tables
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+        logger.info("Database tables initialized successfully")
+    except Exception as e:
+        logger.error(f"Error initializing database tables: {str(e)}")
+        # Don't raise the exception to allow the application to start
+        # even if database initialization fails
+
 # End of API Gateway module
