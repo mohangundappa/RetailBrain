@@ -9,8 +9,8 @@ import json
 import logging
 from datetime import datetime
 from flask import Blueprint, request, jsonify
-from app import db
-from models import CustomAgent, AgentComponent, ComponentConnection, ComponentTemplate, AgentTemplate
+from backend.flask_app import db
+from backend.database.models import CustomAgent, AgentComponent, ComponentConnection, ComponentTemplate, AgentTemplate
 
 # Configure logging
 logger = logging.getLogger(__name__)

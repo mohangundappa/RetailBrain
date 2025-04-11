@@ -20,7 +20,8 @@ from utils.observability import _log_error
 from utils.langsmith_utils import langsmith_trace, _log_api_call, _log_error
 
 # Import database models
-from models import db, CustomAgent, AgentComponent, ComponentConnection, AgentTemplate
+from backend.flask_app import db
+from backend.database.models import CustomAgent, AgentComponent, ComponentConnection, AgentTemplate
 
 logger = logging.getLogger(__name__)
 
