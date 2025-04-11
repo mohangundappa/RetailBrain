@@ -9,8 +9,8 @@ from typing import Any, Dict, List, Optional, Union
 from urllib.parse import urljoin
 
 import requests
-from utils.observability import log_api_call, record_error
-from utils.circuit_breaker import get_circuit_breaker, CircuitBreakerOpenException
+from backend.utils.observability import log_api_call, record_error
+from backend.utils.circuit_breaker import get_circuit_breaker, CircuitBreakerOpenException
 
 logger = logging.getLogger(__name__)
 

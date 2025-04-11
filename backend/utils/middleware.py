@@ -4,7 +4,7 @@ from functools import wraps
 from flask import request, Flask, Response, g
 from werkzeug.routing import Rule
 
-from utils.observability import record_http_request, TimingContext, logger
+from backend.utils.observability import record_http_request, TimingContext, logger
 
 
 class MetricsMiddleware:

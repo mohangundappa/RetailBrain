@@ -2,6 +2,13 @@
 Constants for agent configuration in Staples Brain.
 """
 
+# Agent name constants
+PACKAGE_TRACKING_AGENT = "package_tracking"
+RESET_PASSWORD_AGENT = "reset_password"
+STORE_LOCATOR_AGENT = "store_locator"
+PRODUCT_INFO_AGENT = "product_info"
+RETURNS_PROCESSING_AGENT = "returns_processing"
+
 # Mapping from intents to agent names
 INTENT_AGENT_MAPPING = {
     "package_tracking": "package_tracking",

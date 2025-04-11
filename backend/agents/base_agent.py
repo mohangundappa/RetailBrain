@@ -21,7 +21,7 @@ from backend.config.agent_constants import (
 
 # Import tool service for tool calling
 try:
-    from brain.core_services.tool_service import tool_service
+    from backend.brain.core_services.tool_service import tool_service
 except ImportError:
     # This allows the module to be imported even if tool_service is not available
     # We'll handle this case in the BaseAgent class

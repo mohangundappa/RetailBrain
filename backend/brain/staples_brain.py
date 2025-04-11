@@ -6,15 +6,15 @@ import asyncio
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.outputs import ChatResult, ChatGenerationChunk
 from langchain_core.messages import AIMessageChunk, BaseMessage
-from agents.base_agent import BaseAgent
-from brain.orchestrator import AgentOrchestrator
+from backend.agents.base_agent import BaseAgent
+from backend.brain.orchestrator import Orchestrator
 
 # Import all agent classes for factory method access
-from agents.package_tracking import PackageTrackingAgent
-from agents.reset_password import ResetPasswordAgent
-from agents.store_locator import StoreLocatorAgent
-from agents.product_info import ProductInfoAgent
-from agents.returns_processing import ReturnsProcessingAgent
+from backend.agents.package_tracking import PackageTrackingAgent
+from backend.agents.reset_password import ResetPasswordAgent
+from backend.agents.store_locator import StoreLocatorAgent
+from backend.agents.product_info import ProductInfoAgent
+from backend.agents.returns_processing import ReturnsProcessingAgent
 
 # Get OpenAI configuration from environment variables
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
@@ -136,7 +136,7 @@ class StaplesBrain:
         self._initialize_agents()
         
         # Initialize orchestrator
-        self.orchestrator = AgentOrchestrator(self.agents)
+        self.orchestrator = Orchestrator()
         
         logger.info(f"Staples Brain initialized with {len(self.agents)} agents")
     
@@ -214,7 +214,7 @@ class StaplesBrain:
             logger.error(f"Error initializing agents: {str(e)}", exc_info=True)
             raise RuntimeError(f"Failed to initialize agents: {str(e)}")
     
-    async def process_request(self, user_input: str, context: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    def process_request(self, user_input: str, context: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """
         Process a user request and route it to the appropriate agent.
         
@@ -232,7 +232,9 @@ class StaplesBrain:
         
         try:
             # Use the orchestrator to route to the best agent
-            response = await self.orchestrator.process_request(user_input, context)
+            session_id = context.get("session_id", "default_session")
+            user_id = context.get("user_id")
+            response = self.orchestrator.process_message(user_input, session_id, user_id)
             return response
         except Exception as e:
             logger.error(f"Error processing request: {str(e)}", exc_info=True)
