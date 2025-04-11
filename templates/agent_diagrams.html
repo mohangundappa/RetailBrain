@@ -89,8 +89,8 @@
         <div class="diagram-container">
             <h2>7. Enhanced End-to-End Architecture</h2>
             <p class="description">This enhanced architectural diagram implements expert feedback with visual improvements for better understandability. Key enhancements include: layered visual grouping, fallback paths for error handling, asynchronous processing indicators, horizontal scaling markers, data persistence indicators, and a dedicated analytics feedback loop. Components are organized by layer (Interface, Orchestration, Processing, and Data) for clearer visualization.</p>
-            <div id="enhanced-flow-container" class="text-center">
-                <!-- Content will be loaded via JavaScript -->
+            <div class="enhanced-flow-container" style="text-align: center; padding: 20px;">
+                <iframe src="/static/html/enhanced_end_to_end_flow.html" width="900" height="1200" style="border: none;"></iframe>
             </div>
         </div>
     </div>
@@ -107,26 +107,6 @@
                 console.error('Error loading architecture diagram:', error);
                 document.getElementById('architecture-container').innerHTML = 
                     '<p class="text-danger">Error loading architecture diagram. Please refresh the page.</p>';
-            });
-            
-        // Fetch the enhanced end-to-end flow HTML content
-        fetch('/static/html/enhanced_end_to_end_flow.html')
-            .then(response => response.text())
-            .then(html => {
-                // Create a container for the HTML content
-                const container = document.createElement('div');
-                container.innerHTML = html;
-                
-                // Extract only the body content, excluding head elements
-                const bodyContent = container.querySelector('body').innerHTML;
-                
-                // Insert the body content into the container
-                document.getElementById('enhanced-flow-container').innerHTML = bodyContent;
-            })
-            .catch(error => {
-                console.error('Error loading enhanced flow diagram:', error);
-                document.getElementById('enhanced-flow-container').innerHTML = 
-                    '<p class="text-danger">Error loading enhanced flow diagram. Please refresh the page.</p>';
             });
     });
     </script>
