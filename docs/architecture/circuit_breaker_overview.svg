@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg width="800" height="500" viewBox="0 0 800 500" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect x="0" y="0" width="800" height="500" fill="#f8f9fa" rx="10" ry="10"/>
+  
+  <!-- Title -->
+  <text x="400" y="40" font-family="Arial" font-size="24" text-anchor="middle" font-weight="bold">Staples Brain Circuit Breaker Architecture</text>
+  
+  <!-- Staples Brain System Box -->
+  <rect x="50" y="80" width="700" height="350" fill="#e9ecef" stroke="#343a40" stroke-width="2" rx="10" ry="10"/>
+  <text x="400" y="110" font-family="Arial" font-size="20" text-anchor="middle" font-weight="bold">Staples Brain Platform</text>
+  
+  <!-- Circuit Breaker Component -->
+  <rect x="100" y="140" width="250" height="120" fill="#007bff" stroke="#0056b3" stroke-width="2" rx="5" ry="5" opacity="0.8"/>
+  <text x="225" y="170" font-family="Arial" font-size="16" text-anchor="middle" fill="white" font-weight="bold">Circuit Breaker</text>
+  <text x="225" y="195" font-family="Arial" font-size="12" text-anchor="middle" fill="white">Monitors service health</text>
+  <text x="225" y="215" font-family="Arial" font-size="12" text-anchor="middle" fill="white">Prevents calls to failing services</text>
+  <text x="225" y="235" font-family="Arial" font-size="12" text-anchor="middle" fill="white">Manages recovery and fallbacks</text>
+  
+  <!-- Monitoring API Component -->
+  <rect x="100" y="280" width="250" height="120" fill="#6f42c1" stroke="#4e2a84" stroke-width="2" rx="5" ry="5" opacity="0.8"/>
+  <text x="225" y="310" font-family="Arial" font-size="16" text-anchor="middle" fill="white" font-weight="bold">Monitoring API</text>
+  <text x="225" y="335" font-family="Arial" font-size="12" text-anchor="middle" fill="white">View circuit breaker status</text>
+  <text x="225" y="355" font-family="Arial" font-size="12" text-anchor="middle" fill="white">Reset circuit breakers</text>
+  <text x="225" y="375" font-family="Arial" font-size="12" text-anchor="middle" fill="white">Monitor external service health</text>
+  
+  <!-- API Client Component -->
+  <rect x="450" y="140" width="250" height="120" fill="#28a745" stroke="#1e7e34" stroke-width="2" rx="5" ry="5" opacity="0.8"/>
+  <text x="575" y="170" font-family="Arial" font-size="16" text-anchor="middle" fill="white" font-weight="bold">Protected API Clients</text>
+  <text x="575" y="195" font-family="Arial" font-size="12" text-anchor="middle" fill="white">StoreApiClient</text>
+  <text x="575" y="215" font-family="Arial" font-size="12" text-anchor="middle" fill="white">OrderApiClient</text>
+  <text x="575" y="235" font-family="Arial" font-size="12" text-anchor="middle" fill="white">Other API Clients</text>
+  
+  <!-- External Services -->
+  <rect x="450" y="280" width="250" height="120" fill="#fd7e14" stroke="#c96500" stroke-width="2" rx="5" ry="5" opacity="0.8"/>
+  <text x="575" y="310" font-family="Arial" font-size="16" text-anchor="middle" fill="white" font-weight="bold">External Services</text>
+  <text x="575" y="335" font-family="Arial" font-size="12" text-anchor="middle" fill="white">Staples Store APIs</text>
+  <text x="575" y="355" font-family="Arial" font-size="12" text-anchor="middle" fill="white">Staples Order APIs</text>
+  <text x="575" y="375" font-family="Arial" font-size="12" text-anchor="middle" fill="white">Third-party Services</text>
+  
+  <!-- Connections -->
+  <!-- Circuit Breaker to API Client -->
+  <path d="M 350 200 L 450 200" stroke="#343a40" stroke-width="3" fill="none" marker-end="url(#arrow)"/>
+  <text x="400" y="190" font-family="Arial" font-size="12" text-anchor="middle">Protects</text>
+  
+  <!-- API Client to External Services -->
+  <path d="M 575 260 L 575 280" stroke="#343a40" stroke-width="3" fill="none" marker-end="url(#arrow)"/>
+  <text x="605" y="270" font-family="Arial" font-size="12" text-anchor="middle">Calls</text>
+  
+  <!-- Circuit Breaker to Monitoring API -->
+  <path d="M 225 260 L 225 280" stroke="#343a40" stroke-width="3" fill="none" marker-end="url(#arrow)"/>
+  <text x="255" y="270" font-family="Arial" font-size="12" text-anchor="middle">Reports to</text>
+  
+  <!-- Arrow Marker -->
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L0,6 L9,3 z" fill="#343a40"/>
+    </marker>
+  </defs>
+  
+  <!-- Benefits and Legend -->
+  <rect x="50" y="450" width="700" height="30" fill="none"/>
+  <text x="100" y="470" font-family="Arial" font-size="14" text-anchor="start" font-weight="bold">Benefits:</text>
+  <text x="170" y="470" font-family="Arial" font-size="14" text-anchor="start">Improved Reliability</text>
+  <text x="320" y="470" font-family="Arial" font-size="14" text-anchor="start">•</text>
+  <text x="340" y="470" font-family="Arial" font-size="14" text-anchor="start">Faster Recovery</text>
+  <text x="460" y="470" font-family="Arial" font-size="14" text-anchor="start">•</text>
+  <text x="480" y="470" font-family="Arial" font-size="14" text-anchor="start">Better Customer Experience</text>
+  <text x="680" y="470" font-family="Arial" font-size="14" text-anchor="start">•</text>
+  <text x="700" y="470" font-family="Arial" font-size="14" text-anchor="start">Cost Savings</text>
+</svg>
