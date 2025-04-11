@@ -1,0 +1,1374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Optimized Architecture Component Documentation</title>
+    <link href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #222222;
+            color: white;
+            font-family: Arial, sans-serif;
+            padding: 20px;
+        }
+        .page-title {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .component-section {
+            margin-bottom: 40px;
+            border-bottom: 1px solid #555;
+            padding-bottom: 20px;
+        }
+        .component-header {
+            background-color: #333;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .component-name {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        .component-category {
+            font-size: 14px;
+            color: #aaa;
+            font-style: italic;
+        }
+        .component-tag {
+            display: inline-block;
+            background-color: #3498db;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 12px;
+            margin-right: 5px;
+            margin-top: 5px;
+        }
+        .component-tag.new {
+            background-color: #e74c3c;
+        }
+        .component-tag.enhanced {
+            background-color: #f39c12;
+        }
+        .component-content {
+            line-height: 1.6;
+        }
+        .description-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-top: 15px;
+            margin-bottom: 10px;
+        }
+        .example-code {
+            background-color: #333;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            margin: 15px 0;
+        }
+        .integration-notes {
+            background-color: #2c3e50;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 15px 0;
+        }
+        .warning {
+            background-color: rgba(231, 76, 60, 0.3);
+            border-left: 4px solid #e74c3c;
+            padding: 10px 15px;
+            margin: 15px 0;
+        }
+        .pro-tip {
+            background-color: rgba(46, 204, 113, 0.3);
+            border-left: 4px solid #2ecc71;
+            padding: 10px 15px;
+            margin: 15px 0;
+        }
+        .layer-indicator {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 3px;
+            margin-left: 10px;
+            font-size: 12px;
+        }
+        .interface-layer {
+            background-color: #3498db;
+        }
+        .orchestration-layer {
+            background-color: #8e44ad;
+        }
+        .processing-layer {
+            background-color: #2980b9;
+        }
+        .data-layer {
+            background-color: #16a085;
+        }
+        .enterprise-layer {
+            background-color: #1abc9c;
+        }
+        .toc {
+            background-color: #333;
+            padding: 20px;
+            border-radius: 5px;
+            margin-bottom: 30px;
+        }
+        .toc-title {
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 15px;
+        }
+        .toc-item {
+            margin-bottom: 8px;
+        }
+        .toc-link {
+            color: #3498db;
+            text-decoration: none;
+        }
+        .toc-link:hover {
+            text-decoration: underline;
+        }
+        .component-diagram {
+            max-width: 100%;
+            margin: 20px 0;
+            text-align: center;
+        }
+        .component-diagram img {
+            max-width: 80%;
+            border: 1px solid #555;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="page-title">
+        <h1>Optimized Enterprise Architecture - Component Documentation</h1>
+        <p>Detailed explanation of each component in the enterprise-ready AI agent architecture</p>
+    </div>
+
+    <div class="toc">
+        <div class="toc-title">Table of Contents</div>
+        <div class="toc-item"><a href="#regional-deployment" class="toc-link">1. Regional Deployment</a></div>
+        <div class="toc-item"><a href="#security-compliance" class="toc-link">2. Security & Compliance</a></div>
+        <div class="toc-item"><a href="#telemetry-system" class="toc-link">3. Enhanced Telemetry System</a></div>
+        <div class="toc-item"><a href="#workflow-orchestration" class="toc-link">4. Workflow Orchestration Engine</a></div>
+        <div class="toc-item"><a href="#ml-agent-selection" class="toc-link">5. ML-Powered Agent Selection</a></div>
+        <div class="toc-item"><a href="#token-economy" class="toc-link">6. Token Economy Manager</a></div>
+        <div class="toc-item"><a href="#knowledge-graph" class="toc-link">7. Enterprise Knowledge Graph</a></div>
+        <div class="toc-item"><a href="#circuit-breakers" class="toc-link">8. Circuit Breakers</a></div>
+        <div class="toc-item"><a href="#two-tier-cache" class="toc-link">9. Two-Tier Caching System</a></div>
+        <div class="toc-item"><a href="#database-cluster" class="toc-link">10. Database Cluster</a></div>
+        <div class="toc-item"><a href="#enhanced-analytics" class="toc-link">11. Enhanced Analytics System</a></div>
+    </div>
+
+    <!-- Regional Deployment -->
+    <div id="regional-deployment" class="component-section">
+        <div class="component-header">
+            <div class="component-name">Regional Deployment <span class="layer-indicator enterprise-layer">Enterprise Layer</span></div>
+            <div class="component-category">Global Distribution Infrastructure</div>
+            <div class="component-tag new">NEW</div>
+            <div class="component-tag">Geo-distributed</div>
+        </div>
+        <div class="component-content">
+            <div class="description-title">Component Purpose</div>
+            <p>The Regional Deployment component manages the global distribution of the system's entry points to reduce latency for users in different geographical regions. It ensures that users connect to the nearest deployment, optimizing response times and improving the overall user experience.</p>
+            
+            <div class="description-title">How It Works</div>
+            <p>This component operates at the highest level of the architecture and works through:</p>
+            <ol>
+                <li><strong>Geo-routing:</strong> Uses IP-based routing through a Content Delivery Network (CDN) to direct users to the closest entry point.</li>
+                <li><strong>Regional instances:</strong> Maintains synchronized deployments of the Interface and Orchestration layers in multiple geographical regions.</li>
+                <li><strong>Data synchronization:</strong> Ensures that user context and conversation history is available across regions.</li>
+            </ol>
+            
+            <div class="example-code">
+// Example Geo-routing configuration (Terraform example)
+resource "aws_route53_record" "global_endpoint" {
+  zone_id = aws_route53_zone.main.zone_id
+  name    = "api.staplessuper.com"
+  type    = "A"
+  
+  latency_routing_policy {
+    region = "us-east-1"
+  }
+  
+  set_identifier = "us-east-1"
+  alias {
+    name                   = aws_cloudfront_distribution.us_east.domain_name
+    zone_id                = aws_cloudfront_distribution.us_east.hosted_zone_id
+    evaluate_target_health = false
+  }
+}
+            </div>
+            
+            <div class="description-title">Key Features</div>
+            <ul>
+                <li><strong>Latency optimization:</strong> Reduces round-trip time by 50-200ms depending on user location.</li>
+                <li><strong>Regional failover:</strong> If one region becomes unavailable, traffic automatically routes to an operational region.</li>
+                <li><strong>Compliance handling:</strong> Can route users based on data residency requirements (e.g., EU users to EU-based servers).</li>
+                <li><strong>Load distribution:</strong> Spreads load across multiple regional deployments to handle traffic spikes.</li>
+            </ul>
+            
+            <div class="integration-notes">
+                <strong>Integration Points:</strong>
+                <ul>
+                    <li>Interfaces with edge CDN services for optimal routing</li>
+                    <li>Connects to API Gateway in each region</li>
+                    <li>Requires global data replication for certain user context information</li>
+                </ul>
+            </div>
+            
+            <div class="pro-tip">
+                <strong>Pro Tip:</strong> When implementing Regional Deployment, ensure that your data synchronization strategy balances between consistency requirements and performance. For most AI conversation systems, eventual consistency is sufficient and provides better performance than strict consistency.
+            </div>
+        </div>
+    </div>
+
+    <!-- Security & Compliance -->
+    <div id="security-compliance" class="component-section">
+        <div class="component-header">
+            <div class="component-name">Security & Compliance <span class="layer-indicator orchestration-layer">Orchestration Layer</span></div>
+            <div class="component-category">Access Control & Content Safety</div>
+            <div class="component-tag enhanced">ENHANCED</div>
+        </div>
+        <div class="component-content">
+            <div class="description-title">Component Purpose</div>
+            <p>The enhanced Security & Compliance component provides comprehensive protection at multiple levels: authenticating users, validating requests, enforcing content policies, and ensuring regulatory compliance. Unlike basic security, this enhanced component includes content filtering for both inputs and outputs.</p>
+            
+            <div class="description-title">How It Works</div>
+            <p>This component operates on all incoming and outgoing traffic through:</p>
+            <ol>
+                <li><strong>Authentication:</strong> Validates user identity via tokens, API keys, or OAuth flows.</li>
+                <li><strong>Authorization:</strong> Determines if authenticated users have appropriate permissions.</li>
+                <li><strong>Input validation:</strong> Checks all requests for structural validity and potential malicious content.</li>
+                <li><strong>Content filtering:</strong> Scans user inputs for inappropriate content, PII, or sensitive information.</li>
+                <li><strong>Output filtering:</strong> Ensures LLM responses comply with safety guidelines before being sent to users.</li>
+                <li><strong>Audit logging:</strong> Records security events for compliance and forensic purposes.</li>
+            </ol>
+            
+            <div class="example-code">
+// Example content filtering implementation
+function filterContent(userInput, context) {
+  // First level: Check against prohibited terms list
+  const containsProhibitedTerms = checkAgainstTermsList(userInput);
+  if (containsProhibitedTerms) {
+    logSecurityEvent('prohibited_terms', context);
+    return { allowed: false, reason: 'prohibited_content' };
+  }
+  
+  // Second level: Check for PII patterns
+  const containsPII = identifyPIIPatterns(userInput);
+  if (containsPII) {
+    logSecurityEvent('pii_detected', context);
+    return { allowed: false, reason: 'pii_content' };
+  }
+  
+  // Third level: LLM-based content assessment
+  return assessContentWithLLM(userInput, context);
+}
+            </div>
+            
+            <div class="description-title">Key Features</div>
+            <ul>
+                <li><strong>Multi-layered filtering:</strong> Uses pattern matching, regex, and AI-based detection.</li>
+                <li><strong>Adaptive policies:</strong> Security rules can vary based on user role, country, or context.</li>
+                <li><strong>PII detection:</strong> Identifies and handles personally identifiable information appropriately.</li>
+                <li><strong>LLM guardrails:</strong> Prevents harmful, unethical, or out-of-scope responses.</li>
+                <li><strong>Rate limiting:</strong> Prevents abuse through throttling of excessive requests.</li>
+            </ul>
+            
+            <div class="warning">
+                <strong>Security Note:</strong> The Security & Compliance component must be designed to fail closed - if any security check cannot be completed successfully, the system should default to denying the request rather than allowing it through.
+            </div>
+            
+            <div class="integration-notes">
+                <strong>Integration Points:</strong>
+                <ul>
+                    <li>Interfaces with API Gateway for initial request validation</li>
+                    <li>Connected to Brain Orchestrator to provide security context</li>
+                    <li>Links to Telemetry System for security event monitoring</li>
+                    <li>Provides feedback to LLM Foundation for response filtering</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Enhanced Telemetry System -->
+    <div id="telemetry-system" class="component-section">
+        <div class="component-header">
+            <div class="component-name">Enhanced Telemetry System <span class="layer-indicator orchestration-layer">Orchestration Layer</span></div>
+            <div class="component-category">Observability & Monitoring</div>
+            <div class="component-tag enhanced">ENHANCED</div>
+        </div>
+        <div class="component-content">
+            <div class="description-title">Component Purpose</div>
+            <p>The Enhanced Telemetry System provides comprehensive observability across all components of the architecture, enabling real-time monitoring, troubleshooting, and performance optimization. It goes beyond basic logging to include distributed tracing, metrics aggregation, and anomaly detection.</p>
+            
+            <div class="description-title">How It Works</div>
+            <p>This system collects and correlates data from all components through:</p>
+            <ol>
+                <li><strong>Distributed tracing:</strong> Creates trace spans for each request as it flows through components.</li>
+                <li><strong>Context propagation:</strong> Ensures trace context follows the request through asynchronous boundaries.</li>
+                <li><strong>Metrics collection:</strong> Gathers performance data at regular intervals from all components.</li>
+                <li><strong>Log aggregation:</strong> Centralizes structured logs from all system components.</li>
+                <li><strong>Real-time dashboards:</strong> Visualizes system health, performance, and usage patterns.</li>
+                <li><strong>Alerting:</strong> Notifies operators of anomalies or performance issues.</li>
+            </ol>
+            
+            <div class="example-code">
+// Example distributed tracing implementation
+async function processUserRequest(userInput, context) {
+  // Create main trace span
+  const mainSpan = tracer.startSpan('process_user_request');
+  
+  try {
+    // Add context to span
+    mainSpan.setAttributes({
+      'user.id': context.userId,
+      'request.type': context.requestType,
+      'channel': context.channel
+    });
+    
+    // Create child span for intent detection
+    const intentSpan = tracer.startSpan('detect_intent', { parent: mainSpan });
+    const intent = await detectIntent(userInput, context, intentSpan);
+    intentSpan.end();
+    
+    // Create child span for agent selection
+    const agentSelectionSpan = tracer.startSpan('select_agent', { parent: mainSpan });
+    const selectedAgent = await selectAgent(intent, context, agentSelectionSpan);
+    agentSelectionSpan.end();
+    
+    // Process with selected agent (spans created inside)
+    const response = await processWithAgent(selectedAgent, userInput, context, mainSpan);
+    
+    // Record success
+    mainSpan.setStatus({ code: SpanStatusCode.OK });
+    return response;
+  } catch (error) {
+    // Record error
+    mainSpan.setStatus({
+      code: SpanStatusCode.ERROR,
+      message: error.message
+    });
+    mainSpan.recordException(error);
+    throw error;
+  } finally {
+    // Always end the span
+    mainSpan.end();
+  }
+}
+            </div>
+            
+            <div class="description-title">Key Features</div>
+            <ul>
+                <li><strong>Request tracing:</strong> Tracks the complete lifecycle of each user request.</li>
+                <li><strong>Performance metrics:</strong> Measures latency, throughput, error rates, and resource utilization.</li>
+                <li><strong>LLM telemetry:</strong> Specialized monitoring for LLM operations (token usage, response times, etc.).</li>
+                <li><strong>Cost tracking:</strong> Monitors API usage costs for external services.</li>
+                <li><strong>SLA monitoring:</strong> Tracks compliance with service level agreements.</li>
+                <li><strong>Anomaly detection:</strong> Uses ML to identify unusual patterns that might indicate issues.</li>
+            </ul>
+            
+            <div class="integration-notes">
+                <strong>Integration Points:</strong>
+                <ul>
+                    <li>Integrates with every component via telemetry SDKs</li>
+                    <li>Special integration with LangSmith for LLM monitoring</li>
+                    <li>Connects to external monitoring platforms (e.g., Prometheus, Grafana)</li>
+                    <li>Feeds data to the Analytics System for long-term analysis</li>
+                </ul>
+            </div>
+            
+            <div class="pro-tip">
+                <strong>Pro Tip:</strong> Design your telemetry implementation with sampling capabilities to manage the volume of data in high-traffic scenarios. For most systems, capturing 100% of traces during normal operation is unnecessary and can be expensive—a well-designed sampling strategy (e.g., capturing 10% of normal traffic but 100% of error cases) balances cost and observability.
+            </div>
+        </div>
+    </div>
+
+    <!-- Workflow Orchestration Engine -->
+    <div id="workflow-orchestration" class="component-section">
+        <div class="component-header">
+            <div class="component-name">Workflow Orchestration Engine <span class="layer-indicator orchestration-layer">Orchestration Layer</span></div>
+            <div class="component-category">Conversation & Task Management</div>
+            <div class="component-tag new">NEW</div>
+            <div class="component-tag">Horizontally scaled</div>
+        </div>
+        <div class="component-content">
+            <div class="description-title">Component Purpose</div>
+            <p>The Workflow Orchestration Engine manages complex multi-turn interactions and stateful conversations that span multiple user inputs. It maintains the state of ongoing workflows, coordinates transitions between different specialized agents, and ensures that long-running processes complete successfully even across multiple sessions.</p>
+            
+            <div class="description-title">How It Works</div>
+            <p>This engine implements workflow patterns through:</p>
+            <ol>
+                <li><strong>Workflow definitions:</strong> Declarative descriptions of multi-step processes.</li>
+                <li><strong>State management:</strong> Persistent storage of workflow state between interactions.</li>
+                <li><strong>Context preservation:</strong> Maintains conversation context across multiple turns.</li>
+                <li><strong>Transition rules:</strong> Logic for moving between workflow states based on user input or system events.</li>
+                <li><strong>Timeout handling:</strong> Manages workflows that span extended time periods.</li>
+            </ol>
+            
+            <div class="example-code">
+// Sample workflow definition for a multi-step order process
+const orderWorkflow = {
+  name: 'product_order_workflow',
+  initialState: 'gather_product_info',
+  
+  states: {
+    'gather_product_info': {
+      agent: 'product_info_agent',
+      transitions: {
+        'product_selected': 'check_availability',
+        'need_more_info': 'gather_product_info',
+        'cancel': 'end_workflow'
+      },
+      timeout: '15m',
+      onTimeout: 'remind_user'
+    },
+    
+    'check_availability': {
+      agent: 'inventory_agent',
+      transitions: {
+        'in_stock': 'gather_shipping_info',
+        'out_of_stock': 'offer_alternatives',
+        'cancel': 'end_workflow'
+      }
+    },
+    
+    'offer_alternatives': {
+      agent: 'product_recommendation_agent',
+      transitions: {
+        'alternative_selected': 'check_availability',
+        'continue_with_original': 'gather_shipping_info',
+        'cancel': 'end_workflow'
+      }
+    },
+    
+    'gather_shipping_info': {
+      agent: 'shipping_agent',
+      transitions: {
+        'shipping_provided': 'process_payment',
+        'need_more_info': 'gather_shipping_info',
+        'cancel': 'end_workflow'
+      }
+    },
+    
+    'process_payment': {
+      agent: 'payment_agent',
+      transitions: {
+        'payment_success': 'order_confirmation',
+        'payment_failure': 'retry_payment',
+        'cancel': 'end_workflow'
+      }
+    },
+    
+    'retry_payment': {
+      agent: 'payment_agent',
+      transitions: {
+        'payment_success': 'order_confirmation',
+        'payment_failure': 'payment_options',
+        'cancel': 'end_workflow'
+      },
+      maxRetries: 2,
+      onMaxRetriesExceeded: 'payment_options'
+    },
+    
+    'payment_options': {
+      agent: 'payment_options_agent',
+      transitions: {
+        'try_different_payment': 'process_payment',
+        'cancel': 'end_workflow'
+      }
+    },
+    
+    'order_confirmation': {
+      agent: 'order_confirmation_agent',
+      transitions: {
+        'order_complete': 'end_workflow'
+      },
+      onEntry: 'send_order_confirmation_email'
+    },
+    
+    'end_workflow': {
+      type: 'terminal',
+      onEntry: 'cleanup_workflow_resources'
+    }
+  }
+};
+            </div>
+            
+            <div class="description-title">Key Features</div>
+            <ul>
+                <li><strong>Multi-step flows:</strong> Supports complex processes that require multiple interactions.</li>
+                <li><strong>Dynamic branching:</strong> Routes conversations based on user input or system conditions.</li>
+                <li><strong>Resumable workflows:</strong> Users can pause and resume complex interactions.</li>
+                <li><strong>Error recovery:</strong> Handles failures within a workflow step and provides retry mechanisms.</li>
+                <li><strong>Progress tracking:</strong> Maintains visibility into workflow completion status.</li>
+                <li><strong>Cross-session persistence:</strong> Workflows can span multiple user sessions.</li>
+            </ul>
+            
+            <div class="integration-notes">
+                <strong>Integration Points:</strong>
+                <ul>
+                    <li>Receives workflow initiation from Brain Orchestrator</li>
+                    <li>Interacts with Agent Selection to engage appropriate agents</li>
+                    <li>Uses Database Cluster for workflow state persistence</li>
+                    <li>Sends workflow step completions to Analytics System</li>
+                </ul>
+            </div>
+            
+            <div class="pro-tip">
+                <strong>Pro Tip:</strong> When designing workflows, include explicit "escape hatches" at each step to allow users to speak with a human agent if the automated process isn't meeting their needs. This greatly improves user satisfaction in complex scenarios.
+            </div>
+        </div>
+    </div>
+
+    <!-- ML-Powered Agent Selection -->
+    <div id="ml-agent-selection" class="component-section">
+        <div class="component-header">
+            <div class="component-name">ML-Powered Agent Selection <span class="layer-indicator processing-layer">Processing Layer</span></div>
+            <div class="component-category">Intelligent Routing & Assignment</div>
+            <div class="component-tag enhanced">ENHANCED</div>
+        </div>
+        <div class="component-content">
+            <div class="description-title">Component Purpose</div>
+            <p>The ML-Powered Agent Selection component intelligently routes user requests to the most appropriate specialized agent based on learned patterns of agent performance for similar queries. Unlike rule-based routing, this system continuously improves its routing decisions based on feedback from successful and unsuccessful interactions.</p>
+            
+            <div class="description-title">How It Works</div>
+            <p>This component makes routing decisions through:</p>
+            <ol>
+                <li><strong>Request embedding:</strong> Converts user input into a vector representation capturing semantic meaning.</li>
+                <li><strong>Historical analysis:</strong> Compares current request to historical patterns of agent success.</li>
+                <li><strong>Performance prediction:</strong> Estimates likelihood of successful resolution by each agent.</li>
+                <li><strong>Contextual factors:</strong> Considers user history, preferences, and current session state.</li>
+                <li><strong>A/B testing:</strong> Occasionally routes to sub-optimal agents to gather comparative performance data.</li>
+            </ol>
+            
+            <div class="example-code">
+async function selectOptimalAgent(userInput, userContext) {
+  // Get vector embedding of user input
+  const inputEmbedding = await getEmbedding(userInput);
+  
+  // Extract relevant features from context
+  const contextFeatures = extractFeatures(userContext);
+  
+  // Get candidate agents based on high-level intent
+  const intentClassification = await classifyIntent(userInput);
+  const candidateAgents = getCandidateAgents(intentClassification);
+  
+  // If only one candidate, return it directly
+  if (candidateAgents.length === 1) {
+    return candidateAgents[0];
+  }
+  
+  // For multiple candidates, use ML model to predict performance
+  const predictionFeatures = {
+    inputEmbedding,
+    contextFeatures,
+    candidateAgents,
+    userHistory: getUserHistoricalPerformance(userContext.userId)
+  };
+  
+  // Get predicted performance scores for each agent
+  const predictionScores = await agentPerformanceModel.predict(predictionFeatures);
+  
+  // Select agent with highest predicted performance
+  let selectedAgent = predictionScores[0].agent;
+  let highestScore = predictionScores[0].score;
+  
+  for (const prediction of predictionScores) {
+    if (prediction.score > highestScore) {
+      highestScore = prediction.score;
+      selectedAgent = prediction.agent;
+    }
+  }
+  
+  // Occasional exploration for improvement (e.g., 5% of the time)
+  if (Math.random() < 0.05) {
+    const explorationAgent = selectRandomAgentForExploration(candidateAgents, selectedAgent);
+    logExplorationDecision(selectedAgent, explorationAgent, userContext);
+    return explorationAgent;
+  }
+  
+  return selectedAgent;
+}
+            </div>
+            
+            <div class="description-title">Key Features</div>
+            <ul>
+                <li><strong>Learning system:</strong> Improves routing decisions based on observed outcomes.</li>
+                <li><strong>Personalization:</strong> Adapts to individual user patterns and preferences.</li>
+                <li><strong>Multi-factor routing:</strong> Considers intent, context, history, and predicted success.</li>
+                <li><strong>Confidence scoring:</strong> Provides confidence levels for routing decisions.</li>
+                <li><strong>Exploration strategies:</strong> Balances exploitation of known good routes with exploration of alternatives.</li>
+            </ul>
+            
+            <div class="integration-notes">
+                <strong>Integration Points:</strong>
+                <ul>
+                    <li>Receives requests from Workflow Orchestration Engine</li>
+                    <li>Interfaces with all Specialized Agents for capability awareness</li>
+                    <li>Feeds outcomes to Analytics System to improve future routing</li>
+                    <li>Interfaces with Knowledge Graph for domain-specific routing</li>
+                </ul>
+            </div>
+            
+            <div class="warning">
+                <strong>Important Note:</strong> When implementing ML-powered routing, ensure the system can fall back to rule-based routing if the ML model is unavailable or produces low-confidence results. This ensures system resilience during model retraining or unexpected problems.
+            </div>
+        </div>
+    </div>
+
+    <!-- Token Economy Manager -->
+    <div id="token-economy" class="component-section">
+        <div class="component-header">
+            <div class="component-name">Token Economy Manager <span class="layer-indicator processing-layer">Processing Layer</span></div>
+            <div class="component-category">LLM Cost Optimization</div>
+            <div class="component-tag new">NEW</div>
+        </div>
+        <div class="component-content">
+            <div class="description-title">Component Purpose</div>
+            <p>The Token Economy Manager optimizes the usage of LLM tokens to balance between quality of responses and operational costs. It dynamically adjusts prompt strategies, context windows, and model selection based on the specific requirements of each request, ensuring efficient use of LLM resources.</p>
+            
+            <div class="description-title">How It Works</div>
+            <p>This component optimizes token usage through:</p>
+            <ol>
+                <li><strong>Request classification:</strong> Categorizes requests by complexity and required reasoning depth.</li>
+                <li><strong>Dynamic prompt construction:</strong> Builds prompts with appropriate level of detail based on request needs.</li>
+                <li><strong>Context pruning:</strong> Selectively includes relevant conversation history while excluding irrelevant context.</li>
+                <li><strong>Model selection:</strong> Routes to appropriate LLM based on complexity (e.g., GPT-4o for complex reasoning, smaller models for simpler tasks).</li>
+                <li><strong>Budget enforcement:</strong> Enforces token usage limits based on business rules and priorities.</li>
+            </ol>
+            
+            <div class="example-code">
+async function optimizePrompt(requestType, userInput, conversationHistory, userProfile) {
+  // Step 1: Determine complexity level
+  const complexityScore = await assessComplexity(userInput);
+  
+  // Step 2: Select appropriate model based on complexity
+  const selectedModel = selectModelByComplexity(complexityScore);
+  
+  // Step 3: Determine optimal context window size
+  const contextWindowSize = determineContextSize(
+    complexityScore, 
+    conversationHistory.length,
+    requestType
+  );
+  
+  // Step 4: Select most relevant conversation history
+  const relevantHistory = await pruneConversationHistory(
+    conversationHistory,
+    userInput,
+    contextWindowSize
+  );
+  
+  // Step 5: Select appropriate system prompt based on request type
+  const systemPrompt = getSystemPrompt(requestType, userProfile);
+  
+  // Step 6: Calculate expected token usage
+  const estimatedTokens = estimateTokenUsage(
+    systemPrompt, 
+    relevantHistory, 
+    userInput
+  );
+  
+  // Step 7: Check against budget limits
+  if (exceedsBudgetLimits(estimatedTokens, requestType, userProfile)) {
+    // Apply more aggressive optimization or fallback strategy
+    return applyAggressiveOptimization(
+      systemPrompt,
+      relevantHistory,
+      userInput,
+      requestType
+    );
+  }
+  
+  // Return optimized prompt configuration
+  return {
+    model: selectedModel,
+    systemPrompt: systemPrompt,
+    conversationHistory: relevantHistory,
+    estimatedTokens: estimatedTokens,
+    optimizationApplied: true,
+    optimizationLevel: complexityScore > 0.7 ? 'minimal' : 'standard'
+  };
+}
+            </div>
+            
+            <div class="description-title">Key Features</div>
+            <ul>
+                <li><strong>Cost tracking:</strong> Monitors token usage and associated costs across the system.</li>
+                <li><strong>Dynamic optimization:</strong> Adapts optimization strategy based on request importance and complexity.</li>
+                <li><strong>Semantic pruning:</strong> Intelligently removes redundant or irrelevant context.</li>
+                <li><strong>Budget allocation:</strong> Applies different token budgets to different types of operations.</li>
+                <li><strong>Usage analytics:</strong> Provides insights into token consumption patterns.</li>
+            </ul>
+            
+            <div class="integration-notes">
+                <strong>Integration Points:</strong>
+                <ul>
+                    <li>Sits between Agent Selection and LLM Foundation</li>
+                    <li>Interacts with specialized agents to understand their token requirements</li>
+                    <li>Integrates with Analytics System to optimize strategies over time</li>
+                    <li>Reports usage metrics to Telemetry System</li>
+                </ul>
+            </div>
+            
+            <div class="pro-tip">
+                <strong>Pro Tip:</strong> One of the most effective token optimization strategies is implementing a tiered approach to context inclusion. For each request, include 100% of the most recent and relevant context, but progressively summarize older context to capture the essence of the conversation without including every detail. This can reduce token usage by 30-60% in long conversations while maintaining response quality.
+            </div>
+        </div>
+    </div>
+
+    <!-- Enterprise Knowledge Graph -->
+    <div id="knowledge-graph" class="component-section">
+        <div class="component-header">
+            <div class="component-name">Enterprise Knowledge Graph <span class="layer-indicator enterprise-layer">Enterprise Layer</span></div>
+            <div class="component-category">Organizational Knowledge Integration</div>
+            <div class="component-tag new">NEW</div>
+            <div class="component-tag">Persistent</div>
+        </div>
+        <div class="component-content">
+            <div class="description-title">Component Purpose</div>
+            <p>The Enterprise Knowledge Graph integrates structured organizational knowledge with the AI system, enabling specialized agents to access and reason about company-specific information. This component bridges the gap between general LLM knowledge and proprietary enterprise information such as products, policies, procedures, and relationships.</p>
+            
+            <div class="description-title">How It Works</div>
+            <p>This component provides knowledge access through:</p>
+            <ol>
+                <li><strong>Knowledge representation:</strong> Structures enterprise information as a connected graph of entities and relationships.</li>
+                <li><strong>Query interfaces:</strong> Provides natural language and structured query capabilities to access knowledge.</li>
+                <li><strong>Synchronization:</strong> Maintains alignment with enterprise systems of record.</li>
+                <li><strong>Context injection:</strong> Dynamically injects relevant knowledge into agent contexts.</li>
+                <li><strong>Knowledge updates:</strong> Tracks and propagates changes to enterprise information.</li>
+            </ol>
+            
+            <div class="example-code">
+// Example knowledge graph query for product information
+async function retrieveProductKnowledge(productQuery, maxResults = 5) {
+  // Convert natural language query to structured query
+  const structuredQuery = await nlQueryToStructured(productQuery);
+  
+  // Execute graph query against knowledge base
+  const knowledgeResults = await knowledgeGraph.query(`
+    MATCH (p:Product)-[:HAS_CATEGORY]->(c:Category)
+    WHERE p.name CONTAINS $name OR p.description CONTAINS $description
+    OPTIONAL MATCH (p)-[:HAS_FEATURE]->(f:Feature)
+    OPTIONAL MATCH (p)-[:COMPATIBLE_WITH]->(cp:Product)
+    OPTIONAL MATCH (p)-[:AVAILABLE_AT]->(s:Store)
+    RETURN p, c, collect(f) as features, collect(DISTINCT cp) as compatibleProducts,
+           collect(DISTINCT s) as availableStores
+    LIMIT $limit
+  `, {
+    name: structuredQuery.productName || '',
+    description: structuredQuery.productDescription || '',
+    limit: maxResults
+  });
+  
+  // Format results for agent consumption
+  return formatKnowledgeForAgent(knowledgeResults, structuredQuery.queryIntent);
+}
+
+// Format specific knowledge for an agent's context
+function formatKnowledgeForAgent(knowledgeResults, queryIntent) {
+  // Different formatting based on intent
+  if (queryIntent === 'product_comparison') {
+    return formatForComparison(knowledgeResults);
+  } else if (queryIntent === 'inventory_check') {
+    return formatForInventory(knowledgeResults);
+  } else if (queryIntent === 'compatibility_check') {
+    return formatForCompatibility(knowledgeResults);
+  } else {
+    // Default comprehensive format
+    return formatComprehensive(knowledgeResults);
+  }
+}
+            </div>
+            
+            <div class="description-title">Key Features</div>
+            <ul>
+                <li><strong>Multi-domain knowledge:</strong> Encompasses products, policies, procedures, organization structure, etc.</li>
+                <li><strong>Relationship modeling:</strong> Captures connections between entities (e.g., product compatibility, department relationships).</li>
+                <li><strong>Temporal awareness:</strong> Maintains historical information and future-dated changes.</li>
+                <li><strong>Confidence scoring:</strong> Indicates reliability of knowledge items.</li>
+                <li><strong>Access control:</strong> Enforces information access according to user roles and permissions.</li>
+            </ul>
+            
+            <div class="integration-notes">
+                <strong>Integration Points:</strong>
+                <ul>
+                    <li>Connects to enterprise systems (Product Information Management, ERP, CRM, etc.)</li>
+                    <li>Interfaces with Specialized Agents to provide domain knowledge</li>
+                    <li>Links to the Database Cluster for persistent storage</li>
+                    <li>Integrated with the Security & Compliance component for access control</li>
+                </ul>
+            </div>
+            
+            <div class="warning">
+                <strong>Important Note:</strong> The Enterprise Knowledge Graph should implement strict versioning and change tracking to ensure that all agents have access to consistent information, especially during knowledge updates. This prevents the problem of different agents working with different versions of enterprise knowledge during the same conversation.
+            </div>
+        </div>
+    </div>
+
+    <!-- Circuit Breakers -->
+    <div id="circuit-breakers" class="component-section">
+        <div class="component-header">
+            <div class="component-name">Circuit Breakers <span class="layer-indicator processing-layer">Processing Layer</span></div>
+            <div class="component-category">Failure Isolation & Resilience</div>
+            <div class="component-tag new">NEW</div>
+        </div>
+        <div class="component-content">
+            <div class="description-title">Component Purpose</div>
+            <p>Circuit Breakers protect the system from cascading failures by temporarily disabling calls to failing components or external services. They prevent a failing service from consuming resources, reduce load on struggling systems to help them recover, and provide fast failure responses rather than waiting for timeouts.</p>
+            
+            <div class="description-title">How It Works</div>
+            <p>Circuit breakers operate by monitoring call success and implementing state transitions:</p>
+            <ol>
+                <li><strong>Closed state:</strong> Normal operation, calls pass through to the target service.</li>
+                <li><strong>Open state:</strong> After failure threshold reached, calls are blocked without attempting the service.</li>
+                <li><strong>Half-open state:</strong> After a reset timeout, allows limited calls to test if the service has recovered.</li>
+                <li><strong>Fallback mechanisms:</strong> When open, provides alternative responses or degraded functionality.</li>
+                <li><strong>Health monitoring:</strong> Tracks success/failure rates and response times for protected services.</li>
+            </ol>
+            
+            <div class="example-code">
+// Example circuit breaker implementation for external API calls
+class CircuitBreaker {
+  constructor(options = {}) {
+    this.failureThreshold = options.failureThreshold || 5;
+    this.resetTimeout = options.resetTimeout || 30000; // 30 seconds
+    this.monitorTimeout = options.monitorTimeout || 10000; // 10 seconds
+    
+    this.state = 'CLOSED';
+    this.failureCount = 0;
+    this.lastFailureTime = null;
+    this.successCount = 0;
+    this.listeners = new Map();
+    
+    // Circuit breaker monitoring
+    setInterval(() => this.monitor(), this.monitorTimeout);
+  }
+  
+  async execute(serviceCall, fallback) {
+    try {
+      if (this.state === 'OPEN') {
+        if (Date.now() > this.lastFailureTime + this.resetTimeout) {
+          this.setState('HALF_OPEN');
+        } else {
+          return await fallback();
+        }
+      }
+      
+      const result = await Promise.race([
+        serviceCall(),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Service timeout')), 5000)
+        )
+      ]);
+      
+      this.onSuccess();
+      return result;
+    } catch (error) {
+      return this.onFailure(error, fallback);
+    }
+  }
+  
+  onSuccess() {
+    if (this.state === 'HALF_OPEN') {
+      this.successCount++;
+      if (this.successCount >= 3) { // Require 3 consecutive successes
+        this.setState('CLOSED');
+      }
+    } else {
+      this.failureCount = 0;
+    }
+  }
+  
+  async onFailure(error, fallback) {
+    this.failureCount++;
+    this.lastFailureTime = Date.now();
+    
+    if (this.state === 'HALF_OPEN' || 
+        (this.state === 'CLOSED' && this.failureCount >= this.failureThreshold)) {
+      this.setState('OPEN');
+    }
+    
+    return fallback ? await fallback() : Promise.reject(error);
+  }
+  
+  setState(newState) {
+    const previousState = this.state;
+    this.state = newState;
+    
+    if (newState === 'CLOSED') {
+      this.failureCount = 0;
+      this.successCount = 0;
+    } else if (newState === 'HALF_OPEN') {
+      this.successCount = 0;
+    }
+    
+    // Notify listeners of state change
+    this.notifyStateChange(previousState, newState);
+  }
+  
+  monitor() {
+    // Emit telemetry data
+    const telemetryData = {
+      circuitName: this.name,
+      state: this.state,
+      failureCount: this.failureCount,
+      lastFailureTime: this.lastFailureTime,
+      successCount: this.successCount
+    };
+    
+    telemetrySystem.emitMetric('circuit_breaker_state', telemetryData);
+  }
+}
+            </div>
+            
+            <div class="description-title">Key Features</div>
+            <ul>
+                <li><strong>Automatic failure detection:</strong> Identifies when components are failing based on error rates or timeouts.</li>
+                <li><strong>Configurable thresholds:</strong> Customizable failure counts and timeouts based on service characteristics.</li>
+                <li><strong>Self-healing:</strong> Automatically attempts recovery after cooling-off periods.</li>
+                <li><strong>Graceful degradation:</strong> Falls back to alternative data sources or simplified responses.</li>
+                <li><strong>Telemetry integration:</strong> Reports circuit state and transitions to monitoring systems.</li>
+            </ul>
+            
+            <div class="integration-notes">
+                <strong>Integration Points:</strong>
+                <ul>
+                    <li>Protects connections between Specialized Agents and External APIs</li>
+                    <li>Interfaces with the Telemetry System to report circuit states</li>
+                    <li>Connects to Caching System for fallback responses</li>
+                    <li>Integrates with the LLM Foundation for degraded service handling</li>
+                </ul>
+            </div>
+            
+            <div class="pro-tip">
+                <strong>Pro Tip:</strong> Implement bulkhead patterns alongside circuit breakers to isolate resource pools for different external systems. This ensures that a slow database connection, for example, doesn't consume all available resources and affect API calls to unrelated systems.
+            </div>
+        </div>
+    </div>
+
+    <!-- Two-Tier Cache -->
+    <div id="two-tier-cache" class="component-section">
+        <div class="component-header">
+            <div class="component-name">Two-Tier Caching System <span class="layer-indicator data-layer">Data Layer</span></div>
+            <div class="component-category">Performance Optimization</div>
+            <div class="component-tag enhanced">ENHANCED</div>
+            <div class="component-tag">Tiered</div>
+        </div>
+        <div class="component-content">
+            <div class="description-title">Component Purpose</div>
+            <p>The Two-Tier Caching System improves response time and reduces load on backend systems by storing frequently accessed data and expensive computation results. Unlike a simple cache, this system implements a layered approach with different retention policies for different types of data.</p>
+            
+            <div class="description-title">How It Works</div>
+            <p>This system operates through a two-level architecture:</p>
+            <ol>
+                <li><strong>L1 Cache (Memory):</strong> In-memory storage for high-frequency, time-sensitive data with very fast access.</li>
+                <li><strong>L2 Cache (Persistent):</strong> Longer-lived storage for less frequently accessed data with higher capacity.</li>
+                <li><strong>Intelligent routing:</strong> Determines appropriate cache tier based on data characteristics.</li>
+                <li><strong>Eviction policies:</strong> Multiple strategies for cache entry expiration (time-based, access-based, size-based).</li>
+                <li><strong>Cache warming:</strong> Proactive population of cache entries for predictable access patterns.</li>
+            </ol>
+            
+            <div class="example-code">
+// Example two-tier cache implementation
+class TwoTierCache {
+  constructor(options = {}) {
+    // L1 Cache (In-memory) - Fast but limited capacity
+    this.l1Cache = new MemoryCache({
+      maxSize: options.l1MaxSize || 100 * 1024 * 1024, // 100MB default
+      ttl: options.l1Ttl || 300, // 5 minutes default
+      updateAgeOnGet: true
+    });
+    
+    // L2 Cache (Persistent) - Larger capacity, slightly slower
+    this.l2Cache = new PersistentCache({
+      storageEngine: options.storageEngine || 'redis',
+      connectionOptions: options.connectionOptions || {},
+      ttl: options.l2Ttl || 86400, // 24 hours default
+      maxSize: options.l2MaxSize || 5 * 1024 * 1024 * 1024 // 5GB default
+    });
+    
+    // Cache strategy configuration
+    this.cacheStrategy = options.cacheStrategy || 'read-through';
+    this.l1WritePolicy = options.l1WritePolicy || 'write-through';
+  }
+  
+  async get(key, fetchFunction) {
+    // Check L1 cache first
+    let value = this.l1Cache.get(key);
+    if (value !== undefined) {
+      telemetrySystem.incrementCounter('cache.l1.hit');
+      return value;
+    }
+    
+    telemetrySystem.incrementCounter('cache.l1.miss');
+    
+    // Check L2 cache
+    value = await this.l2Cache.get(key);
+    if (value !== undefined) {
+      telemetrySystem.incrementCounter('cache.l2.hit');
+      
+      // Populate L1 from L2 (cache warming)
+      this.l1Cache.set(key, value);
+      
+      return value;
+    }
+    
+    telemetrySystem.incrementCounter('cache.l2.miss');
+    
+    // If no cached value found and a fetch function is provided, use it
+    if (fetchFunction) {
+      try {
+        const timer = telemetrySystem.startTimer('cache.fetch.duration');
+        value = await fetchFunction();
+        timer.end();
+        
+        // Cache the fetched value
+        if (value !== undefined) {
+          this.set(key, value);
+        }
+        
+        return value;
+      } catch (error) {
+        telemetrySystem.incrementCounter('cache.fetch.error');
+        throw error;
+      }
+    }
+    
+    return undefined;
+  }
+  
+  async set(key, value, options = {}) {
+    // Determine the cache tiers to use based on the value characteristics
+    const size = estimateSize(value);
+    const popularity = options.popularity || calculatePopularity(key);
+    const volatility = options.volatility || calculateVolatility(key, value);
+    
+    // Cache strategy logic
+    if (size < options.l1MaxItemSize || popularity > options.popularityThreshold) {
+      // Small or popular items go in L1
+      this.l1Cache.set(key, value, options.l1Options);
+    }
+    
+    // Less volatile data also goes in L2
+    if (volatility < options.volatilityThreshold) {
+      await this.l2Cache.set(key, value, options.l2Options);
+    }
+    
+    return true;
+  }
+  
+  // Additional cache management methods
+  // ...
+}
+            </div>
+            
+            <div class="description-title">Key Features</div>
+            <ul>
+                <li><strong>Tiered storage:</strong> Balances between speed (L1) and capacity (L2).</li>
+                <li><strong>Adaptive policies:</strong> Dynamically adjusts caching behavior based on access patterns.</li>
+                <li><strong>Staleness controls:</strong> Manages cache freshness with configurable TTLs and validation.</li>
+                <li><strong>Data-aware caching:</strong> Different strategies for different data types (responses, reference data, etc.).</li>
+                <li><strong>Cache analytics:</strong> Tracks hit rates, miss costs, and storage efficiency.</li>
+            </ul>
+            
+            <div class="integration-notes">
+                <strong>Integration Points:</strong>
+                <ul>
+                    <li>Receives data from External APIs for response caching</li>
+                    <li>Stores frequently used database query results</li>
+                    <li>Provides fallback responses for Circuit Breakers</li>
+                    <li>Serves cached responses to Response Generation component</li>
+                </ul>
+            </div>
+            
+            <div class="pro-tip">
+                <strong>Pro Tip:</strong> The most effective approach to caching in AI systems is to cache at multiple granularity levels: cache the final user response for exact matches, but also cache intermediate results (like API data or database query results) which can be reused even when the final response might differ slightly.
+            </div>
+        </div>
+    </div>
+
+    <!-- Database Cluster -->
+    <div id="database-cluster" class="component-section">
+        <div class="component-header">
+            <div class="component-name">Database Cluster <span class="layer-indicator data-layer">Data Layer</span></div>
+            <div class="component-category">State & History Persistence</div>
+            <div class="component-tag">Horizontally scaled</div>
+            <div class="component-tag">Persistent</div>
+        </div>
+        <div class="component-content">
+            <div class="description-title">Component Purpose</div>
+            <p>The Database Cluster provides persistent storage for conversation history, user profiles, agent configurations, and system state. It ensures data durability and enables complex queries across historical interactions while scaling to handle enterprise workloads.</p>
+            
+            <div class="description-title">How It Works</div>
+            <p>This component manages data through:</p>
+            <ol>
+                <li><strong>Distributed storage:</strong> Spreads data across multiple nodes for performance and reliability.</li>
+                <li><strong>Multi-model support:</strong> Includes relational structures for transactional data and document/graph structures for flexible schemas.</li>
+                <li><strong>Read/write optimization:</strong> Separates read and write paths for optimal performance.</li>
+                <li><strong>Data lifecycle management:</strong> Implements archiving, summarization, and deletion policies.</li>
+                <li><strong>Transactional integrity:</strong> Ensures data consistency across related operations.</li>
+            </ol>
+            
+            <div class="description-title">Key Database Collections/Tables</div>
+            <div class="example-code">
+-- Core tables (simplified schema)
+
+-- Users and profiles
+CREATE TABLE users (
+  user_id UUID PRIMARY KEY,
+  external_id VARCHAR(255) UNIQUE,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  last_active_at TIMESTAMP,
+  preferences JSONB,
+  metadata JSONB
+);
+
+-- Conversations
+CREATE TABLE conversations (
+  conversation_id UUID PRIMARY KEY,
+  user_id UUID REFERENCES users(user_id),
+  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  title VARCHAR(255),
+  metadata JSONB,
+  status VARCHAR(50) NOT NULL
+);
+
+-- Messages within conversations
+CREATE TABLE messages (
+  message_id UUID PRIMARY KEY,
+  conversation_id UUID REFERENCES conversations(conversation_id),
+  parent_message_id UUID REFERENCES messages(message_id),
+  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  role VARCHAR(50) NOT NULL, -- 'user', 'assistant', 'system'
+  content TEXT NOT NULL,
+  metadata JSONB,
+  token_count INTEGER
+);
+
+-- Agent deployments and configurations
+CREATE TABLE agents (
+  agent_id UUID PRIMARY KEY,
+  name VARCHAR(255) NOT NULL,
+  description TEXT,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  configuration JSONB NOT NULL,
+  prompts JSONB NOT NULL,
+  active BOOLEAN NOT NULL DEFAULT TRUE
+);
+
+-- Workflow state management
+CREATE TABLE workflows (
+  workflow_id UUID PRIMARY KEY,
+  conversation_id UUID REFERENCES conversations(conversation_id),
+  workflow_type VARCHAR(100) NOT NULL,
+  current_state VARCHAR(100) NOT NULL,
+  started_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  completed_at TIMESTAMP,
+  state_data JSONB NOT NULL,
+  metadata JSONB
+);
+
+-- Telemetry and analytics
+CREATE TABLE interaction_metrics (
+  metric_id UUID PRIMARY KEY,
+  message_id UUID REFERENCES messages(message_id),
+  agent_id UUID REFERENCES agents(agent_id),
+  user_id UUID REFERENCES users(user_id),
+  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  metric_type VARCHAR(100) NOT NULL,
+  metric_value JSONB NOT NULL,
+  metadata JSONB
+);
+            </div>
+            
+            <div class="description-title">Key Features</div>
+            <ul>
+                <li><strong>Horizontal scaling:</strong> Adds capacity by adding cluster nodes rather than vertical scaling.</li>
+                <li><strong>High availability:</strong> Replicates data across nodes to prevent single points of failure.</li>
+                <li><strong>Backup and recovery:</strong> Implements point-in-time recovery capabilities.</li>
+                <li><strong>Data partitioning:</strong> Shards data for improved query performance.</li>
+                <li><strong>Analytical capabilities:</strong> Supports both operational and analytical workloads.</li>
+            </ul>
+            
+            <div class="integration-notes">
+                <strong>Integration Points:</strong>
+                <ul>
+                    <li>Connected to all components requiring data persistence</li>
+                    <li>Special integration with Workflow Orchestration for state management</li>
+                    <li>Provides historical data to Analytics System</li>
+                    <li>Integrates with the Two-Tier Cache for query optimization</li>
+                </ul>
+            </div>
+            
+            <div class="warning">
+                <strong>Critical Note:</strong> Always implement proper connection pooling and query timeout handling when interacting with the database cluster. In high-load scenarios, database connection limits are often the first bottleneck that appears, especially with horizontally scaled application servers.
+            </div>
+        </div>
+    </div>
+
+    <!-- Enhanced Analytics System -->
+    <div id="enhanced-analytics" class="component-section">
+        <div class="component-header">
+            <div class="component-name">Enhanced Analytics System <span class="layer-indicator processing-layer">Processing Layer</span></div>
+            <div class="component-category">Performance Optimization & Insights</div>
+            <div class="component-tag enhanced">ENHANCED</div>
+        </div>
+        <div class="component-content">
+            <div class="description-title">Component Purpose</div>
+            <p>The Enhanced Analytics System processes user interactions and system performance data to derive actionable insights, identify improvement opportunities, and continuously optimize the AI system's effectiveness. It provides both real-time operational analytics and long-term strategic insights.</p>
+            
+            <div class="description-title">How It Works</div>
+            <p>This system processes interaction data through:</p>
+            <ol>
+                <li><strong>Data ingestion:</strong> Collects user interactions, agent performance, and system metrics.</li>
+                <li><strong>Real-time processing:</strong> Analyzes streaming data for immediate insights.</li>
+                <li><strong>Batch processing:</strong> Performs deep analysis on historical data.</li>
+                <li><strong>Pattern recognition:</strong> Identifies trends, common issues, and success patterns.</li>
+                <li><strong>Feedback loop:</strong> Provides insights to improve agent prompts, routing, and responses.</li>
+            </ol>
+            
+            <div class="example-code">
+// Example analytics pipeline for optimizing agent performance
+async function analyzeAgentPerformance(timeframe = '24h') {
+  // Step 1: Query raw interaction data
+  const rawData = await queryInteractionData(timeframe);
+  
+  // Step 2: Calculate key metrics
+  const metrics = calculatePerformanceMetrics(rawData);
+  
+  // Step 3: Identify agents that need optimization
+  const agentsNeedingOptimization = identifyUnderperformingAgents(metrics);
+  
+  // Step 4: For each agent, identify specific improvement areas
+  for (const agent of agentsNeedingOptimization) {
+    // Get detailed interaction data for this agent
+    const agentData = await queryAgentInteractionDetails(agent.id, timeframe);
+    
+    // Analyze failure patterns
+    const failurePatterns = analyzeFailurePatterns(agentData);
+    
+    // Analyze successful patterns
+    const successPatterns = analyzeSuccessPatterns(agentData);
+    
+    // Generate improvement suggestions
+    const suggestions = generateImprovementSuggestions(agent, failurePatterns, successPatterns);
+    
+    // Store suggestions for review or automated application
+    await storeImprovementSuggestions(agent.id, suggestions);
+    
+    // If confidence is high, apply automated improvements
+    if (suggestions.confidence > AUTOMATION_THRESHOLD) {
+      await applyAutomatedImprovements(agent.id, suggestions);
+    }
+  }
+  
+  // Step 5: Generate comprehensive performance report
+  const report = generatePerformanceReport(metrics, agentsNeedingOptimization);
+  
+  // Step 6: Distribute insights
+  await distributeInsights(report);
+  
+  return report;
+}
+
+// Example calculation of interaction success metrics
+function calculatePerformanceMetrics(rawData) {
+  const metrics = {
+    overall: {
+      totalInteractions: 0,
+      successfulInteractions: 0,
+      unsuccessfulInteractions: 0,
+      averageInteractionTime: 0,
+      userSatisfactionScore: 0
+    },
+    byAgent: {},
+    byIntentType: {},
+    byUserSegment: {}
+  };
+  
+  // Calculate overall metrics
+  metrics.overall.totalInteractions = rawData.length;
+  
+  // Process each interaction
+  for (const interaction of rawData) {
+    // Initialize agent metrics if not exists
+    if (!metrics.byAgent[interaction.agentId]) {
+      metrics.byAgent[interaction.agentId] = {
+        totalInteractions: 0,
+        successfulInteractions: 0,
+        unsuccessfulInteractions: 0,
+        averageInteractionTime: 0,
+        userSatisfactionScore: 0,
+        commonFailureTypes: {}
+      };
+    }
+    
+    // Update agent metrics
+    const agentMetrics = metrics.byAgent[interaction.agentId];
+    agentMetrics.totalInteractions++;
+    
+    if (interaction.successful) {
+      metrics.overall.successfulInteractions++;
+      agentMetrics.successfulInteractions++;
+    } else {
+      metrics.overall.unsuccessfulInteractions++;
+      agentMetrics.unsuccessfulInteractions++;
+      
+      // Track failure types
+      const failureType = interaction.failureType || 'unknown';
+      agentMetrics.commonFailureTypes[failureType] = 
+        (agentMetrics.commonFailureTypes[failureType] || 0) + 1;
+    }
+    
+    // Similar calculations for intent type and user segment metrics
+    // ...
+  }
+  
+  // Calculate derived metrics
+  for (const agentId in metrics.byAgent) {
+    const agent = metrics.byAgent[agentId];
+    agent.successRate = agent.successfulInteractions / agent.totalInteractions;
+    // Other calculations...
+  }
+  
+  return metrics;
+}
+            </div>
+            
+            <div class="description-title">Key Features</div>
+            <ul>
+                <li><strong>Success rate tracking:</strong> Measures how effectively queries are resolved.</li>
+                <li><strong>Response quality:</strong> Analyzes LLM response quality and relevance.</li>
+                <li><strong>Intent accuracy:</strong> Evaluates how well user intents are recognized.</li>
+                <li><strong>Conversation flows:</strong> Maps common paths through multi-turn interactions.</li>
+                <li><strong>Cost efficiency:</strong> Identifies opportunities for token usage optimization.</li>
+                <li><strong>User satisfaction:</strong> Correlates system behavior with satisfaction indicators.</li>
+            </ul>
+            
+            <div class="integration-notes">
+                <strong>Integration Points:</strong>
+                <ul>
+                    <li>Receives data from almost all other components</li>
+                    <li>Special integration with Telemetry System for real-time metrics</li>
+                    <li>Connects to LLM Foundation via feedback loops</li>
+                    <li>Feeds insights to Agent Selection for routing optimization</li>
+                </ul>
+            </div>
+            
+            <div class="pro-tip">
+                <strong>Pro Tip:</strong> One of the most powerful applications of the Analytics System is using it to automatically generate A/B test configurations for prompt variations. By continuously testing small changes to agent prompts and comparing results, you can achieve gradual but significant improvement in response quality and efficiency.
+            </div>
+        </div>
+    </div>
+</body>
+</html>
