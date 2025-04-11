@@ -5,10 +5,10 @@ import json
 import re
 import uuid
 from datetime import datetime, timedelta
-from agents.base_agent import BaseAgent
-from utils.memory import ConversationMemory
-from brain.telemetry import collector as telemetry_collector
-from config.agent_constants import (
+from backend.agents.base_agent import BaseAgent
+from backend.utils.memory import ConversationMemory
+from backend.brain.telemetry import collector as telemetry_collector
+from backend.config.agent_constants import (
     INTENT_AGENT_MAPPING,
     DEFAULT_CONFIDENCE_THRESHOLD,
     HIGH_CONFIDENCE_THRESHOLD,

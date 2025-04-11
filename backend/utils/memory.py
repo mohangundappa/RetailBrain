@@ -17,7 +17,8 @@ import logging
 from typing import Dict, Any, List, Optional, Set, Union, Tuple
 from enum import Enum
 from datetime import datetime, timedelta
-from models import db, Conversation, Message
+from backend.database.models import Conversation, Message
+from backend.flask_app import db
 
 logger = logging.getLogger(__name__)
 
