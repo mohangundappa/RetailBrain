@@ -18,7 +18,8 @@ from typing import Dict, Any, List, Optional, Set, Union, Tuple
 from enum import Enum
 from datetime import datetime, timedelta
 from backend.database.models import Conversation, Message
-from backend.flask_app import db
+from backend.database.db import get_db
+from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
 
