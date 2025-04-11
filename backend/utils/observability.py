@@ -391,7 +391,7 @@ def initialize_external_telemetry():
     """Initialize connections to external telemetry services."""
     # Initialize Databricks telemetry
     try:
-        from utils.databricks_utils import get_databricks_client, get_or_create_experiment
+        from backend.utils.databricks_utils import get_databricks_client, get_or_create_experiment
         client = get_databricks_client()
         if client:
             experiment = get_or_create_experiment()
@@ -404,7 +404,7 @@ def initialize_external_telemetry():
     
     # Initialize LangSmith telemetry
     try:
-        import utils.langsmith_utils as langsmith_utils
+        import backend.utils.langsmith_utils as langsmith_utils
         client = langsmith_utils.get_langsmith_client()
         if client:
             tracer = langsmith_utils.get_langchain_tracer()
