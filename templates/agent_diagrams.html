@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Agent Builder System Design Diagrams</title>
     <link href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/agent_architecture.css">
     <style>
         body {
             padding: 20px;
@@ -52,20 +53,46 @@
         </div>
         
         <div class="diagram-container">
-            <h2>3. Agent Component Architecture</h2>
-            <p class="description">This architectural diagram shows the complete internal structure of an agent, including the LangChain integration layer, LLM foundation, security & guardrails, tool orchestration, and feedback loops. The diagram highlights how various components interact in a comprehensive agent system.</p>
+            <h2>3. Agent Component Structure</h2>
+            <p class="description">This diagram shows the internal component structure within an agent, including component connections and tools. It illustrates how the core logic connects to various subsystems like memory, entity framework, and tools.</p>
             <div class="text-center">
-                <embed src="/static/diagrams/agent_component_architecture.svg" type="image/svg+xml" width="800" height="700" />
+                <embed src="/static/diagrams/agent_component_structure_with_tools.svg" type="image/svg+xml" width="800" height="600" />
             </div>
         </div>
         
         <div class="diagram-container">
-            <h2>4. Agent Internal Architecture</h2>
+            <h2>4. Agent Component Architecture - Enhanced</h2>
+            <p class="description">This enhanced architectural diagram incorporates expert feedback to show a comprehensive view of the agent structure, including LangChain integration, security & guardrails, tool orchestration, and performance features.</p>
+            <div class="text-center">
+                <div id="architecture-container">
+                    <!-- HTML content will be loaded here via JavaScript -->
+                </div>
+            </div>
+        </div>
+        
+        <div class="diagram-container">
+            <h2>5. Agent Internal Architecture</h2>
             <p class="description">This detailed diagram illustrates the internal architecture of an agent, showing both the core components shared across all agents and the specialized components unique to each agent type.</p>
             <div class="text-center">
                 <embed src="/static/diagrams/agent_internal_structure.svg" type="image/svg+xml" width="800" height="600" />
             </div>
         </div>
     </div>
+    
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Fetch the HTML content
+        fetch('/static/html/agent_architecture.html')
+            .then(response => response.text())
+            .then(html => {
+                document.getElementById('architecture-container').innerHTML = html;
+            })
+            .catch(error => {
+                console.error('Error loading architecture diagram:', error);
+                document.getElementById('architecture-container').innerHTML = 
+                    '<p class="text-danger">Error loading architecture diagram. Please refresh the page.</p>';
+            });
+    });
+    </script>
 </body>
 </html>
