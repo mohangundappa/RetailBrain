@@ -14,10 +14,36 @@ logger = logging.getLogger(__name__)
 class OrderApiClient(StaplesApiClient):
     """Client for Staples Order API services."""
 
-    def __init__(self, *args, **kwargs):
-        """Initialize the Order API client."""
-        super().__init__(*args, **kwargs)
-        self.service_name = "order-api"
+    def __init__(
+        self,
+        base_url: Optional[str] = None,
+        api_key: Optional[str] = None,
+        timeout: int = 30,
+        mock_mode: bool = True,
+        failure_threshold: int = 5,
+        recovery_timeout: int = 30,
+    ):
+        """
+        Initialize the Order API client with circuit breaker protection.
+        
+        Args:
+            base_url: Base URL for the API endpoint. If None, will use environment variable.
+            api_key: API key for authentication. If None, will use environment variable.
+            timeout: Request timeout in seconds.
+            mock_mode: If True, will use mock data instead of making actual API calls.
+            failure_threshold: Number of failures before opening the circuit breaker.
+            recovery_timeout: Seconds to wait before trying to recover a failed circuit.
+        """
+        # Initialize with service-specific settings
+        super().__init__(
+            base_url=base_url,
+            api_key=api_key,
+            timeout=timeout,
+            mock_mode=mock_mode,
+            service_name="order-api",
+            failure_threshold=failure_threshold,
+            recovery_timeout=recovery_timeout,
+        )
 
     def get_order_by_id(self, order_id: str) -> Dict[str, Any]:
         """

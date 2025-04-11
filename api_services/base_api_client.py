@@ -10,6 +10,7 @@ from urllib.parse import urljoin
 
 import requests
 from utils.observability import log_api_call, record_error
+from utils.circuit_breaker import get_circuit_breaker, CircuitBreakerOpenException
 
 logger = logging.getLogger(__name__)
 
@@ -23,6 +24,9 @@ class StaplesApiClient:
         api_key: Optional[str] = None,
         timeout: int = 30,
         mock_mode: bool = True,
+        service_name: str = "staples_api",
+        failure_threshold: int = 5,
+        recovery_timeout: int = 30,
     ):
         """
         Initialize the Staples API client.
@@ -32,11 +36,15 @@ class StaplesApiClient:
             api_key: API key for authentication. If None, will use environment variable.
             timeout: Request timeout in seconds.
             mock_mode: If True, will use mock data instead of making actual API calls.
+            service_name: Name of the service, used for circuit breaker and telemetry.
+            failure_threshold: Number of failures before opening the circuit breaker.
+            recovery_timeout: Seconds to wait before trying to recover a failed circuit.
         """
         self.base_url = base_url or os.environ.get("STAPLES_API_URL", "https://api.staples.com/v1/")
         self.api_key = api_key or os.environ.get("STAPLES_API_KEY", "mock-api-key")
         self.timeout = timeout
         self.mock_mode = mock_mode
+        self.service_name = service_name
         self.session = requests.Session()
         self.session.headers.update(
             {
@@ -44,6 +52,13 @@ class StaplesApiClient:
                 "Content-Type": "application/json",
                 "User-Agent": "Staples Brain/1.0",
             }
+        )
+        
+        # Create a circuit breaker for this API client
+        self.circuit_breaker = get_circuit_breaker(
+            name=f"{service_name}_circuit",
+            failure_threshold=failure_threshold,
+            recovery_timeout=recovery_timeout
         )
 
     def _get_url(self, endpoint: str) -> str:
@@ -67,7 +82,7 @@ class StaplesApiClient:
         mock_response: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         """
-        Make an API request.
+        Make an API request with circuit breaker protection.
 
         Args:
             method: HTTP method (GET, POST, PUT, DELETE).
@@ -78,16 +93,22 @@ class StaplesApiClient:
 
         Returns:
             API response.
+            
+        Raises:
+            CircuitBreakerOpenException: If the circuit breaker is open.
+            requests.exceptions.RequestException: If the request fails.
         """
         url = self._get_url(endpoint)
-        start_time = time.time()
         
-        try:
-            if self.mock_mode and mock_response is not None:
-                logger.info(f"Mock API call to {url} with mock response")
-                response_data = mock_response
-                status_code = 200
-            else:
+        # Skip circuit breaker if we're in mock mode and have a mock response
+        if self.mock_mode and mock_response is not None:
+            logger.info(f"Mock API call to {url} with mock response")
+            return mock_response
+        
+        # Define the actual request function to be protected by the circuit breaker
+        def make_live_request() -> Dict[str, Any]:
+            start_time = time.time()
+            try:
                 logger.info(f"Making {method} request to {url}")
                 response = self.session.request(
                     method=method,
@@ -99,36 +120,59 @@ class StaplesApiClient:
                 status_code = response.status_code
                 response.raise_for_status()
                 response_data = response.json()
-            
-            duration = time.time() - start_time
-            log_api_call(
-                api_name="staples_api",
-                endpoint=endpoint,
-                method=method,
-                status_code=status_code,
-                duration=duration,
-                error=None,
-            )
-            
-            return response_data
-        except requests.exceptions.RequestException as e:
-            duration = time.time() - start_time
-            error_message = str(e)
-            logger.error(f"API request failed: {error_message}")
-            
-            log_api_call(
-                api_name="staples_api",
-                endpoint=endpoint,
-                method=method,
-                status_code=getattr(e.response, "status_code", 500) if hasattr(e, "response") else 500,
-                duration=duration,
-                error=error_message,
-            )
-            
+                
+                duration = time.time() - start_time
+                log_api_call(
+                    api_name=self.service_name,
+                    endpoint=endpoint,
+                    method=method,
+                    status_code=status_code,
+                    duration=duration,
+                    error=None,
+                )
+                
+                return response_data
+            except requests.exceptions.RequestException as e:
+                duration = time.time() - start_time
+                error_message = str(e)
+                logger.error(f"API request failed: {error_message}")
+                
+                log_api_call(
+                    api_name=self.service_name,
+                    endpoint=endpoint,
+                    method=method,
+                    status_code=getattr(e.response, "status_code", 500) if hasattr(e, "response") else 500,
+                    duration=duration,
+                    error=error_message,
+                )
+                
+                raise
+        
+        # Define a fallback function to use if the circuit is open
+        def fallback_function() -> Dict[str, Any]:
+            logger.warning(f"Circuit '{self.circuit_breaker.name}' is open, using fallback")
             if self.mock_mode and mock_response is not None:
-                logger.warning(f"Returning mock response after API failure")
+                logger.info(f"Returning mock response as fallback for {url}")
+                return mock_response
+                
+            # If no mock response is available, we have to let the caller know the service is unavailable
+            raise CircuitBreakerOpenException(
+                f"Service {self.service_name} is currently unavailable"
+            )
+        
+        try:
+            # Execute the request with circuit breaker protection
+            return self.circuit_breaker.execute(make_live_request)
+        except CircuitBreakerOpenException:
+            # If the circuit is open and we have a fallback, use it
+            return fallback_function()
+        except requests.exceptions.RequestException as e:
+            # If the request failed but we have a mock response, use it as fallback in mock mode
+            if self.mock_mode and mock_response is not None:
+                logger.warning(f"Request failed, returning mock response for {url}: {str(e)}")
                 return mock_response
             
+            # Otherwise, re-raise the exception
             raise
 
     def get(
