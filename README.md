@@ -1,60 +1,80 @@
 # Staples Brain
 
-An advanced multi-agent AI orchestration platform for intelligent system management, featuring modular architecture and comprehensive developer tooling.
+An advanced multi-agent AI orchestration platform for intelligent system management, featuring a modular architecture and comprehensive developer tooling.
 
 ## Overview
 
-Staples Brain is an AI super-brain agent system specifically for Staples Customer Engagement focusing on Sales and Services. It serves as an integration hub for specialized agents (Order Tracking, Reset Password, Store Locator, and others), supporting integrations with external platforms.
+Staples Brain is an AI super-brain agent system specifically designed for Staples Customer Engagement. It focuses on Sales and Services, serving as an integration hub for specialized agents (Order Tracking, Reset Password, Store Locator, and others). 
 
-## Core Technologies
+## Architecture
 
-- Python-based agent framework
-- FastAPI microservices architecture
-- LangChain/LangGraph contextual intelligence
-- OpenAI GPT-4o integration
-- Comprehensive static documentation
-- Modular backend design with clear architectural separation
+The system has a simplified architecture with two main components:
+
+1. **Backend**: Pure FastAPI implementation with no Flask/WSGI compatibility layers
+2. **Frontend**: React-based UI for user interactions
+
+All services are consolidated within the backend component, maintaining a clear separation through a standardized API gateway serving as the primary entry point for all interactions.
+
+## Key Technologies
+
+- **Python 3.12+**: For backend and agent logic
+- **FastAPI**: Main API framework (replacing older Flask implementation)
+- **PostgreSQL with PgVec**: For database storage including vector embeddings
+- **LangChain/LangGraph**: For contextual intelligence
+- **OpenAI GPT-4o**: Core language model integration
+- **LangSmith**: For telemetry and observability
 
 ## Project Structure
 
-- `/backend` - Server-side code and components
-- `/frontend` - React application code
-- `/docs` - Documentation and guides
-
-## Getting Started
-
-See the [Installation Guide](docs/installation/README.md) for setup instructions.
-
-## Development
-
-The application is structured as follows:
-
-1. Backend (FastAPI):
-   - API Gateway for all interactions
-   - Multi-agent brain system
-   - Database integration
-
-2. Frontend (React):
-   - User interface for interacting with the system
-   - Admin dashboard for monitoring agent performance
-   - Agent Builder interface
+```
+staples-brain/
+├── backend/               # Backend services and components
+│   ├── agents/            # Agent implementations
+│   ├── api/               # API modules for specific services
+│   ├── brain/             # Core brain logic
+│   ├── config/            # Configuration files
+│   ├── database/          # Database models and connections
+│   ├── scripts/           # Utility scripts
+│   ├── services/          # Service implementations
+│   ├── static/            # Static resources
+│   ├── tests/             # Backend tests
+│   ├── utils/             # Utility functions
+│   ├── api_gateway.py     # Main FastAPI entry point
+│   └── main.py            # Backend application entry point
+├── docs/                  # Documentation
+│   ├── api/               # API documentation
+│   ├── development/       # Development guidelines
+│   ├── installation/      # Installation guides
+│   └── user-guides/       # End-user documentation
+├── frontend/              # React frontend (separate repo)
+├── .env                   # Environment variables (local development)
+├── .env.example           # Example environment variables
+├── main.py                # Root application entry point
+└── run.py                 # Application runner for Replit
+```
 
 ## Running the Application
 
 ```bash
-# Start the backend server
+# Start the application
 python run.py
 
-# Start the frontend development server (in another terminal)
-cd frontend
-npm start
+# Run tests
+python run_tests.py
 ```
 
-The application will be available at http://localhost:5000
+## Environment Variables
 
-## Testing
+The application requires several environment variables to be set. See `.env.example` for required variables.
 
-```bash
-# Run all tests
-python -m backend.scripts.run_tests
-```
+## API Reference
+
+API documentation is available at `/static/documentation` when the server is running.
+
+## Contributing
+
+See the development guidelines in the [docs/development](docs/development) directory for more information on contributing to the project.
+
+## License
+
+Proprietary - All rights reserved

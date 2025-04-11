@@ -1,10 +1,17 @@
 """
 Main application module for Staples Brain.
 This is the entry point for the FastAPI application.
+
+This unified main module combines the functionality from:
+1. The original main.py
+2. The start_api.py module
+
+It provides a single entry point for running the Staples Brain API.
 """
 import os
 import sys
 import logging
+import asyncio
 from datetime import datetime
 
 # Configure logging
@@ -21,13 +28,52 @@ logger = logging.getLogger("staples_brain")
 
 # Load environment variables
 from dotenv import load_dotenv
-print(f"Loading environment from {os.path.abspath('.env')}")
 load_dotenv()
 
 # Import app from API gateway
 from backend.api_gateway import app
 
+async def init_db():
+    """Initialize the database."""
+    logger.info("Initializing database tables...")
+    try:
+        from sqlalchemy import create_engine
+        from backend.database.db import Base, DB_URL
+        
+        # Convert to sync URL for initialization
+        sync_url = DB_URL.replace("postgresql+asyncpg://", "postgresql://")
+        
+        # Create tables
+        engine = create_engine(sync_url)
+        Base.metadata.create_all(engine)
+        
+        logger.info("Database tables initialized successfully")
+        
+    except Exception as e:
+        logger.error(f"Error initializing database: {str(e)}", exc_info=True)
+        raise
+
+def run_api():
+    """Run the API gateway using uvicorn."""
+    # Get host and port from environment or use defaults
+    host = os.environ.get("API_HOST", "0.0.0.0")
+    port = int(os.environ.get("API_PORT", 5000))
+    
+    logger.info(f"Starting Staples Brain API on {host}:{port}")
+    
+    # Run with uvicorn
+    import uvicorn
+    uvicorn.run(
+        app,
+        host=host,
+        port=port,
+        reload=True if os.environ.get("ENVIRONMENT") != "production" else False
+    )
+
 # This is used when running the FastAPI app directly
 if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=5000, reload=True)
+    # Initialize the database
+    asyncio.run(init_db())
+    
+    # Run the API
+    run_api()
