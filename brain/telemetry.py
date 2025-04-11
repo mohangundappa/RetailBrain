@@ -1,6 +1,29 @@
 """
 Telemetry system for the orchestration engine.
-This module provides detailed visibility into the agent selection process.
+This module provides detailed visibility into the agent selection process 
+and tracks events throughout the lifetime of a request.
+
+The telemetry system is designed to be:
+1. Lightweight: Minimal impact on performance
+2. Informative: Provides detailed insights into decision-making processes
+3. Persistent: Events can be retrieved for debugging and analysis
+4. Extensible: Easy to add new event types and tracking capabilities
+
+Usage:
+    # Track a request
+    event_id = collector.track_request_received(session_id, user_input)
+    
+    # Track agent selection
+    collector.track_agent_selection(
+        session_id, 
+        agent_name="OrderTrackingAgent", 
+        confidence=0.85, 
+        selection_method="confidence_threshold",
+        parent_id=event_id
+    )
+    
+    # Get session events
+    events = telemetry_system.get_session_events(session_id)
 """
 import json
 import logging
