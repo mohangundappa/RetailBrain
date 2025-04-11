@@ -5,6 +5,7 @@ import uuid
 import asyncio
 from flask import Blueprint, request, jsonify, current_app
 from api.agent_builder import agent_builder_bp
+from api.circuit_breaker import circuit_breaker_api
 
 logger = logging.getLogger(__name__)
 
@@ -13,6 +14,9 @@ api_bp = Blueprint("api", __name__, url_prefix="/api")
 
 # Register the agent builder blueprint
 api_bp.register_blueprint(agent_builder_bp, url_prefix="/builder")
+
+# Register the circuit breaker API blueprint
+api_bp.register_blueprint(circuit_breaker_api)
 
 # Store brain instance
 _brain = None

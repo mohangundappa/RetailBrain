@@ -5,8 +5,8 @@ This module provides API endpoints for monitoring and managing circuit breakers.
 """
 
 import logging
-from typing import Dict, Any, List
-from flask import Blueprint, jsonify, request
+from typing import Dict, Any, List, Tuple, Union
+from flask import Blueprint, jsonify, request, Response
 
 from utils.circuit_breaker import circuit_breaker_registry
 
