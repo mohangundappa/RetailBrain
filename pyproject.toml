@@ -1,7 +1,7 @@
 [project]
-name = "repl-nix-workspace"
+name = "staples-brain"
 version = "0.1.0"
-description = "Add your description here"
+description = "An advanced multi-agent AI orchestration platform for Staples Customer Engagement"
 requires-python = ">=3.11"
 dependencies = [
     "asyncio>=3.4.3",
