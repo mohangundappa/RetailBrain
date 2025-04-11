@@ -77,6 +77,14 @@ try:
 except ImportError:
     logger.warning("Telemetry API blueprint not available")
 
+try:
+    from api.chat import chat_blueprint
+    # Register the blueprint
+    app.register_blueprint(chat_blueprint)
+    logger.info("Registered chat API blueprint")
+except ImportError:
+    logger.warning("Chat API blueprint not available")
+
 # Sample data for simulating agent responses (used for development and testing)
 PACKAGE_TRACKING_SAMPLE = {
     "tracking_number": "TRACK123456",
