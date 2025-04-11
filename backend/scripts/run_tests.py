@@ -57,7 +57,7 @@ def run_api_tests(verbose=False):
     logger.info("Running API tests...")
     
     # Load API tests
-    from tests.test_api_routes import TestApiRoutes
+    from backend.tests.test_api_routes import TestApiRoutes
     
     # Create test suite
     suite = unittest.TestLoader().loadTestsFromTestCase(TestApiRoutes)
@@ -81,7 +81,7 @@ def run_frontend_tests(verbose=False):
     
     # Try to import frontend tests
     try:
-        from tests.test_frontend import TestFrontend
+        from backend.tests.test_frontend import TestFrontend
         
         # Create test suite
         suite = unittest.TestLoader().loadTestsFromTestCase(TestFrontend)
@@ -104,9 +104,9 @@ def run_agent_tests(agent_type="all", verbose=False):
     
     try:
         # Import our agent testing module
-        from tests.test_agent_interactions import TestAgentSelection, TestAgentContextSwitching
-        from tests.test_conversation_flow import TestComplexConversationFlow
-        from tests.test_agent_routing import TestAgentRouting
+        from backend.tests.test_agent_interactions import TestAgentSelection, TestAgentContextSwitching
+        from backend.tests.test_conversation_flow import TestComplexConversationFlow
+        from backend.tests.test_agent_routing import TestAgentRouting
         
         # Create test suite
         suite = unittest.TestSuite()
