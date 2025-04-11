@@ -1,6 +1,6 @@
-import React, { createContext, useState, useEffect, useContext } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import { checkHealth, chatService } from '../api/apiService';
+import { chatService, healthService } from '../api/apiService';
 
 // Create context
 const AppContext = createContext();
@@ -8,215 +8,197 @@ const AppContext = createContext();
 // Custom hook for using the context
 export const useAppContext = () => useContext(AppContext);
 
-// Provider component
 export const AppProvider = ({ children }) => {
-  // System state
-  const [systemStatus, setSystemStatus] = useState({
-    isLoading: true,
-    isHealthy: false,
-    error: null,
-    data: {}
-  });
-
   // Chat state
   const [chatState, setChatState] = useState({
     messages: [],
+    sessionId: localStorage.getItem('sessionId') || null,
     isLoading: false,
-    error: null,
-    sessionId: localStorage.getItem('sessionId') || null
+    error: null
   });
-
-  // Initialize session ID if not exists
+  
+  // System status state
+  const [systemStatus, setSystemStatus] = useState({
+    isLoading: true,
+    isHealthy: true,
+    data: null,
+    error: null
+  });
+  
+  // Fetch system status on initial load
   useEffect(() => {
-    if (!chatState.sessionId) {
-      const newSessionId = uuidv4();
-      localStorage.setItem('sessionId', newSessionId);
-      setChatState(prevState => ({
-        ...prevState,
-        sessionId: newSessionId
-      }));
-    }
-  }, [chatState.sessionId]);
-
-  // Check system health when component mounts
-  useEffect(() => {
-    const checkSystemHealth = async () => {
-      try {
-        const response = await checkHealth();
-        setSystemStatus({
-          isLoading: false,
-          isHealthy: response.success,
-          error: null,
-          data: response.data
-        });
-      } catch (error) {
-        setSystemStatus({
-          isLoading: false,
-          isHealthy: false,
-          error: error.message,
-          data: {}
-        });
-      }
+    fetchSystemStatus();
+    
+    // Poll system status every 60 seconds
+    const intervalId = setInterval(fetchSystemStatus, 60000);
+    
+    return () => {
+      clearInterval(intervalId);
     };
-
-    checkSystemHealth();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  // Function to send a message
-  const sendMessage = async (message) => {
-    if (!message.trim()) return;
-
-    setChatState(prevState => ({
-      ...prevState,
+  
+  // Load conversation history if session ID exists
+  useEffect(() => {
+    if (chatState.sessionId) {
+      loadConversationHistory();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chatState.sessionId]);
+  
+  // Fetch system status
+  const fetchSystemStatus = async () => {
+    try {
+      const response = await healthService.getStatus();
+      
+      if (response.success) {
+        setSystemStatus({
+          isLoading: false,
+          isHealthy: response.data.health === 'healthy',
+          data: response.data,
+          error: null
+        });
+      } else {
+        throw new Error(response.error || 'Failed to fetch system status');
+      }
+    } catch (error) {
+      console.error('Error fetching system status:', error);
+      setSystemStatus({
+        isLoading: false,
+        isHealthy: false,
+        data: null,
+        error: error.message
+      });
+    }
+  };
+  
+  // Load conversation history
+  const loadConversationHistory = useCallback(async () => {
+    if (!chatState.sessionId) return;
+    
+    setChatState((prev) => ({
+      ...prev,
       isLoading: true,
       error: null
     }));
-
-    // Add user message to UI immediately
-    const userMessage = {
-      id: uuidv4(),
-      role: 'user',
-      content: message,
-      timestamp: new Date().toISOString()
-    };
-
-    setChatState(prevState => ({
-      ...prevState,
-      messages: [...prevState.messages, userMessage]
-    }));
-
+    
     try {
-      // Send to API
-      const response = await chatService.sendMessage(
-        message, 
-        chatState.sessionId
-      );
-
-      if (response.success) {
-        // Add assistant response to UI
-        const assistantMessage = {
-          id: uuidv4(),
-          role: 'assistant',
-          content: response.data.message,
-          metadata: {
-            agent: response.data.agent,
-            confidence: response.data.confidence
-          },
-          timestamp: new Date().toISOString()
-        };
-
-        setChatState(prevState => ({
-          ...prevState,
-          messages: [...prevState.messages, assistantMessage],
+      const response = await chatService.getChatHistory(chatState.sessionId);
+      
+      if (response.success && response.data.messages) {
+        setChatState((prev) => ({
+          ...prev,
+          messages: response.data.messages,
           isLoading: false
         }));
       } else {
-        throw new Error(response.error || 'Unknown error occurred');
+        throw new Error(response.error || 'Failed to load conversation history');
       }
     } catch (error) {
-      setChatState(prevState => ({
-        ...prevState,
+      console.error('Error loading conversation history:', error);
+      setChatState((prev) => ({
+        ...prev,
         isLoading: false,
         error: error.message
       }));
-
-      // Add error message to UI
-      const errorMessage = {
-        id: uuidv4(),
-        role: 'system',
-        content: `Error: ${error.message}`,
-        error: true,
-        timestamp: new Date().toISOString()
-      };
-
-      setChatState(prevState => ({
-        ...prevState,
-        messages: [...prevState.messages, errorMessage]
-      }));
     }
-  };
-
-  // Function to start new conversation
+  }, [chatState.sessionId]);
+  
+  // Start new conversation
   const startNewConversation = () => {
     const newSessionId = uuidv4();
     localStorage.setItem('sessionId', newSessionId);
     
     setChatState({
       messages: [],
+      sessionId: newSessionId,
       isLoading: false,
-      error: null,
-      sessionId: newSessionId
+      error: null
     });
   };
-
-  // Function to load conversation history
-  const loadConversationHistory = async () => {
-    if (!chatState.sessionId) return;
-
-    setChatState(prevState => ({
-      ...prevState,
+  
+  // Send message
+  const sendMessage = async (message) => {
+    // Create temporary sessionId if none exists
+    const sessionId = chatState.sessionId || uuidv4();
+    
+    if (!chatState.sessionId) {
+      localStorage.setItem('sessionId', sessionId);
+      setChatState((prev) => ({
+        ...prev,
+        sessionId
+      }));
+    }
+    
+    // Add user message to state immediately
+    const userMessage = {
+      id: uuidv4(),
+      role: 'user',
+      content: message,
+      timestamp: new Date().toISOString()
+    };
+    
+    setChatState((prev) => ({
+      ...prev,
+      messages: [...prev.messages, userMessage],
       isLoading: true,
       error: null
     }));
-
+    
+    // Send message to API
     try {
-      const response = await chatService.getHistory(chatState.sessionId);
+      const response = await chatService.sendMessage(message, sessionId);
       
-      if (response.success && response.data.history) {
-        // Convert API history format to our message format
-        const messages = [];
+      if (response.success && response.data) {
+        // Add assistant message to state
+        const assistantMessage = {
+          id: uuidv4(),
+          role: 'assistant',
+          content: response.data.response,
+          metadata: response.data.metadata || null,
+          timestamp: new Date().toISOString()
+        };
         
-        response.data.history.forEach(conv => {
-          conv.messages.forEach(msg => {
-            messages.push({
-              id: uuidv4(),
-              role: msg.role,
-              content: msg.content,
-              metadata: msg.role === 'assistant' ? {
-                agent: conv.selected_agent,
-                confidence: conv.confidence
-              } : undefined,
-              timestamp: msg.timestamp
-            });
-          });
-        });
-
-        setChatState(prevState => ({
-          ...prevState,
-          messages,
+        setChatState((prev) => ({
+          ...prev,
+          messages: [...prev.messages, assistantMessage],
           isLoading: false
         }));
       } else {
-        // If no history or error, just clear loading state
-        setChatState(prevState => ({
-          ...prevState,
-          isLoading: false
-        }));
+        throw new Error(response.error || 'Failed to process message');
       }
     } catch (error) {
-      setChatState(prevState => ({
-        ...prevState,
+      console.error('Error sending message:', error);
+      
+      // Add error message to chat
+      const errorMessage = {
+        id: uuidv4(),
+        role: 'system',
+        content: `Error: ${error.message}. Please try again.`,
+        timestamp: new Date().toISOString()
+      };
+      
+      setChatState((prev) => ({
+        ...prev,
+        messages: [...prev.messages, errorMessage],
         isLoading: false,
         error: error.message
       }));
     }
   };
-
-  // Value object that will be shared with all consumers
+  
+  // Context value to be provided to consumers
   const contextValue = {
-    systemStatus,
     chatState,
-    sendMessage,
+    systemStatus,
+    loadConversationHistory,
     startNewConversation,
-    loadConversationHistory
+    sendMessage
   };
-
-  // Provide the context value to all children
+  
   return (
     <AppContext.Provider value={contextValue}>
       {children}
     </AppContext.Provider>
   );
 };
-
-export default AppContext;
