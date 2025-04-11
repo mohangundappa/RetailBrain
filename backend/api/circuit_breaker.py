@@ -8,7 +8,7 @@ import logging
 from typing import Dict, Any, List, Tuple, Union
 from flask import Blueprint, jsonify, request, Response
 
-from utils.circuit_breaker import circuit_breaker_registry
+from backend.utils.circuit_breaker import circuit_breaker_registry
 
 logger = logging.getLogger(__name__)
 

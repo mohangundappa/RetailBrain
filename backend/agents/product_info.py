@@ -7,8 +7,8 @@ from typing import Dict, Any, Optional, List, Tuple
 import requests
 from langchain.chains import LLMChain
 from langchain.prompts import ChatPromptTemplate
-from agents.base_agent import BaseAgent
-from utils.logger import get_logger
+from backend.agents.base_agent import BaseAgent
+from backend.utils.logger import get_logger
 
 logger = logging.getLogger(__name__)
 
@@ -60,7 +60,7 @@ class ProductInfoAgent(BaseAgent):
         self._formatting_chain = self._create_formatting_chain()
         
         # Setup entity collection
-        from agents.base_agent import EntityDefinition
+        from backend.agents.base_agent import EntityDefinition
         
         # Set up entity definitions
         product_name = EntityDefinition(

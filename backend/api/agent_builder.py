@@ -43,7 +43,7 @@ def list_agents():
         } for agent in custom_agents]
         
         # Get built-in agents from the brain
-        from brain.staples_brain import initialize_staples_brain
+        from backend.brain.staples_brain import initialize_staples_brain
         try:
             brain = initialize_staples_brain()
             builtin_agents = brain.agents
@@ -837,7 +837,7 @@ def llm_assist():
         existing_context = data.get('existing_context', {})
         
         # Import OpenAI client
-        from brain.staples_brain import get_openai_client
+        from backend.brain.staples_brain import get_openai_client
         client = get_openai_client()
         
         # Define system prompts based on assistance type

@@ -13,11 +13,11 @@ from datetime import datetime
 
 from flask import jsonify, request, abort
 
-from brain.core_services.base_service import CoreService, service_registry
-from brain.core_services.tool_service import tool_service
-from agents.base_agent import BaseAgent
-from utils.observability import _log_error
-from utils.langsmith_utils import langsmith_trace, _log_api_call, _log_error
+from backend.brain.core_services.base_service import CoreService, service_registry
+from backend.brain.core_services.tool_service import tool_service
+from backend.agents.base_agent import BaseAgent
+from backend.utils.observability import _log_error
+from backend.utils.langsmith_utils import langsmith_trace, _log_api_call
 
 # Import database models
 from backend.flask_app import db

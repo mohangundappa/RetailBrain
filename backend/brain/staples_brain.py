@@ -214,7 +214,7 @@ class StaplesBrain:
             logger.error(f"Error initializing agents: {str(e)}", exc_info=True)
             raise RuntimeError(f"Failed to initialize agents: {str(e)}")
     
-    def process_request(self, user_input: str, context: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    async def process_request(self, user_input: str, context: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """
         Process a user request and route it to the appropriate agent.
         
@@ -234,14 +234,16 @@ class StaplesBrain:
             # Use the orchestrator to route to the best agent
             session_id = context.get("session_id", "default_session")
             user_id = context.get("user_id")
-            response = self.orchestrator.process_message(user_input, session_id, user_id)
+            # Call the async process_request method in the orchestrator
+            response = await self.orchestrator.process_request(user_input, session_id, context)
             return response
         except Exception as e:
             logger.error(f"Error processing request: {str(e)}", exc_info=True)
             return {
                 "success": False,
                 "error": str(e),
-                "response": "I'm sorry, I encountered an error while processing your request. Please try again or contact customer support."
+                "response": "I'm sorry, I encountered an error while processing your request. Please try again or contact customer support.",
+                "agent": "Error Handler"
             }
     
     def get_agent_names(self) -> List[str]:

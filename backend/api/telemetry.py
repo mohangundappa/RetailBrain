@@ -6,7 +6,7 @@ import logging
 from flask import Blueprint, jsonify, request
 from typing import Dict, Any, List, Optional
 
-from brain.telemetry import telemetry_system
+from backend.brain.telemetry import telemetry_system
 
 logger = logging.getLogger(__name__)
 

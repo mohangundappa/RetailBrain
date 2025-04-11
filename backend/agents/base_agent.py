@@ -1212,11 +1212,11 @@ Remember: Your goal is to provide excellent customer service while representing 
             An instance of the requested agent type
         """
         # Import agent types here to avoid circular imports
-        from agents.package_tracking import PackageTrackingAgent
-        from agents.store_locator import StoreLocatorAgent
-        from agents.reset_password import ResetPasswordAgent
-        from agents.product_info import ProductInfoAgent
-        from agents.returns_processing import ReturnsProcessingAgent
+        from backend.agents.package_tracking import PackageTrackingAgent
+        from backend.agents.store_locator import StoreLocatorAgent
+        from backend.agents.reset_password import ResetPasswordAgent
+        from backend.agents.product_info import ProductInfoAgent
+        from backend.agents.returns_processing import ReturnsProcessingAgent
         
         # Map agent types to their proper class
         agent_map = {
