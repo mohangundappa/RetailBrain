@@ -16,8 +16,8 @@ logger = logging.getLogger(__name__)
 circuit_breaker_api = Blueprint('circuit_breaker_api', __name__)
 
 
-@circuit_breaker_api.route('/api/circuit-breakers', methods=['GET'])
-def get_all_circuit_breakers() -> Dict[str, Any]:
+@circuit_breaker_api.route('/circuit-breakers', methods=['GET'])
+def get_all_circuit_breakers() -> Response:
     """
     Get the status of all circuit breakers.
     
@@ -31,8 +31,8 @@ def get_all_circuit_breakers() -> Dict[str, Any]:
     })
 
 
-@circuit_breaker_api.route('/api/circuit-breakers/<name>', methods=['GET'])
-def get_circuit_breaker(name: str) -> Dict[str, Any]:
+@circuit_breaker_api.route('/circuit-breakers/<name>', methods=['GET'])
+def get_circuit_breaker(name: str) -> Union[Response, Tuple[Response, int]]:
     """
     Get the status of a specific circuit breaker.
     
@@ -56,8 +56,8 @@ def get_circuit_breaker(name: str) -> Dict[str, Any]:
     })
 
 
-@circuit_breaker_api.route('/api/circuit-breakers/<name>/reset', methods=['POST'])
-def reset_circuit_breaker(name: str) -> Dict[str, Any]:
+@circuit_breaker_api.route('/circuit-breakers/<name>/reset', methods=['POST'])
+def reset_circuit_breaker(name: str) -> Union[Response, Tuple[Response, int]]:
     """
     Reset a circuit breaker to closed state.
     
