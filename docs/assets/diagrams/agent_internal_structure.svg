@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg width="800" height="600" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="800" height="600" fill="#222222" rx="10" ry="10"/>
+  
+  <!-- Title -->
+  <text x="400" y="50" font-family="Arial" font-size="24" fill="#ffffff" text-anchor="middle" font-weight="bold">Agent Internal Structure</text>
+  
+  <!-- Container for agent -->
+  <rect x="50" y="100" width="700" height="450" fill="#333333" rx="8" ry="8" stroke="#555555" stroke-width="2"/>
+  
+  <!-- Agent Header -->
+  <rect x="50" y="100" width="700" height="40" fill="#444444" rx="8" ry="8"/>
+  <text x="400" y="125" font-family="Arial" font-size="18" fill="#ffffff" text-anchor="middle">Specialized Agent Instance</text>
+  
+  <!-- Core Components Section -->
+  <rect x="70" y="160" width="320" height="370" fill="#2c3e50" rx="5" ry="5" stroke="#3498db" stroke-width="2"/>
+  <text x="230" y="180" font-family="Arial" font-size="16" fill="#ffffff" text-anchor="middle">Core Components</text>
+  
+  <!-- Entity Extraction -->
+  <rect x="90" y="200" width="280" height="80" fill="#34495e" rx="5" ry="5" stroke="#3498db" stroke-width="1"/>
+  <text x="230" y="225" font-family="Arial" font-size="14" fill="#ffffff" text-anchor="middle">Entity Extraction</text>
+  <text x="230" y="250" font-family="Arial" font-size="12" fill="#aaaaaa" text-anchor="middle">Identifies and extracts required data</text>
+  <text x="230" y="270" font-family="Arial" font-size="12" fill="#aaaaaa" text-anchor="middle">from user input using LLM</text>
+  
+  <!-- Guardrails System -->
+  <rect x="90" y="290" width="280" height="80" fill="#34495e" rx="5" ry="5" stroke="#3498db" stroke-width="1"/>
+  <text x="230" y="315" font-family="Arial" font-size="14" fill="#ffffff" text-anchor="middle">Guardrails System</text>
+  <text x="230" y="340" font-family="Arial" font-size="12" fill="#aaaaaa" text-anchor="middle">Validates inputs and enforces</text>
+  <text x="230" y="360" font-family="Arial" font-size="12" fill="#aaaaaa" text-anchor="middle">business rules and constraints</text>
+  
+  <!-- Memory Interface -->
+  <rect x="90" y="380" width="280" height="80" fill="#34495e" rx="5" ry="5" stroke="#3498db" stroke-width="1"/>
+  <text x="230" y="405" font-family="Arial" font-size="14" fill="#ffffff" text-anchor="middle">Memory Interface</text>
+  <text x="230" y="430" font-family="Arial" font-size="12" fill="#aaaaaa" text-anchor="middle">Stores conversation history and</text>
+  <text x="230" y="450" font-family="Arial" font-size="12" fill="#aaaaaa" text-anchor="middle">context for ongoing interactions</text>
+  
+  <!-- API Integration -->
+  <rect x="90" y="470" width="130" height="40" fill="#34495e" rx="5" ry="5" stroke="#3498db" stroke-width="1"/>
+  <text x="155" y="495" font-family="Arial" font-size="14" fill="#ffffff" text-anchor="middle">API Integration</text>
+  
+  <!-- Database Interface -->
+  <rect x="240" y="470" width="130" height="40" fill="#34495e" rx="5" ry="5" stroke="#3498db" stroke-width="1"/>
+  <text x="305" y="495" font-family="Arial" font-size="14" fill="#ffffff" text-anchor="middle">Database Access</text>
+  
+  <!-- Agent-specific Components Section -->
+  <rect x="410" y="160" width="320" height="370" fill="#4a235a" rx="5" ry="5" stroke="#9b59b6" stroke-width="2"/>
+  <text x="570" y="180" font-family="Arial" font-size="16" fill="#ffffff" text-anchor="middle">Agent-specific Components</text>
+  
+  <!-- Prompt Templates -->
+  <rect x="430" y="200" width="280" height="80" fill="#5b2c6f" rx="5" ry="5" stroke="#9b59b6" stroke-width="1"/>
+  <text x="570" y="225" font-family="Arial" font-size="14" fill="#ffffff" text-anchor="middle">Prompt Templates</text>
+  <text x="570" y="250" font-family="Arial" font-size="12" fill="#aaaaaa" text-anchor="middle">Specialized prompts tuned for the</text>
+  <text x="570" y="270" font-family="Arial" font-size="12" fill="#aaaaaa" text-anchor="middle">agent's specific domain</text>
+  
+  <!-- Agent Logic -->
+  <rect x="430" y="290" width="280" height="80" fill="#5b2c6f" rx="5" ry="5" stroke="#9b59b6" stroke-width="1"/>
+  <text x="570" y="315" font-family="Arial" font-size="14" fill="#ffffff" text-anchor="middle">Business Logic</text>
+  <text x="570" y="340" font-family="Arial" font-size="12" fill="#aaaaaa" text-anchor="middle">Custom processing rules for the</text>
+  <text x="570" y="360" font-family="Arial" font-size="12" fill="#aaaaaa" text-anchor="middle">agent's specific function</text>
+  
+  <!-- Response Formatting -->
+  <rect x="430" y="380" width="280" height="80" fill="#5b2c6f" rx="5" ry="5" stroke="#9b59b6" stroke-width="1"/>
+  <text x="570" y="405" font-family="Arial" font-size="14" fill="#ffffff" text-anchor="middle">Response Formatting</text>
+  <text x="570" y="430" font-family="Arial" font-size="12" fill="#aaaaaa" text-anchor="middle">Templates for structured responses</text>
+  <text x="570" y="450" font-family="Arial" font-size="12" fill="#aaaaaa" text-anchor="middle">tailored to agent's use case</text>
+  
+  <!-- Domain-specific Services -->
+  <rect x="430" y="470" width="130" height="40" fill="#5b2c6f" rx="5" ry="5" stroke="#9b59b6" stroke-width="1"/>
+  <text x="495" y="495" font-family="Arial" font-size="14" fill="#ffffff" text-anchor="middle">External APIs</text>
+  
+  <!-- Entity Definitions -->
+  <rect x="580" y="470" width="130" height="40" fill="#5b2c6f" rx="5" ry="5" stroke="#9b59b6" stroke-width="1"/>
+  <text x="645" y="495" font-family="Arial" font-size="14" fill="#ffffff" text-anchor="middle">Entity Definitions</text>
+  
+  <!-- Connection arrows between sections -->
+  <!-- Central connector -->
+  <path d="M 390 345 L 410 345" stroke="#ffffff" stroke-width="2" fill="none"/>
+  
+  <!-- Core -> API Integration -->
+  <path d="M 155 450 L 155 470" stroke="#3498db" stroke-width="2" fill="none"/>
+  
+  <!-- Core -> Database Interface -->
+  <path d="M 305 450 L 305 470" stroke="#3498db" stroke-width="2" fill="none"/>
+  
+  <!-- Agent-specific -> External APIs -->
+  <path d="M 495 450 L 495 470" stroke="#9b59b6" stroke-width="2" fill="none"/>
+  
+  <!-- Agent-specific -> Entity Definitions -->
+  <path d="M 645 450 L 645 470" stroke="#9b59b6" stroke-width="2" fill="none"/>
+</svg>

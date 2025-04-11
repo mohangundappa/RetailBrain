@@ -1,0 +1,178 @@
+/* Agent Builder Styles */
+
+/* Component palette styling */
+.sidebar {
+  height: calc(100vh - 60px);
+  overflow-y: auto;
+}
+
+.component-list {
+  padding: 0;
+}
+
+.draggable-component {
+  display: flex;
+  align-items: center;
+  padding: 10px;
+  margin-bottom: 8px;
+  background-color: var(--bs-dark);
+  border-radius: 5px;
+  cursor: move;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.draggable-component:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.component-icon {
+  font-size: 20px;
+  margin-right: 10px;
+}
+
+/* Canvas styling */
+.agent-canvas {
+  height: calc(100vh - 140px);
+  border: 1px dashed var(--bs-secondary);
+  border-radius: 8px;
+  background-color: var(--bs-dark);
+  position: relative;
+  overflow: auto;
+}
+
+/* Component node styling */
+.canvas-component {
+  position: absolute;
+  width: 180px;
+  background-color: var(--bs-gray-800);
+  border-radius: 8px;
+  padding: 8px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+  z-index: 10;
+}
+
+.component-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--bs-gray-700);
+  margin-bottom: 8px;
+}
+
+.component-title {
+  font-weight: bold;
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.component-body {
+  padding: 4px 0;
+}
+
+.connection-point {
+  width: 12px;
+  height: 12px;
+  background-color: var(--bs-info);
+  border-radius: 50%;
+  margin: 4px;
+  cursor: pointer;
+}
+
+.input-point {
+  position: absolute;
+  top: -6px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.output-point {
+  position: absolute;
+  bottom: -6px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+/* Connection styling - these are applied by jsPlumb */
+.jtk-connector {
+  z-index: 4;
+}
+
+.jtk-endpoint {
+  z-index: 5;
+}
+
+.jtk-overlay {
+  background-color: var(--bs-gray-600);
+  color: white;
+  font-size: 12px;
+  padding: 2px 5px;
+  border-radius: 4px;
+}
+
+/* Component Highlighting */
+.component-selected {
+  box-shadow: 0 0 0 2px var(--bs-primary);
+}
+
+/* Properties panel styling */
+#component-properties, #agent-properties {
+  max-height: calc(100vh - 200px);
+  overflow-y: auto;
+}
+
+/* Test console styling */
+#test-console {
+  max-height: 400px;
+}
+
+#test-output {
+  border-radius: 4px;
+  font-family: monospace;
+}
+
+/* Connection Modal */
+#connection-modal .modal-content {
+  background-color: var(--bs-gray-800);
+}
+
+/* Entity Collection Framework styling */
+.entity-collection-card {
+  border-left: 4px solid var(--bs-info);
+}
+
+.entity-collection-card .card-header {
+  background-color: rgba(13, 202, 240, 0.2);
+}
+
+.validation-input {
+  font-family: monospace;
+  font-size: 0.85rem;
+}
+
+/* Toggle switch for entity collection framework */
+.form-check-input:checked {
+  background-color: var(--bs-info);
+  border-color: var(--bs-info);
+}
+
+/* JSON editor for validation patterns */
+.json-editor {
+  font-family: 'Consolas', 'Monaco', monospace;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  background-color: var(--bs-gray-900);
+  color: var(--bs-light);
+}
+
+/* Style for built-in agents */
+tr.builtin-agent {
+  background-color: rgba(33, 37, 41, 0.03);
+}
+
+tr.builtin-agent td:first-child {
+  font-weight: 500;
+}

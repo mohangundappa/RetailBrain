@@ -1,39 +1,47 @@
 # Staples Brain Documentation
 
-This directory contains documentation for the Staples Brain project, organized by component.
+This directory contains comprehensive documentation for the Staples Brain project.
 
-## Structure
+## Directory Structure
 
-- **Backend**: API reference, database schema, and backend architecture documentation
-  - [API Reference](./backend/api_reference.md)
-  - [Architecture](./backend/architecture.md)
-  - [Database Schema](./backend/database_schema.md)
-  - [Deployment](./backend/deployment.md)
+- `assets/` - Visual assets for documentation
+  - `architecture_diagrams/` - High-level architecture SVG diagrams
+  - `diagrams/` - Detailed component and flow diagrams
 
-- **Frontend**: UI components, state management, and design system documentation
-  - [Components](./frontend/components.md)
-  - [State Management](./frontend/state_management.md)
-  - [Routing](./frontend/routing.md)
-  - [Design System](./frontend/design_system.md)
+- `html/` - HTML documentation pages
+  - `agent_architecture.html` - Documentation of agent architecture
+  - `enhanced_end_to_end_flow.html` - End-to-end flow documentation
+  - `optimized_architecture_flow.html` - Documentation of optimized architecture
 
-- **Integration**: Documentation for integration between frontend and backend
-  - [API Integration Guide](./integration/api_integration_guide.md)
-  - [Data Flow](./integration/data_flow.md)
+- `optimized_architecture_components.html` - Detailed component documentation
 
-- **Cross-Component**: Documentation covering multiple components
-  - [Circuit Breaker Overview](./backend/circuit_breaker.md)
+## Documentation Guidelines
 
-## Getting Started
+- All diagrams should be in SVG format for scalability
+- HTML documentation should use the Replit dark theme CSS
+- Documentation should be updated when architecture changes
+- Component and flow diagrams should reflect the latest implementation
 
-For new team members, we recommend starting with:
+## Viewing Documentation
 
-1. Review the [Installation Guide](../INSTALLATION_GUIDE.md)
-2. Read the [Backend Architecture](./backend/architecture.md)
-3. Explore the [API Integration Guide](./integration/api_integration_guide.md)
+To view the HTML documentation:
 
-## FastAPI Documentation
+1. Navigate to the specific HTML file you want to view
+2. Use a web browser to open the file
+3. For SVG diagrams, they can be viewed directly in most browsers
 
-The API is self-documented using FastAPI. When the server is running, you can access:
+## Core Architecture Components
 
-- Interactive API documentation: [/docs](http://localhost:5000/docs)
-- Alternative API documentation: [/redoc](http://localhost:5000/redoc)
+The documentation covers the following key components:
+
+1. Regional Deployment
+2. Security & Compliance
+3. Enhanced Telemetry System
+4. Workflow Orchestration Engine
+5. ML-Powered Agent Selection
+6. Token Economy Manager
+7. Enterprise Knowledge Graph
+8. Circuit Breakers
+9. Two-Tier Caching System
+10. Database Cluster
+11. Enhanced Analytics System

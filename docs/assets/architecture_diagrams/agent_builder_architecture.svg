@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg width="800" height="700" xmlns="http://www.w3.org/2000/svg">
+  <!-- Title -->
+  <text x="400" y="40" font-family="Arial" font-size="24" font-weight="bold" text-anchor="middle">Staples Brain - Agent Builder Architecture</text>
+  
+  <!-- UI Layer -->
+  <rect x="100" y="80" width="600" height="160" rx="10" ry="10" fill="#f1f3f5" stroke="#495057" stroke-width="2"/>
+  <text x="400" y="110" font-family="Arial" font-size="18" font-weight="bold" text-anchor="middle">User Interface Layer</text>
+  
+  <!-- UI Components -->
+  <rect x="150" y="130" width="200" height="90" rx="5" ry="5" fill="#dbe4ff" stroke="#364fc7" stroke-width="2"/>
+  <text x="250" y="155" font-family="Arial" font-size="16" font-weight="bold" text-anchor="middle">Visual Designer</text>
+  <rect x="170" y="170" width="160" height="30" rx="5" ry="5" fill="#bac8ff" stroke="#364fc7" stroke-width="1"/>
+  <text x="250" y="190" font-family="Arial" font-size="12" text-anchor="middle">Component Canvas</text>
+  
+  <rect x="450" y="130" width="200" height="90" rx="5" ry="5" fill="#dbe4ff" stroke="#364fc7" stroke-width="2"/>
+  <text x="550" y="155" font-family="Arial" font-size="16" font-weight="bold" text-anchor="middle">Configuration UI</text>
+  <rect x="470" y="170" width="160" height="30" rx="5" ry="5" fill="#bac8ff" stroke="#364fc7" stroke-width="1"/>
+  <text x="550" y="190" font-family="Arial" font-size="12" text-anchor="middle">Property Editors</text>
+  
+  <!-- API Layer -->
+  <rect x="100" y="260" width="600" height="160" rx="10" ry="10" fill="#f1f3f5" stroke="#495057" stroke-width="2"/>
+  <text x="400" y="290" font-family="Arial" font-size="18" font-weight="bold" text-anchor="middle">API Layer</text>
+  
+  <!-- API Components -->
+  <rect x="150" y="310" width="130" height="90" rx="5" ry="5" fill="#d3f9d8" stroke="#2b8a3e" stroke-width="2"/>
+  <text x="215" y="335" font-family="Arial" font-size="14" font-weight="bold" text-anchor="middle">Agent API</text>
+  <rect x="160" y="350" width="110" height="30" rx="5" ry="5" fill="#b2f2bb" stroke="#2b8a3e" stroke-width="1"/>
+  <text x="215" y="370" font-family="Arial" font-size="12" text-anchor="middle">CRUD Operations</text>
+  
+  <rect x="310" y="310" width="130" height="90" rx="5" ry="5" fill="#d3f9d8" stroke="#2b8a3e" stroke-width="2"/>
+  <text x="375" y="335" font-family="Arial" font-size="14" font-weight="bold" text-anchor="middle">Component API</text>
+  <rect x="320" y="350" width="110" height="30" rx="5" ry="5" fill="#b2f2bb" stroke="#2b8a3e" stroke-width="1"/>
+  <text x="375" y="370" font-family="Arial" font-size="12" text-anchor="middle">Template Access</text>
+  
+  <rect x="470" y="310" width="180" height="90" rx="5" ry="5" fill="#d3f9d8" stroke="#2b8a3e" stroke-width="2"/>
+  <text x="560" y="335" font-family="Arial" font-size="14" font-weight="bold" text-anchor="middle">Configuration Wizard API</text>
+  <rect x="480" y="350" width="160" height="30" rx="5" ry="5" fill="#b2f2bb" stroke="#2b8a3e" stroke-width="1"/>
+  <text x="560" y="370" font-family="Arial" font-size="12" text-anchor="middle">Step Management</text>
+  
+  <!-- Database Layer -->
+  <rect x="100" y="440" width="600" height="140" rx="10" ry="10" fill="#f1f3f5" stroke="#495057" stroke-width="2"/>
+  <text x="400" y="470" font-family="Arial" font-size="18" font-weight="bold" text-anchor="middle">Database Layer</text>
+  
+  <!-- Database Tables -->
+  <rect x="130" y="500" width="120" height="60" rx="5" ry="5" fill="#ffe3e3" stroke="#c92a2a" stroke-width="2"/>
+  <text x="190" y="525" font-family="Arial" font-size="14" font-weight="bold" text-anchor="middle">CustomAgent</text>
+  <text x="190" y="545" font-family="Arial" font-size="12" text-anchor="middle">Table</text>
+  
+  <rect x="280" y="500" width="120" height="60" rx="5" ry="5" fill="#ffe3e3" stroke="#c92a2a" stroke-width="2"/>
+  <text x="340" y="525" font-family="Arial" font-size="14" font-weight="bold" text-anchor="middle">AgentComponent</text>
+  <text x="340" y="545" font-family="Arial" font-size="12" text-anchor="middle">Table</text>
+  
+  <rect x="430" y="500" width="120" height="60" rx="5" ry="5" fill="#ffe3e3" stroke="#c92a2a" stroke-width="2"/>
+  <text x="490" y="525" font-family="Arial" font-size="14" font-weight="bold" text-anchor="middle">Component</text>
+  <text x="490" y="545" font-family="Arial" font-size="12" text-anchor="middle">Connection</text>
+  
+  <rect x="580" y="500" width="90" height="60" rx="5" ry="5" fill="#ffe3e3" stroke="#c92a2a" stroke-width="2"/>
+  <text x="625" y="525" font-family="Arial" font-size="14" font-weight="bold" text-anchor="middle">Agent</text>
+  <text x="625" y="545" font-family="Arial" font-size="12" text-anchor="middle">Template</text>
+  
+  <!-- Runtime Layer -->
+  <rect x="100" y="600" width="600" height="80" rx="10" ry="10" fill="#f1f3f5" stroke="#495057" stroke-width="2"/>
+  <text x="400" y="630" font-family="Arial" font-size="18" font-weight="bold" text-anchor="middle">Runtime Layer</text>
+  
+  <!-- Runtime Components -->
+  <rect x="130" y="650" width="160" height="30" rx="5" ry="5" fill="#ffdeeb" stroke="#c2255c" stroke-width="2"/>
+  <text x="210" y="670" font-family="Arial" font-size="14" text-anchor="middle">Dynamic Agent Loader</text>
+  
+  <rect x="320" y="650" width="160" height="30" rx="5" ry="5" fill="#ffdeeb" stroke="#c2255c" stroke-width="2"/>
+  <text x="400" y="670" font-family="Arial" font-size="14" text-anchor="middle">Orchestrator Integration</text>
+  
+  <rect x="510" y="650" width="160" height="30" rx="5" ry="5" fill="#ffdeeb" stroke="#c2255c" stroke-width="2"/>
+  <text x="590" y="670" font-family="Arial" font-size="14" text-anchor="middle">LangChain Runtime</text>
+  
+  <!-- Connections -->
+  <!-- UI to API -->
+  <line x1="250" y1="220" x2="215" y2="310" stroke="#364fc7" stroke-width="2" marker-end="url(#arrowhead)"/>
+  <line x1="550" y1="220" x2="560" y2="310" stroke="#364fc7" stroke-width="2" marker-end="url(#arrowhead)"/>
+  
+  <!-- API to Database -->
+  <line x1="215" y1="400" x2="190" y2="500" stroke="#2b8a3e" stroke-width="2" marker-end="url(#arrowhead)"/>
+  <line x1="375" y1="400" x2="340" y2="500" stroke="#2b8a3e" stroke-width="2" marker-end="url(#arrowhead)"/>
+  <line x1="560" y1="400" x2="490" y2="500" stroke="#2b8a3e" stroke-width="2" marker-end="url(#arrowhead)"/>
+  
+  <!-- Database to Runtime -->
+  <line x1="190" y1="560" x2="210" y2="650" stroke="#c92a2a" stroke-width="2" marker-end="url(#arrowhead)"/>
+  <line x1="490" y1="560" x2="400" y2="650" stroke="#c92a2a" stroke-width="2" marker-end="url(#arrowhead)"/>
+  <line x1="625" y1="560" x2="590" y2="650" stroke="#c92a2a" stroke-width="2" marker-end="url(#arrowhead)"/>
+  
+  <!-- Component Communication Paths -->
+  <path d="M 350 370 C 400 390 350 420 375 440" stroke="#364fc7" stroke-width="2" stroke-dasharray="5,5" fill="none"/>
+  <path d="M 560 370 C 520 390 580 420 540 440" stroke="#364fc7" stroke-width="2" stroke-dasharray="5,5" fill="none"/>
+  
+  <!-- Define the arrowhead marker -->
+  <defs>
+    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#212529"/>
+    </marker>
+  </defs>
+</svg>
