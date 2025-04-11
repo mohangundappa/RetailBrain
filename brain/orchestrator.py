@@ -1,11 +1,13 @@
 import logging
-from typing import Dict, Any, List, Optional, Tuple
+from typing import Dict, Any, List, Optional, Tuple, Union
 import asyncio
 import json
 import re
+import uuid
 from datetime import datetime, timedelta
 from agents.base_agent import BaseAgent
 from utils.memory import ConversationMemory
+from brain.telemetry import collector as telemetry_collector
 from config.agent_constants import (
     INTENT_AGENT_MAPPING,
     DEFAULT_CONFIDENCE_THRESHOLD,
@@ -60,7 +62,7 @@ class AgentOrchestrator:
         return self.memories[session_id]
     
     def _record_agent_selection(self, session_id: str, agent_name: str, 
-                             confidence: float, intent: str = None,
+                             confidence: float, intent: Optional[str] = None,
                              context_used: bool = False) -> None:
         """
         Record which agent was selected for a given request.
@@ -87,12 +89,21 @@ class AgentOrchestrator:
         if len(self.agent_routing_history[session_id]) > 20:
             self.agent_routing_history[session_id].pop(0)
             
-    async def process_request(self, user_input: str, context: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        # Track in telemetry
+        telemetry_collector.track_agent_selection(
+            session_id=session_id,
+            agent_name=agent_name,
+            confidence=confidence,
+            selection_method="orchestrator_confidence"
+        )
+            
+    async def process_request(self, user_input: str, session_id: Optional[str] = None, context: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """
         Process a user request by selecting the most appropriate agent.
         
         Args:
             user_input: The user's request or query
+            session_id: The session identifier for this conversation
             context: Additional context information
             
         Returns:
@@ -101,12 +112,19 @@ class AgentOrchestrator:
         if not context:
             context = {}
             
+        # Generate session ID if not provided
+        if not session_id:
+            session_id = str(uuid.uuid4())
+            
         logger.debug(f"Orchestrator processing request: {user_input}")
         request_start_time = datetime.now()
         
+        # Track the request in telemetry
+        request_event_id = telemetry_collector.track_request_received(session_id, user_input)
+        
         try:
-            # Get session ID from context, default to 'default' if not present
-            session_id = context.get('session_id', 'default')
+            # Store session_id in context
+            context['session_id'] = session_id
             
             # Get or create memory for this session
             memory = self._get_memory(session_id)
@@ -301,14 +319,24 @@ class AgentOrchestrator:
             return response
             
         except Exception as e:
-            logger.error(f"Error in orchestrator: {str(e)}", exc_info=True)
+            error_message = str(e)
+            logger.error(f"Error in orchestrator: {error_message}", exc_info=True)
+            
+            # Track error in telemetry
+            telemetry_collector.track_error(
+                session_id=session_id,
+                error_type="orchestrator_error",
+                error_message=error_message,
+                recoverable=True
+            )
+            
             return {
                 "success": False,
-                "error": str(e),
+                "error": error_message,
                 "response": "Error processing request. Please try again with different wording."
             }
     
-    def _select_agent(self, user_input: str, context: Dict[str, Any] = None) -> Tuple[BaseAgent, float, bool]:
+    def _select_agent(self, user_input: str, context: Dict[str, Any] = None) -> Tuple[Optional[BaseAgent], float, bool]:
         """
         Select the most appropriate agent to handle a user request.
         
@@ -319,8 +347,19 @@ class AgentOrchestrator:
         Returns:
             A tuple containing (best_agent, confidence_score, context_used)
         """
+        if not context:
+            context = {}
+            
+        session_id = context.get('session_id', 'default')
+        
         if not self.agents:
             logger.warning("No agents available to select from")
+            telemetry_collector.track_error(
+                session_id=session_id,
+                error_type="agent_selection", 
+                error_message="No agents available to select from",
+                recoverable=False
+            )
             return None, 0.0, False
         
         best_agent = None
