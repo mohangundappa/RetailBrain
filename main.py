@@ -1738,7 +1738,16 @@ def telemetry_dashboard():
         return render_template('telemetry_dashboard.html')
     except Exception as e:
         logger.error(f"Error showing telemetry dashboard: {e}")
-        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/chat-with-telemetry')
+def chat_with_telemetry():
+    """Show chat interface with real-time telemetry view side by side."""
+    try:
+        return render_template('chat_with_telemetry.html')
+    except Exception as e:
+        logger.error(f"Error showing chat with telemetry: {e}")
+        return "Error loading chat with telemetry view. Check logs for details."
 
 @app.route('/api/product-info', methods=["POST"])
 def product_info():
