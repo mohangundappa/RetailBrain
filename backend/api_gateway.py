@@ -15,6 +15,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.api.chat import router as chat_router
 from backend.api.agent_builder_fastapi import agent_builder_router
+from backend.api.circuit_breaker_fastapi import circuit_breaker_router
+from backend.api.telemetry_fastapi import telemetry_router
+from backend.api.routes_fastapi import api_router
 from backend.database.db import get_db
 from backend.dependencies import get_chat_service, get_telemetry_service
 from backend.services.chat_service import ChatService
@@ -59,6 +62,9 @@ class AgentListResponse(BaseModel):
 # Include routers
 app.include_router(chat_router, prefix="/api/v1")
 app.include_router(agent_builder_router, prefix="/api/v1/agent-builder")
+app.include_router(circuit_breaker_router, prefix="/api/v1/circuit-breakers")
+app.include_router(telemetry_router, prefix="/api/v1/telemetry")
+app.include_router(api_router, prefix="/api/v1")
 
 
 # API Routes

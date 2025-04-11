@@ -9,7 +9,7 @@ from typing import Dict, Any, List, Optional
 from fastapi import APIRouter, Query
 from pydantic import BaseModel
 
-from brain.telemetry import telemetry_system
+from backend.brain.telemetry import telemetry_system
 
 logger = logging.getLogger(__name__)
 

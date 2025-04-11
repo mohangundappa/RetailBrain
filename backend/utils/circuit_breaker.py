@@ -11,7 +11,7 @@ from enum import Enum
 from typing import Any, Callable, Dict, Optional, TypeVar, cast
 from functools import wraps
 
-from utils.observability import record_error, metrics_store
+from backend.utils.observability import record_error, metrics_store
 
 logger = logging.getLogger(__name__)
 

@@ -11,7 +11,7 @@ from typing import Dict, Any, List, Optional
 from fastapi import APIRouter, HTTPException, Path
 from pydantic import BaseModel
 
-from utils.circuit_breaker import circuit_breaker_registry
+from backend.utils.circuit_breaker import circuit_breaker_registry
 
 logger = logging.getLogger(__name__)
 
