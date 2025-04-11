@@ -203,13 +203,13 @@ class AgentOrchestrator:
                 custom_agents = []
                 try:
                     # This import is inside the try block to avoid circular imports
-                    from models import CustomAgent
+                    from backend.database.models import CustomAgent
                     from flask import current_app
                     
                     # Check if we're in an application context
                     if current_app:
                         # Use direct SQL query with proper SQLAlchemy formatting
-                        from app import db
+                        from backend.flask_app import db
                         from sqlalchemy import text
                         result = db.session.execute(text("SELECT id, name, description FROM custom_agent WHERE is_active = TRUE AND wizard_completed = TRUE")).fetchall()
                         
