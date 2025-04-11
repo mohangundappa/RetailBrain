@@ -7,7 +7,7 @@ from langchain_core.prompts import ChatPromptTemplate, PromptTemplate
 from langchain_core.runnables import RunnableSequence
 from langchain_core.output_parsers import StrOutputParser
 from agents.base_agent import BaseAgent, EntityDefinition
-from config import PASSWORD_RESET_ENDPOINT
+from backend.config import PASSWORD_RESET_ENDPOINT
 
 logger = logging.getLogger(__name__)
 
