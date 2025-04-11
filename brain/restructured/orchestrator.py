@@ -105,6 +105,9 @@ class AgentOrchestrator:
             session_id = context.get('session_id', 'default')
             self.logger.log_request(user_input, session_id)
             
+            # Track request in telemetry
+            request_event_id = telemetry_collector.track_request_received(session_id, user_input)
+            
             # Get or create memory for this session
             memory = self._get_memory(session_id)
             
@@ -187,10 +190,34 @@ class AgentOrchestrator:
                 memory.mark_continue_with_same_agent(False)
                 response['conversation_ended'] = True
             
+            # Track response generation in telemetry
+            telemetry_collector.track_response_generation(
+                session_id,
+                agent.name,
+                True,
+                response.get('is_closing', False) and 'closing' or 'standard',
+                processing_time,
+                request_event_id
+            )
+            
             return response
             
         except Exception as e:
+            # Get session ID for telemetry
+            session_id = context.get('session_id', 'default')
+            
+            # Log the error
             self.logger.log_error(e, context)
+            
+            # Track error in telemetry
+            telemetry_collector.track_error(
+                session_id,
+                "process_request_error",
+                f"Error processing request: {str(e)}",
+                False,
+                request_event_id
+            )
+            
             return {
                 "success": False,
                 "error": str(e),
@@ -208,34 +235,128 @@ class AgentOrchestrator:
         Returns:
             Tuple of (selected_agent, confidence_score, context_used)
         """
+        # Get session ID from context for telemetry
+        session_id = context.get('session_id', 'default')
+        
         # Get all registered agents
         agents = self.registry.get_all()
         
         if not agents:
             logger.warning("No agents available to select from")
+            # Track the error in telemetry
+            telemetry_collector.track_error(session_id, "no_agents", "No agents available to select from")
             return None, 0.0, False
         
         # Extract memory from context
         memory = context.get('memory')
         
         # 1. Check for simple greetings or special cases
+        special_cases_event_id = telemetry_collector.track_special_case_check(session_id, False)
         agent, confidence, context_used = self._check_special_cases(user_input, context)
         if agent is not None:
+            # Update telemetry for special case
+            telemetry_collector.track_special_case_check(
+                session_id, 
+                True, 
+                "greeting" if self._is_simple_greeting(user_input)[0] else "explicit_agent", 
+                special_cases_event_id
+            )
+            # Track agent selection
+            telemetry_collector.track_agent_selection(
+                session_id, 
+                agent.name if agent else None, 
+                confidence,
+                "special_case"
+            )
             return agent, confidence, context_used
         
         # 2. Try intent-based routing for high-confidence intents
+        intent = context.get('intent')
+        intent_event_id = None
+        if intent:
+            intent_event_id = telemetry_collector.track_intent_identification(
+                session_id,
+                intent,
+                context.get('intent_confidence', 0.0)
+            )
+        
+        intent_routing_event_id = telemetry_collector.track_intent_routing(
+            session_id, 
+            intent or "unknown",
+            None,
+            False
+        )
+        
         agent, confidence, context_used = self._try_intent_routing(user_input, context)
         if agent is not None:
+            # Update telemetry for successful intent routing
+            telemetry_collector.track_intent_routing(
+                session_id,
+                intent,
+                agent.name,
+                True,
+                intent_routing_event_id
+            )
+            # Track agent selection
+            telemetry_collector.track_agent_selection(
+                session_id, 
+                agent.name, 
+                confidence,
+                "intent_routing"
+            )
             return agent, confidence, context_used
         
         # 3. Check for conversation continuity
+        continuity_event_id = None
         if memory:
+            last_agent = memory.get_working_memory('last_selected_agent')
+            continuity_event_id = telemetry_collector.track_continuity_check(
+                session_id,
+                last_agent,
+                False,
+                False
+            )
+            
             agent, confidence, context_used = self._try_conversation_continuity(user_input, context)
             if agent is not None:
+                # Update telemetry for continuity
+                telemetry_collector.track_continuity_check(
+                    session_id,
+                    agent.name,
+                    True,
+                    True,
+                    "explicit_flag" if memory.should_continue_with_same_agent() else "recent_interaction",
+                    continuity_event_id
+                )
+                # Track agent selection
+                telemetry_collector.track_agent_selection(
+                    session_id, 
+                    agent.name, 
+                    confidence,
+                    "conversation_continuity"
+                )
                 return agent, confidence, context_used
         
         # 4. Standard confidence-based selection with context boosts
-        return self._evaluate_all_agents(user_input, context)
+        agent, confidence, context_used = self._evaluate_all_agents(user_input, context)
+        
+        # Track final agent selection
+        if agent:
+            telemetry_collector.track_agent_selection(
+                session_id, 
+                agent.name, 
+                confidence,
+                "confidence_scoring"
+            )
+        else:
+            telemetry_collector.track_agent_selection(
+                session_id, 
+                None, 
+                0.0,
+                "no_agent_found"
+            )
+            
+        return agent, confidence, context_used
     
     def _check_special_cases(self, user_input: str, context: Dict[str, Any]) -> Tuple[Any, float, bool]:
         """
@@ -436,6 +557,9 @@ class AgentOrchestrator:
         Returns:
             Tuple of (agent, confidence, context_used) or (None, 0.0, False)
         """
+        # Get session ID from context for telemetry
+        session_id = context.get('session_id', 'default')
+        
         agents = self.registry.get_all()
         agent_scores = []
         
@@ -450,10 +574,25 @@ class AgentOrchestrator:
                     agent.name, base_confidence, context
                 )
                 
+                # Track agent confidence in telemetry
+                telemetry_collector.track_agent_confidence(
+                    session_id,
+                    agent.name,
+                    base_confidence,
+                    adjusted_confidence,
+                    context_used
+                )
+                
                 agent_scores.append((agent, adjusted_confidence, base_confidence, context_used))
                 
             except Exception as e:
                 logger.error(f"Error getting confidence from agent '{agent.name}': {str(e)}")
+                # Track error in telemetry
+                telemetry_collector.track_error(
+                    session_id,
+                    "agent_confidence_error",
+                    f"Error getting confidence from agent '{agent.name}': {str(e)}"
+                )
         
         # Log all agent scores
         if agent_scores:
