@@ -23,7 +23,7 @@ A circuit breaker can be in one of three states:
 2. **Open (Service Unavailable)** - Calls are prevented from reaching the external service
 3. **Half-Open (Testing Recovery)** - A limited number of calls are allowed to test if the service has recovered
 
-![Circuit Breaker State Diagram](docs/architecture/circuit_breaker_state_diagram.svg)
+![Circuit Breaker State Diagram](/docs/architecture/circuit_breaker_state_diagram.svg)
 
 ## Implementation Details
 

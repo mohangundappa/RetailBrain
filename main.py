@@ -45,7 +45,7 @@ import json
 import traceback
 from datetime import datetime, timedelta
 import sqlalchemy.exc
-from flask import render_template, jsonify, request, session, Response, g, redirect, url_for, flash, send_file
+from flask import render_template, jsonify, request, session, Response, g, redirect, url_for, flash, send_file, send_from_directory
 from prometheus_client import CONTENT_TYPE_LATEST
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
@@ -1711,6 +1711,15 @@ def agent_diagrams():
         return render_template('agent_diagrams.html')
     except Exception as e:
         logger.error(f"Error showing agent diagrams: {e}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/circuit-breaker-dashboard')
+def circuit_breaker_dashboard():
+    """Show circuit breaker dashboard HTML page."""
+    try:
+        return render_template('circuit_breaker_status.html')
+    except Exception as e:
+        logger.error(f"Error showing circuit breaker dashboard: {e}")
         return jsonify({"error": str(e)}), 500
 
 @app.route('/api/product-info', methods=["POST"])
