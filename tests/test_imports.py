@@ -84,7 +84,7 @@ class TestImports(unittest.TestCase):
         """Test that project structure imports work."""
         try:
             from brain.staples_brain import initialize_staples_brain
-            from config.agent_constants import (
+            from backend.config.agent_constants import (
                 PACKAGE_TRACKING_AGENT,
                 RESET_PASSWORD_AGENT,
                 STORE_LOCATOR_AGENT,

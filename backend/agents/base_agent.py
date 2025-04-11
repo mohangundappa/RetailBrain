@@ -12,7 +12,7 @@ from langchain_core.prompts import ChatPromptTemplate, PromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 
 # Import constants for agent names
-from config.agent_constants import (
+from backend.config.agent_constants import (
     PACKAGE_TRACKING_AGENT,
     RESET_PASSWORD_AGENT,
     STORE_LOCATOR_AGENT,

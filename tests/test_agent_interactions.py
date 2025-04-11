@@ -15,7 +15,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 
 from brain.staples_brain import StaplesBrain, initialize_staples_brain
 from brain.orchestrator import AgentOrchestrator
-from config.agent_constants import (
+from backend.config.agent_constants import (
     PACKAGE_TRACKING_AGENT,
     RESET_PASSWORD_AGENT,
     STORE_LOCATOR_AGENT,

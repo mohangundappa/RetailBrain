@@ -6,7 +6,7 @@ import logging
 from typing import Dict, Any, Optional, List
 
 from agents.base_agent import BaseAgent
-from config.agent_constants import RETURNS_PROCESSING_AGENT
+from backend.config.agent_constants import RETURNS_PROCESSING_AGENT
 
 logger = logging.getLogger(__name__)
 
