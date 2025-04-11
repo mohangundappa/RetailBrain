@@ -10,6 +10,7 @@ import uvicorn
 from fastapi import FastAPI, Request, Response, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -65,6 +66,16 @@ app.include_router(agent_builder_router, prefix="/api/v1/agent-builder")
 app.include_router(circuit_breaker_router, prefix="/api/v1/circuit-breakers")
 app.include_router(telemetry_router, prefix="/api/v1/telemetry")
 app.include_router(api_router, prefix="/api/v1")
+
+# Mount static directories
+app.mount("/static", StaticFiles(directory="backend/static"), name="static")
+
+# Serve root path by redirecting to documentation
+@app.get("/")
+async def root():
+    """Redirect root to static documentation"""
+    from fastapi.responses import RedirectResponse
+    return RedirectResponse(url="/static/index.html")
 
 
 # API Routes

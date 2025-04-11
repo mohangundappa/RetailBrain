@@ -9,39 +9,53 @@ This directory contains comprehensive documentation for the Staples Brain projec
   - `diagrams/` - Detailed component and flow diagrams
 
 - `html/` - HTML documentation pages
-  - `agent_architecture.html` - Documentation of agent architecture
-  - `enhanced_end_to_end_flow.html` - End-to-end flow documentation
-  - `optimized_architecture_flow.html` - Documentation of optimized architecture
 
-- `optimized_architecture_components.html` - Detailed component documentation
-
-## Documentation Guidelines
-
-- All diagrams should be in SVG format for scalability
-- HTML documentation should use the Replit dark theme CSS
-- Documentation should be updated when architecture changes
-- Component and flow diagrams should reflect the latest implementation
+- `installation/` - Installation and setup guides
+  - `INSTALLATION_GUIDE.md` - General installation instructions
+  - `LOCAL_INSTALLATION.md` - Local development setup
+  - `ENVIRONMENT_VARIABLES.md` - Environment variables documentation
+  - `TROUBLESHOOTING.md` - Common installation issues and solutions
 
 ## Viewing Documentation
 
-To view the HTML documentation:
+The documentation is also available through the running application:
 
-1. Navigate to the specific HTML file you want to view
-2. Use a web browser to open the file
-3. For SVG diagrams, they can be viewed directly in most browsers
+- When the application is running, visit: http://localhost:5000/
+- API documentation is available at: http://localhost:5000/docs
+
+## Documentation Guidelines
+
+- SVG format is preferred for all diagrams
+- HTML documentation should use the Replit dark theme CSS
+- Keep documentation updated with the latest architectural changes
 
 ## Core Architecture Components
 
-The documentation covers the following key components:
+The Staples Brain architecture consists of:
 
-1. Regional Deployment
-2. Security & Compliance
-3. Enhanced Telemetry System
-4. Workflow Orchestration Engine
-5. ML-Powered Agent Selection
-6. Token Economy Manager
-7. Enterprise Knowledge Graph
-8. Circuit Breakers
-9. Two-Tier Caching System
-10. Database Cluster
-11. Enhanced Analytics System
+1. **FastAPI Backend**
+   - Pure ASGI implementation (no Flask/WSGI)
+   - Standardized API response format
+   - LangChain/LangGraph integration
+   - PostgreSQL with pgvector for vector storage
+
+2. **Agent System**
+   - Microservices architecture
+   - Agent orchestration
+   - Context management
+   - Intent-based routing
+
+3. **Telemetry and Monitoring**
+   - Comprehensive telemetry collection
+   - LangSmith integration
+   - Performance metrics
+
+## Backend Structure
+
+The backend component follows a clear separation of concerns:
+
+- `api/` - API routes and controllers
+- `brain/` - Core brain implementation with agent orchestration
+- `database/` - Database models and scripts
+- `services/` - Service layer implementation
+- `utils/` - Utility functions and helpers
