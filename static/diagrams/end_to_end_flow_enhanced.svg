@@ -171,7 +171,7 @@
   <path d="M 500 500 L 570 500" stroke="#3498db" stroke-width="2" fill="none"/>
   <circle cx="535" cy="500" r="12" fill="#444444" stroke="#ffffff" stroke-width="1"/>
   <text x="535" y="504" font-family="Arial" font-size="12" fill="#ffffff" text-anchor="middle">14</text>
-  <text x="535" cy="515" font-family="Arial" font-size="10" fill="#ffffff" text-anchor="middle" font-style="italic">[Persistent]</text>
+  <text x="535" y="515" font-family="Arial" font-size="10" fill="#ffffff" text-anchor="middle" font-style="italic">[Persistent]</text>
   
   <!-- Specialized Agent to External APIs -->
   <path d="M 410 540 L 410 580" stroke="#3498db" stroke-width="2" fill="none"/>
@@ -216,11 +216,11 @@
   <!-- Fallback Paths -->
   <!-- LLM Fallback -->
   <path d="M 250 500 L 300 500 L 300 560 L 160 560" stroke="#e74c3c" stroke-width="2" fill="none" stroke-dasharray="5,3"/>
-  <text x="210" cy="560" font-family="Arial" font-size="10" fill="#e74c3c" text-anchor="middle" font-style="italic">[Fallback]</text>
+  <text x="210" y="560" font-family="Arial" font-size="10" fill="#e74c3c" text-anchor="middle" font-style="italic">[Fallback]</text>
   
   <!-- External API Fallback -->
   <path d="M 500 620 L 535 620 L 535 660 L 160 660" stroke="#e74c3c" stroke-width="2" fill="none" stroke-dasharray="5,3"/>
-  <text x="480" cy="660" font-family="Arial" font-size="10" fill="#e74c3c" text-anchor="middle" font-style="italic">[Fallback]</text>
+  <text x="480" y="660" font-family="Arial" font-size="10" fill="#e74c3c" text-anchor="middle" font-style="italic">[Fallback]</text>
   
   <!-- Asynchronous Indicators -->
   <rect x="510" y="385" width="80" height="20" fill="#e67e22" rx="10" ry="10"/>
