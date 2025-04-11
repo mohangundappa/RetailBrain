@@ -68,6 +68,15 @@ from utils.observability import (
     logger
 )
 
+# Import telemetry API blueprint if available
+try:
+    from api.telemetry import telemetry_blueprint
+    # Register the blueprint
+    app.register_blueprint(telemetry_blueprint)
+    logger.info("Registered telemetry API blueprint")
+except ImportError:
+    logger.warning("Telemetry API blueprint not available")
+
 # Sample data for simulating agent responses (used for development and testing)
 PACKAGE_TRACKING_SAMPLE = {
     "tracking_number": "TRACK123456",
@@ -1720,6 +1729,15 @@ def circuit_breaker_dashboard():
         return render_template('circuit_breaker_status.html')
     except Exception as e:
         logger.error(f"Error showing circuit breaker dashboard: {e}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/telemetry-dashboard')
+def telemetry_dashboard():
+    """Show agent selection telemetry dashboard."""
+    try:
+        return render_template('telemetry_dashboard.html')
+    except Exception as e:
+        logger.error(f"Error showing telemetry dashboard: {e}")
         return jsonify({"error": str(e)}), 500
 
 @app.route('/api/product-info', methods=["POST"])

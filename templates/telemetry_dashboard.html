@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Orchestration Telemetry Dashboard</title>
+    <link rel="stylesheet" href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css">
+    <style>
+        .event-card {
+            margin-bottom: 10px;
+            border: 1px solid #444;
+            border-radius: 5px;
+        }
+        
+        .event-header {
+            padding: 10px;
+            cursor: pointer;
+            background-color: var(--bs-gray-800);
+            border-bottom: 1px solid #444;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .event-header:hover {
+            background-color: var(--bs-gray-700);
+        }
+        
+        .event-content {
+            padding: 15px;
+            background-color: var(--bs-gray-900);
+            display: none;
+        }
+        
+        .active .event-content {
+            display: block;
+        }
+        
+        .event-timeline {
+            position: relative;
+            margin-left: 20px;
+        }
+        
+        .event-timeline::before {
+            content: '';
+            position: absolute;
+            left: -20px;
+            top: 0;
+            height: 100%;
+            width: 2px;
+            background-color: var(--bs-primary);
+        }
+        
+        .tag {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 10px;
+            font-size: 0.8rem;
+            margin-right: 5px;
+        }
+        
+        .tag-request {
+            background-color: var(--bs-blue);
+        }
+        
+        .tag-intent {
+            background-color: var(--bs-indigo);
+        }
+        
+        .tag-agent {
+            background-color: var(--bs-purple);
+        }
+        
+        .tag-confidence {
+            background-color: var(--bs-teal);
+        }
+        
+        .tag-selection {
+            background-color: var(--bs-green);
+        }
+        
+        .tag-response {
+            background-color: var(--bs-orange);
+        }
+        
+        .tag-error {
+            background-color: var(--bs-red);
+        }
+        
+        .tag-topic {
+            background-color: var(--bs-yellow);
+            color: var(--bs-dark);
+        }
+        
+        .event-badge {
+            min-width: 20px;
+            height: 20px;
+            background-color: var(--bs-primary);
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 10px;
+            font-size: 0.8rem;
+        }
+        
+        .timestamp {
+            color: var(--bs-gray-500);
+            font-size: 0.8rem;
+        }
+        
+        .json-key {
+            color: var(--bs-info);
+        }
+        
+        .json-value {
+            color: var(--bs-light);
+        }
+        
+        .json-string {
+            color: var(--bs-success);
+        }
+        
+        .json-number {
+            color: var(--bs-warning);
+        }
+        
+        .json-boolean {
+            color: var(--bs-danger);
+        }
+        
+        .json-null {
+            color: var(--bs-gray-500);
+        }
+        
+        pre {
+            margin: 0;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#">Orchestration Telemetry</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNavDropdown">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNavDropdown">
+                <ul class="navbar-nav">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="/telemetry-dashboard">Dashboard</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/circuit-breaker-dashboard">Circuit Breakers</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/">Main Application</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <div class="row">
+            <div class="col-12">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h1>Agent Selection Telemetry</h1>
+                    <div>
+                        <button id="refreshButton" class="btn btn-primary me-2">
+                            <i class="fa fa-refresh"></i> Refresh
+                        </button>
+                        <button id="clearAllButton" class="btn btn-danger">
+                            <i class="fa fa-trash"></i> Clear All
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="row">
+            <div class="col-md-3">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">Sessions</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="list-group" id="sessionList">
+                            <div class="text-center py-3">
+                                <div class="spinner-border text-primary" role="status">
+                                    <span class="visually-hidden">Loading...</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-9">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">Event Timeline</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="eventTimeline">
+                            <div class="alert alert-info">
+                                Select a session from the list to view its events.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Helper function to format timestamps
+        function formatTimestamp(isoString) {
+            const date = new Date(isoString);
+            return date.toLocaleString();
+        }
+        
+        // Helper function to get tag class based on event type
+        function getTagClass(eventType) {
+            const mapping = {
+                'request_received': 'tag-request',
+                'intent_identified': 'tag-intent',
+                'agent_confidence': 'tag-confidence',
+                'agent_selection': 'tag-selection',
+                'response_generation': 'tag-response',
+                'topic_change': 'tag-topic',
+                'error': 'tag-error'
+            };
+            
+            // Default to agent tag for others
+            return mapping[eventType] || 'tag-agent';
+        }
+        
+        // Helper function to format JSON for display
+        function formatJSON(obj) {
+            return JSON.stringify(obj, null, 2)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, 
+                    function (match) {
+                        let cls = 'json-number';
+                        if (/^"/.test(match)) {
+                            if (/:$/.test(match)) {
+                                cls = 'json-key';
+                            } else {
+                                cls = 'json-string';
+                            }
+                        } else if (/true|false/.test(match)) {
+                            cls = 'json-boolean';
+                        } else if (/null/.test(match)) {
+                            cls = 'json-null';
+                        }
+                        return '<span class="' + cls + '">' + match + '</span>';
+                    }
+                );
+        }
+        
+        // Fetch sessions
+        function fetchSessions() {
+            fetch('/api/telemetry/sessions')
+                .then(response => response.json())
+                .then(data => {
+                    const sessionList = document.getElementById('sessionList');
+                    
+                    if (data.sessions && data.sessions.length > 0) {
+                        sessionList.innerHTML = '';
+                        
+                        data.sessions.forEach((sessionId, index) => {
+                            const sessionItem = document.createElement('a');
+                            sessionItem.href = '#';
+                            sessionItem.className = 'list-group-item list-group-item-action d-flex justify-content-between align-items-center';
+                            sessionItem.dataset.sessionId = sessionId;
+                            
+                            const shortId = sessionId.length > 12 ? sessionId.substr(0, 8) + '...' : sessionId;
+                            
+                            sessionItem.innerHTML = `
+                                <div>Session ${shortId}</div>
+                                <button class="btn btn-sm btn-outline-danger clear-session-btn" 
+                                        data-session-id="${sessionId}">
+                                    <i class="fa fa-times"></i>
+                                </button>
+                            `;
+                            
+                            sessionItem.addEventListener('click', function(e) {
+                                if (e.target.classList.contains('clear-session-btn') || 
+                                    e.target.closest('.clear-session-btn')) {
+                                    e.preventDefault();
+                                    clearSession(sessionId);
+                                } else {
+                                    e.preventDefault();
+                                    document.querySelectorAll('.list-group-item').forEach(item => {
+                                        item.classList.remove('active');
+                                    });
+                                    this.classList.add('active');
+                                    fetchSessionEvents(sessionId);
+                                }
+                            });
+                            
+                            sessionList.appendChild(sessionItem);
+                            
+                            // Auto-select the first session
+                            if (index === 0) {
+                                sessionItem.click();
+                            }
+                        });
+                    } else {
+                        sessionList.innerHTML = '<div class="alert alert-warning m-3">No sessions found.</div>';
+                        document.getElementById('eventTimeline').innerHTML = 
+                            '<div class="alert alert-info">No sessions available. Process a request to generate telemetry.</div>';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching sessions:', error);
+                    document.getElementById('sessionList').innerHTML = 
+                        '<div class="alert alert-danger m-3">Error loading sessions.</div>';
+                });
+        }
+        
+        // Fetch events for a session
+        function fetchSessionEvents(sessionId) {
+            document.getElementById('eventTimeline').innerHTML = `
+                <div class="text-center py-3">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+            `;
+            
+            fetch(`/api/telemetry/sessions/${sessionId}`)
+                .then(response => response.json())
+                .then(data => {
+                    const eventTimeline = document.getElementById('eventTimeline');
+                    
+                    if (data.events && data.events.length > 0) {
+                        eventTimeline.innerHTML = '';
+                        
+                        // Group events by parent_id
+                        const eventGroups = {};
+                        const rootEvents = [];
+                        
+                        data.events.forEach(event => {
+                            if (!event.parent_id) {
+                                rootEvents.push(event);
+                            } else {
+                                if (!eventGroups[event.parent_id]) {
+                                    eventGroups[event.parent_id] = [];
+                                }
+                                eventGroups[event.parent_id].push(event);
+                            }
+                        });
+                        
+                        // Create the event timeline
+                        buildEventTimeline(rootEvents, eventGroups, eventTimeline);
+                    } else {
+                        eventTimeline.innerHTML = '<div class="alert alert-warning">No events found for this session.</div>';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching session events:', error);
+                    document.getElementById('eventTimeline').innerHTML = 
+                        '<div class="alert alert-danger">Error loading session events.</div>';
+                });
+        }
+        
+        // Build the event timeline
+        function buildEventTimeline(events, eventGroups, container, level = 0) {
+            events.forEach(event => {
+                const eventCard = document.createElement('div');
+                eventCard.className = 'event-card';
+                eventCard.dataset.eventId = event.event_id;
+                
+                // Create event header
+                const eventHeader = document.createElement('div');
+                eventHeader.className = 'event-header';
+                
+                const headerContent = document.createElement('div');
+                headerContent.innerHTML = `
+                    <span class="event-badge">${level + 1}</span>
+                    <span class="tag ${getTagClass(event.event_type)}">${event.event_type}</span>
+                    <span>${getEventTitle(event)}</span>
+                `;
+                
+                const timestamp = document.createElement('div');
+                timestamp.className = 'timestamp';
+                timestamp.textContent = formatTimestamp(event.timestamp);
+                
+                eventHeader.appendChild(headerContent);
+                eventHeader.appendChild(timestamp);
+                
+                // Create event content
+                const eventContent = document.createElement('div');
+                eventContent.className = 'event-content';
+                eventContent.innerHTML = `<pre>${formatJSON(event.details)}</pre>`;
+                
+                // Add child events if any
+                if (eventGroups[event.event_id] && eventGroups[event.event_id].length > 0) {
+                    const childContainer = document.createElement('div');
+                    childContainer.className = 'event-timeline';
+                    eventContent.appendChild(childContainer);
+                    
+                    buildEventTimeline(eventGroups[event.event_id], eventGroups, childContainer, level + 1);
+                }
+                
+                // Add toggle functionality
+                eventHeader.addEventListener('click', function() {
+                    eventCard.classList.toggle('active');
+                });
+                
+                // Assemble the card
+                eventCard.appendChild(eventHeader);
+                eventCard.appendChild(eventContent);
+                container.appendChild(eventCard);
+            });
+        }
+        
+        // Get a human-readable title for an event
+        function getEventTitle(event) {
+            switch (event.event_type) {
+                case 'request_received':
+                    return `User: "${ellipsis(event.details.user_input, 30)}"`;
+                    
+                case 'intent_identified':
+                    return `Intent: ${event.details.intent} (${(event.details.confidence * 100).toFixed(1)}%)`;
+                    
+                case 'agent_confidence':
+                    return `${event.details.agent_name}: ${(event.details.adjusted_confidence * 100).toFixed(1)}%`;
+                    
+                case 'agent_selection':
+                    return event.details.agent_name ? 
+                        `Selected: ${event.details.agent_name} (${(event.details.confidence * 100).toFixed(1)}%)` : 
+                        'No agent selected';
+                    
+                case 'special_case_check':
+                    return event.details.is_special_case ? 
+                        `Special case: ${event.details.case_type}` : 
+                        'No special case detected';
+                    
+                case 'intent_routing':
+                    return event.details.succeeded ? 
+                        `Routed to ${event.details.agent_name}` : 
+                        `Failed to route intent: ${event.details.intent}`;
+                        
+                case 'continuity_check':
+                    return event.details.continue_same_agent ? 
+                        `Continue with ${event.details.last_agent}` : 
+                        `No continuity with ${event.details.last_agent || 'previous agent'}`;
+                        
+                case 'topic_change':
+                    return event.details.detected ? 
+                        `Topic change: ${event.details.from_agent} → ${event.details.to_agent}` : 
+                        'No topic change detected';
+                        
+                case 'response_generation':
+                    return event.details.success ? 
+                        `Response from ${event.details.agent_name}` : 
+                        'Failed to generate response';
+                        
+                case 'error':
+                    return `Error: ${event.details.error_type}`;
+                    
+                default:
+                    return event.event_type;
+            }
+        }
+        
+        // Helper function to truncate text
+        function ellipsis(text, max) {
+            return text.length > max ? text.substr(0, max) + '...' : text;
+        }
+        
+        // Clear a session
+        function clearSession(sessionId) {
+            if (confirm(`Are you sure you want to clear telemetry for session ${sessionId}?`)) {
+                fetch(`/api/telemetry/sessions/${sessionId}`, {
+                    method: 'DELETE'
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        fetchSessions();
+                    } else {
+                        alert('Failed to clear session.');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error clearing session:', error);
+                    alert('Error clearing session.');
+                });
+            }
+        }
+        
+        // Clear all sessions
+        function clearAllSessions() {
+            if (confirm('Are you sure you want to clear all telemetry sessions?')) {
+                fetch('/api/telemetry/sessions', {
+                    method: 'DELETE'
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        fetchSessions();
+                    } else {
+                        alert('Failed to clear sessions.');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error clearing sessions:', error);
+                    alert('Error clearing sessions.');
+                });
+            }
+        }
+        
+        // Event listeners
+        document.getElementById('refreshButton').addEventListener('click', fetchSessions);
+        document.getElementById('clearAllButton').addEventListener('click', clearAllSessions);
+        
+        // Initialize
+        fetchSessions();
+        
+        // Poll for updates every 5 seconds
+        setInterval(fetchSessions, 5000);
+    </script>
+</body>
+</html>
