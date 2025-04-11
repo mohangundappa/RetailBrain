@@ -1,1 +1,0 @@
-# This file enables Python to recognize the migrations directory as a package
