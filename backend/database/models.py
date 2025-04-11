@@ -31,7 +31,7 @@ class Conversation(Base):
         onupdate=func.now(),
         nullable=False
     )
-    metadata: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSONB, nullable=True)
+    meta_data: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSONB, nullable=True)
     
     # Relationships
     messages: Mapped[List["Message"]] = relationship(
@@ -55,7 +55,7 @@ class Message(Base):
     created_at: Mapped[datetime] = mapped_column(
         sa.DateTime, server_default=func.now(), nullable=False
     )
-    metadata: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSONB, nullable=True)
+    meta_data: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSONB, nullable=True)
     
     # Relationships
     conversation: Mapped[Conversation] = relationship(
@@ -76,7 +76,7 @@ class TelemetrySession(Base):
     )
     end_time: Mapped[Optional[datetime]] = mapped_column(sa.DateTime, nullable=True)
     user_id: Mapped[Optional[str]] = mapped_column(sa.String(50), nullable=True)
-    metadata: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSONB, nullable=True)
+    meta_data: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSONB, nullable=True)
     
     # Relationships
     events: Mapped[List["TelemetryEvent"]] = relationship(

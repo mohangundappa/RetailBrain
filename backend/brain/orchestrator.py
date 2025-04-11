@@ -203,15 +203,15 @@ class AgentOrchestrator:
                 custom_agents = []
                 try:
                     # This import is inside the try block to avoid circular imports
-                    from backend.database.models import CustomAgent
-                    from flask import current_app
+                    # Using async database access instead of Flask
+                    from backend.database.db import async_session
+                    from sqlalchemy import text
+                    from sqlalchemy.ext.asyncio import AsyncSession
                     
-                    # Check if we're in an application context
-                    if current_app:
-                        # Use direct SQL query with proper SQLAlchemy formatting
-                        from backend.flask_app import db
-                        from sqlalchemy import text
-                        result = db.session.execute(text("SELECT id, name, description FROM custom_agent WHERE is_active = TRUE AND wizard_completed = TRUE")).fetchall()
+                    # Use direct SQL query with proper SQLAlchemy formatting in async context
+                    async with async_session() as session:
+                        result = await session.execute(text("SELECT id, name, description FROM custom_agent WHERE is_active = TRUE AND wizard_completed = TRUE"))
+                        result = result.fetchall()
                         
                         # Convert the raw SQL results to a format we can use
                         for row in result:

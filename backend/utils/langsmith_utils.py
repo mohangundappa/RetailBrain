@@ -18,6 +18,25 @@ from langsmith import Client
 from langsmith.run_helpers import traceable
 from langsmith.schemas import Run, RunTypeEnum
 
+def init_langsmith():
+    """
+    Initialize LangSmith for telemetry.
+    This function checks for the LANGSMITH_API_KEY environment variable and
+    initializes LangSmith client if available.
+    """
+    api_key = os.environ.get("LANGSMITH_API_KEY")
+    if api_key:
+        logger = logging.getLogger("staples_brain")
+        logger.info("LangSmith API key found, enabling telemetry")
+        try:
+            # Just create a client to verify the API key works
+            client = Client()
+            logger.info("LangSmith initialized successfully")
+            return client
+        except Exception as e:
+            logger.warning(f"Failed to initialize LangSmith: {str(e)}")
+    return None
+
 logger = logging.getLogger(__name__)
 
 # Internal logging functions to avoid circular imports

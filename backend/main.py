@@ -1,6 +1,6 @@
 """
 Main application module for Staples Brain.
-This is the entry point for the Flask application.
+This is the entry point for the FastAPI application.
 """
 import os
 import sys
@@ -24,12 +24,10 @@ from dotenv import load_dotenv
 print(f"Loading environment from {os.path.abspath('.env')}")
 load_dotenv()
 
-# Import app factory
-from backend.flask_app import create_app
+# Import app from API gateway
+from backend.api_gateway import app
 
-# Create the Flask app
-app = create_app()
-
-# This is used when running the Flask app directly
+# This is used when running the FastAPI app directly
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=5000, reload=True)

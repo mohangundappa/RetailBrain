@@ -4,6 +4,7 @@ Dependencies for FastAPI API Gateway.
 import logging
 from typing import AsyncGenerator
 
+from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.database.db import get_db

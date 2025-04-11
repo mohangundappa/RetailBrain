@@ -14,6 +14,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.api.chat import router as chat_router
+from backend.database.db import get_db
 from backend.dependencies import get_chat_service, get_telemetry_service
 from backend.services.chat_service import ChatService
 from backend.services.telemetry_service import TelemetryService
@@ -64,7 +65,8 @@ async def health_check(db: AsyncSession = Depends(get_db)):
     """Health check endpoint"""
     try:
         # Check if database is healthy
-        await db.execute("SELECT 1")
+        from sqlalchemy import text
+        await db.execute(text("SELECT 1"))
         
         # Additional checks could be added here (LLM service, etc.)
         
@@ -212,5 +214,4 @@ async def global_exception_handler(request, exc):
     )
 
 
-# Fix incomplete import
-from backend.database.db import get_db
+# End of API Gateway module
