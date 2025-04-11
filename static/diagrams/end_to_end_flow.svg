@@ -61,7 +61,7 @@
   
   <!-- External APIs & Tools -->
   <rect x="350" y="530" width="200" height="80" fill="#e74c3c" rx="5" ry="5" stroke="#f1c40f" stroke-width="2"/>
-  <text x="450" y="565" font-family="Arial" font-size="18" fill="#ffffff" text-anchor="middle">External APIs & Tools</text>
+  <text x="450" y="565" font-family="Arial" font-size="18" fill="#ffffff" text-anchor="middle">External APIs</text>
   <text x="450" y="590" font-family="Arial" font-size="14" fill="#aaaaaa" text-anchor="middle">Salesforce, order systems</text>
   
   <!-- Response Generation -->
@@ -76,71 +76,64 @@
   
   <!-- Connections -->
   <!-- User Input to Frontend -->
-  <path d="M 270 130 L 350 130" stroke="#5dade2" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+  <path d="M 270 130 L 350 130" stroke="#5dade2" stroke-width="2" fill="none"/>
   
   <!-- Frontend to API Gateway -->
-  <path d="M 550 130 L 630 130" stroke="#5dade2" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+  <path d="M 550 130 L 630 130" stroke="#5dade2" stroke-width="2" fill="none"/>
   
   <!-- API Gateway to Brain Orchestrator -->
-  <path d="M 730 170 L 730 190 L 450 190 L 450 200" stroke="#5dade2" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+  <path d="M 730 170 L 730 190 L 450 190 L 450 200" stroke="#5dade2" stroke-width="2" fill="none"/>
   
   <!-- API Gateway to Security Layer -->
-  <path d="M 630 130 L 600 130 L 600 170 L 170 170 L 170 200" stroke="#d2b4de" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+  <path d="M 630 130 L 600 130 L 600 170 L 170 170 L 170 200" stroke="#d2b4de" stroke-width="2" fill="none"/>
   
   <!-- API Gateway to Telemetry -->
-  <path d="M 730 170 L 730 200" stroke="#d2b4de" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+  <path d="M 730 170 L 730 200" stroke="#d2b4de" stroke-width="2" fill="none"/>
   
   <!-- Security to Brain Orchestrator -->
-  <path d="M 270 240 L 350 240" stroke="#d2b4de" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+  <path d="M 270 240 L 350 240" stroke="#d2b4de" stroke-width="2" fill="none"/>
   
   <!-- Brain Orchestrator to Telemetry -->
-  <path d="M 550 240 L 630 240" stroke="#a569bd" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+  <path d="M 550 240 L 630 240" stroke="#a569bd" stroke-width="2" fill="none"/>
   
   <!-- Brain Orchestrator to Agent Selection -->
-  <path d="M 450 280 L 450 310" stroke="#a569bd" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+  <path d="M 450 280 L 450 310" stroke="#a569bd" stroke-width="2" fill="none"/>
   
   <!-- Agent Selection to Specialized Agent -->
-  <path d="M 450 390 L 450 420" stroke="#3498db" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+  <path d="M 450 390 L 450 420" stroke="#3498db" stroke-width="2" fill="none"/>
   
   <!-- Agent Selection to LLM Foundation -->
-  <path d="M 350 350 L 250 350 L 250 420" stroke="#3498db" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+  <path d="M 350 350 L 250 350 L 250 420" stroke="#3498db" stroke-width="2" fill="none"/>
   
   <!-- Agent Selection to Database -->
-  <path d="M 550 350 L 650 350 L 650 420" stroke="#3498db" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+  <path d="M 550 350 L 650 350 L 650 420" stroke="#3498db" stroke-width="2" fill="none"/>
   
   <!-- LLM to Specialized Agent -->
-  <path d="M 350 460 L 250 460" stroke="#9b59b6" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+  <path d="M 350 460 L 250 460" stroke="#9b59b6" stroke-width="2" fill="none"/>
   
   <!-- Specialized Agent to Database -->
-  <path d="M 550 460 L 650 460" stroke="#3498db" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+  <path d="M 550 460 L 650 460" stroke="#3498db" stroke-width="2" fill="none"/>
   
   <!-- Specialized Agent to External APIs -->
-  <path d="M 450 500 L 450 530" stroke="#3498db" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+  <path d="M 450 500 L 450 530" stroke="#3498db" stroke-width="2" fill="none"/>
   
   <!-- External APIs to Response -->
-  <path d="M 350 570 L 270 570" stroke="#f1c40f" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+  <path d="M 350 570 L 270 570" stroke="#f1c40f" stroke-width="2" fill="none"/>
   
   <!-- External APIs to Caching -->
-  <path d="M 550 570 L 630 570" stroke="#f1c40f" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+  <path d="M 550 570 L 630 570" stroke="#f1c40f" stroke-width="2" fill="none"/>
   
   <!-- Response back to User (loop) -->
-  <path d="M 70 570 L 50 570 L 50 130 L 70 130" stroke="#3498db" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+  <path d="M 70 570 L 50 570 L 50 130 L 70 130" stroke="#3498db" stroke-width="2" fill="none"/>
   
   <!-- Database to Caching -->
-  <path d="M 650 500 L 650 520 L 730 520 L 730 530" stroke="#27ae60" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+  <path d="M 650 500 L 650 520 L 730 520 L 730 530" stroke="#27ae60" stroke-width="2" fill="none"/>
   
   <!-- Caching to Response -->
-  <path d="M 630 570 L 600 570 L 600 620 L 150 620 L 150 610" stroke="#27ae60" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+  <path d="M 630 570 L 600 570 L 600 620 L 150 620 L 150 610" stroke="#27ae60" stroke-width="2" fill="none"/>
   
   <!-- LLM to Response -->
-  <path d="M 250 500 L 250 520 L 170 520 L 170 530" stroke="#9b59b6" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
-  
-  <!-- Arrow marker definition -->
-  <defs>
-    <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
-      <path d="M0,0 L0,6 L9,3 z" fill="#ffffff"/>
-    </marker>
-  </defs>
+  <path d="M 250 500 L 250 520 L 170 520 L 170 530" stroke="#9b59b6" stroke-width="2" fill="none"/>
   
   <!-- Legend -->
   <rect x="60" y="660" width="20" height="10" fill="#3498db" rx="2" ry="2"/>
@@ -150,7 +143,7 @@
   <text x="265" y="670" font-family="Arial" font-size="12" fill="#ffffff">Orchestration</text>
   
   <rect x="380" y="660" width="20" height="10" fill="#7d3c98" rx="2" ry="2"/>
-  <text x="405" y="670" font-family="Arial" font-size="12" fill="#ffffff">Security & Telemetry</text>
+  <text x="405" y="670" font-family="Arial" font-size="12" fill="#ffffff">Security/Telemetry</text>
   
   <rect x="550" y="660" width="20" height="10" fill="#6c3483" rx="2" ry="2"/>
   <text x="575" y="670" font-family="Arial" font-size="12" fill="#ffffff">LLM Components</text>
