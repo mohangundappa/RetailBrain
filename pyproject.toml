@@ -35,4 +35,5 @@ dependencies = [
     "fastapi>=0.115.12",
     "pydantic>=2.11.3",
     "asgiref>=3.8.1",
+    "requests>=2.32.3",
 ]
