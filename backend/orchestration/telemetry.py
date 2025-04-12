@@ -28,6 +28,7 @@ Usage:
 import json
 import logging
 import time
+import uuid
 from datetime import datetime
 from typing import Dict, Any, List, Tuple, Optional, Union
 
@@ -499,3 +500,151 @@ class OrchestrationTelemetryCollector:
 # Global telemetry instance
 telemetry_system = OrchestratorTelemetry()
 collector = OrchestrationTelemetryCollector(telemetry_system)
+
+
+class TelemetryManager:
+    """
+    Unified telemetry management class for the orchestration engine.
+    
+    This class provides a simplified interface to the telemetry system
+    that can be used by the OrchestrationEngine.
+    """
+    
+    def __init__(self):
+        """Initialize the telemetry manager."""
+        self._telemetry = telemetry_system
+        self._collector = collector
+        self._session_events = {}  # Temporary in-memory cache
+    
+    def record_event(
+        self, 
+        session_id: str, 
+        event_type: str, 
+        data: Optional[Dict[str, Any]] = None,
+        parent_id: Optional[str] = None
+    ) -> str:
+        """
+        Record a telemetry event.
+        
+        Args:
+            session_id: Session identifier
+            event_type: Type of event (e.g., 'request', 'response', 'error')
+            data: Event data
+            parent_id: Parent event ID for nested events
+            
+        Returns:
+            Event ID
+        """
+        logger.info(f"Recording telemetry event: {event_type} for session {session_id}")
+        event_id = str(uuid.uuid4())
+        
+        # Store event in session cache
+        if session_id not in self._session_events:
+            self._session_events[session_id] = []
+        
+        self._session_events[session_id].append({
+            "id": event_id,
+            "timestamp": datetime.now().isoformat(),
+            "event_type": event_type,
+            "parent_id": parent_id,
+            "data": data or {}
+        })
+        
+        # Use collector for standard event types
+        if event_type == "request":
+            user_input = data.get("input", "") if data else ""
+            self._collector.track_request_received(session_id, user_input)
+        elif event_type == "response":
+            agent_id = data.get("agent_id", "") if data else ""
+            self._collector.track_response_generation(
+                session_id=session_id,
+                agent_name=agent_id,
+                parent_id=parent_id
+            )
+        elif event_type == "error":
+            error_message = data.get("error", "") if data else ""
+            self._collector.track_error(
+                session_id=session_id,
+                error_type="orchestration_error",
+                error_message=error_message,
+                parent_id=parent_id
+            )
+        else:
+            # For custom events
+            self._collector.track_custom_event(
+                session_id=session_id,
+                event_type=event_type,
+                details=data or {},
+                parent_id=parent_id
+            )
+        
+        return event_id
+    
+    def get_session_events(self, session_id: str, limit: int = 100) -> Dict[str, Any]:
+        """
+        Get events for a specific session.
+        
+        Args:
+            session_id: Session identifier
+            limit: Maximum number of events to return
+            
+        Returns:
+            Dictionary with session events
+        """
+        events = self._telemetry.get_session_events(session_id)
+        
+        # If no events from telemetry, use in-memory cache
+        if not events and session_id in self._session_events:
+            events = self._session_events[session_id][-limit:]
+        
+        return {
+            "session_id": session_id,
+            "events": events[:limit],
+            "total_events": len(events)
+        }
+    
+    def get_recent_sessions(self, limit: int = 10) -> Dict[str, Any]:
+        """
+        Get the most recent active sessions.
+        
+        Args:
+            limit: Maximum number of sessions to return
+            
+        Returns:
+            Dictionary with session information
+        """
+        # Get session IDs from telemetry system
+        session_ids = self._telemetry.get_latest_sessions(limit)
+        
+        # Add sessions from in-memory cache
+        memory_sessions = list(self._session_events.keys())
+        for session_id in memory_sessions:
+            if session_id not in session_ids:
+                session_ids.append(session_id)
+        
+        # Truncate to limit
+        session_ids = session_ids[:limit]
+        
+        # Build session info
+        sessions = []
+        for session_id in session_ids:
+            events = self.get_session_events(session_id).get("events", [])
+            if events:
+                # Get timestamp of first and last event
+                first_event = events[0]
+                last_event = events[-1]
+                start_time = first_event.get("timestamp")
+                last_activity = last_event.get("timestamp")
+                
+                sessions.append({
+                    "session_id": session_id,
+                    "start_time": start_time,
+                    "last_activity": last_activity,
+                    "event_count": len(events),
+                    "status": "active"  # We could add logic to determine active vs completed
+                })
+        
+        return {
+            "sessions": sessions,
+            "total_sessions": len(sessions)
+        }
