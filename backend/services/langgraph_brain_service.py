@@ -168,6 +168,9 @@ class LangGraphBrainService:
         session_id: Optional[str] = None,
         context: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.info(f"TRACE: Entered LangGraphBrainService.process_request in backend/services/langgraph_brain_service.py")
         """
         Process a user request by routing to appropriate agent.
         
