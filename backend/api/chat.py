@@ -207,7 +207,15 @@ async def get_session_messages(
         return result
         
     except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Error getting session messages: {str(e)}"
-        )
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Error getting session messages: {str(e)}", exc_info=True)
+        
+        # Return a structured error response instead of raising an exception
+        # This makes it easier for clients to handle errors
+        return {
+            "success": False,
+            "messages": [],
+            "error": f"Error retrieving messages: {str(e)}",
+            "session_id": session_id
+        }

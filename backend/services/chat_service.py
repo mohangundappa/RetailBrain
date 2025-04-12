@@ -252,18 +252,32 @@ class ChatService:
         conversation = None
         messages = []
         
-        # Use a transaction to ensure consistent read
-        async with self.db.begin():
-            conversation = await self.conversation_repo.get_conversation_by_session_id(session_id)
-            if not conversation:
-                return None, []
-                
-            messages = await self.conversation_repo.get_conversation_messages(
-                conversation_id=conversation.id,
-                limit=limit or self.default_limit
-            )
+        try:
+            # Use a transaction to ensure consistent read
+            async with self.db.begin():
+                conversation = await self.conversation_repo.get_conversation_by_session_id(session_id)
+                if not conversation:
+                    return None, []
+                    
+                messages = await self.conversation_repo.get_conversation_messages(
+                    conversation_id=conversation.id,
+                    limit=limit or self.default_limit
+                )
+            
+            # Ensure we're returning safe-to-serialize objects
+            # Sometimes SQLAlchemy objects can have unserializable metadata
+            # For safety, we'll do a simple check
+            if conversation is not None:
+                # Ensure relationship data is loaded
+                if hasattr(conversation, '_sa_instance_state'):
+                    # Force detach from session if needed
+                    self.db.expunge(conversation)
+            
+            return conversation, messages
         
-        return conversation, messages
+        except Exception as e:
+            logger.error(f"Error getting conversation and messages: {str(e)}", exc_info=True)
+            return None, []
     
     async def get_conversation_history(
         self, 
@@ -302,15 +316,20 @@ class ChatService:
                 "messages": []
             }
         
-        # Format messages
+        # Format messages with safe timestamp handling
         formatted_messages = []
         for msg in messages:
+            # Handle possibly None timestamp
+            timestamp = None
+            if msg.created_at:
+                timestamp = msg.created_at.isoformat()
+                
             formatted_messages.append({
                 "id": str(msg.id),
                 "role": msg.role,
                 "content": msg.content,
-                "timestamp": msg.created_at.isoformat(),
-                "metadata": msg.metadata
+                "timestamp": timestamp,
+                "metadata": msg.metadata or {}  # Ensure metadata is never None
             })
         
         # Get total message count in a transaction
@@ -371,14 +390,24 @@ class ChatService:
                     offset=offset
                 )
             
-            # Format sessions for the response
+            # Format sessions for the response with safe timestamp handling
             sessions = []
             for conv in conversations:
+                # Safely handle dates that might be None
+                created_at = None
+                updated_at = None
+                
+                if conv.created_at:
+                    created_at = conv.created_at.isoformat()
+                
+                if conv.updated_at:
+                    updated_at = conv.updated_at.isoformat()
+                
                 sessions.append({
                     "id": str(conv.id),
                     "session_id": conv.session_id,
-                    "created_at": conv.created_at.isoformat() if conv.created_at else None,
-                    "updated_at": conv.updated_at.isoformat() if conv.updated_at else None,
+                    "created_at": created_at,
+                    "updated_at": updated_at,
                     "user_id": conv.user_id,
                     "metadata": conv.meta_data or {}
                 })
