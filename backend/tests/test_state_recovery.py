@@ -63,7 +63,7 @@ class TestWithRetry(unittest.IsolatedAsyncioTestCase):
         # Arrange
         mock_func = AsyncMock()
         mock_func.side_effect = Exception("Persistent error")
-        decorated_func = with_retry(max_attempts=2, base_delay=0.01)(mock_func)
+        decorated_func = with_retry(max_retries=2, retry_delay=0.01)(mock_func)
         
         # Act & Assert
         with self.assertRaises(Exception) as context:
