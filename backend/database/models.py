@@ -49,8 +49,8 @@ class Message(Base):
     """Message model to store individual chat messages."""
     __tablename__ = "messages"
     
-    id: Mapped[str] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    id: Mapped[int] = mapped_column(
+        sa.Integer, primary_key=True, autoincrement=True
     )
     conversation_id: Mapped[int] = mapped_column(
         sa.Integer, sa.ForeignKey("conversations.id"), nullable=False
