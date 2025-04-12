@@ -15,6 +15,16 @@ The system has a simplified architecture with two main components:
 
 All services are consolidated within the backend component, maintaining a clear separation through a standardized API gateway serving as the primary entry point for all interactions.
 
+### Application Flow
+
+1. **API Gateway**: All requests enter through `api_gateway.py`, which routes them to the appropriate endpoints.
+2. **Services Layer**: The `services` module contains business logic for handling requests.
+3. **Brain Orchestration**: The optimized brain service manages agent selection and execution.
+4. **Agent Framework**: Specialized agents provide domain-specific handling of user requests.
+5. **State Persistence**: Conversation state is maintained for context-aware interactions.
+
+For technical details on the backend architecture, see [backend/README.md](backend/README.md).
+
 ## Key Technologies
 
 - **Python 3.12+**: For backend and agent logic
@@ -30,27 +40,38 @@ All services are consolidated within the backend component, maintaining a clear 
 staples-brain/
 ├── backend/               # Backend services and components
 │   ├── agents/            # Agent implementations
-│   ├── api/               # API modules for specific services
+│   │   ├── framework/     # Base agent framework implementations
+│   │   └── base_agent.py  # Core agent interface
+│   ├── api/               # API endpoints for specific services
+│   │   ├── optimized_chat.py  # Chat endpoints
+│   │   └── state_management.py # State management endpoints
 │   ├── brain/             # Core brain logic
-│   ├── config/            # Configuration files
-│   ├── database/          # Database models and connections
-│   ├── scripts/           # Utility scripts
-│   ├── services/          # Service implementations
-│   ├── static/            # Static resources
-│   ├── tests/             # Backend tests
+│   │   └── optimized/     # Optimized brain implementation
+│   │       ├── embedding_service.py # Embedding service
+│   │       ├── factory.py # Agent factory
+│   │       ├── router.py  # Agent router
+│   │       └── vector_store.py # Vector database 
+│   ├── config/            # Configuration management
+│   ├── database/          # Database schemas and connections
+│   ├── repositories/      # Data access layer
+│   ├── services/          # Business logic services
+│   │   ├── chat_service.py # Chat processing
+│   │   ├── optimized_brain_service.py # Brain orchestration
+│   │   └── telemetry_service.py # Logging and metrics
 │   ├── utils/             # Utility functions
-│   ├── api_gateway.py     # Main FastAPI entry point
-│   └── main.py            # Backend application entry point
+│   ├── api_gateway.py     # Main FastAPI application
+│   └── main.py            # Backend initialization
 ├── docs/                  # Documentation
 │   ├── api/               # API documentation
 │   ├── development/       # Development guidelines
 │   ├── installation/      # Installation guides
 │   └── user-guides/       # End-user documentation
-├── frontend/              # React frontend (separate repo)
+├── frontend/              # React frontend application
 ├── .env                   # Environment variables (local development)
 ├── .env.example           # Example environment variables
-├── main.py                # Root application entry point
-└── run.py                 # Application runner for Replit
+├── main.py                # ASGI application entry point 
+├── run.py                 # Application runner with error handling
+└── run_tests.py           # Test runner script
 ```
 
 ## Running the Application
