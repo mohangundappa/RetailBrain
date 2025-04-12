@@ -14,6 +14,7 @@ from backend.services.brain_service import BrainService
 from backend.services.chat_service import ChatService
 from backend.services.telemetry_service import TelemetryService
 from backend.config.config import get_config, Config
+from backend.repositories.agent_repository import AgentRepository
 
 # Set up logging
 logger = logging.getLogger("staples_brain")
@@ -154,4 +155,30 @@ async def get_chat_service(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Chat service error"
+        )
+
+
+async def get_agent_repository(
+    db: AsyncSession = Depends(get_db)
+) -> AsyncGenerator[AgentRepository, None]:
+    """
+    Get an agent repository instance.
+    
+    Args:
+        db: Database session
+        
+    Yields:
+        AgentRepository instance
+    
+    Raises:
+        HTTPException: If the agent repository cannot be initialized
+    """
+    try:
+        repo = AgentRepository(db)
+        yield repo
+    except Exception as e:
+        logger.error(f"Error in agent repository: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Agent repository error"
         )
