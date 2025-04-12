@@ -88,8 +88,8 @@ async def get_chat_service_direct():
         logger.warning("Could not import LangGraphAgentFactory, continuing without database-driven agents")
         agent_factory = None
     
-    # Create Graph brain service with database session and agent factory
-    brain_service = GraphBrainService(
+    # Create optimized brain service with database session and agent factory
+    brain_service = OptimizedBrainService(
         db_session=db,
         config=config,
         agent_factory=agent_factory
