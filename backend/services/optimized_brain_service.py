@@ -10,9 +10,12 @@ from typing import Dict, List, Optional, Any, Tuple, Union
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.brain.optimized.factory import OptimizedAgentFactory
-from backend.brain.optimized.router import OptimizedAgentRouter
-from backend.brain.optimized.agent_definition import AgentDefinition
+# Import from the new orchestration module instead of brain.optimized
+from backend.orchestration import (
+    OptimizedAgentFactory,
+    OptimizedAgentRouter,
+    AgentDefinition
+)
 from backend.config.config import Config
 
 logger = logging.getLogger(__name__)
