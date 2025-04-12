@@ -152,10 +152,13 @@ class OptimizedBrainService:
             # This maintains compatibility with existing agent execution
             traditional_service = await self._get_traditional_service()
             
-            # We need to map our agent to the traditional agent
-            # Use the agent_id since that should match between systems
-            execution_result = await traditional_service.execute_agent(
-                agent_id=agent.id,
+            # Use the process_request method since that's what GraphBrainService provides
+            # In the context, we'll pass the agent_id to hint at which agent to use
+            route_context = route_context or {}
+            route_context["preferred_agent_id"] = agent.id
+            route_context["selection_confidence"] = confidence
+            
+            execution_result = await traditional_service.process_request(
                 message=message,
                 session_id=session_id,
                 context=route_context
@@ -263,8 +266,12 @@ class OptimizedBrainService:
         
         # Pass to traditional service for execution
         traditional_service = await self._get_traditional_service()
-        return await traditional_service.execute_agent(
-            agent_id=agent_id,
+        
+        # Use the process_request method since that's what GraphBrainService provides
+        # In the context, we'll pass the agent_id to hint at which agent to use
+        context["preferred_agent_id"] = agent_id
+        
+        return await traditional_service.process_request(
             message=message,
             session_id=session_id,
             context=context
