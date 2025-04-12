@@ -8,7 +8,6 @@ from typing import Dict, List, Optional, Any, Union, Tuple
 
 import numpy as np
 from openai import OpenAI
-from openai.types.embeddings import Embedding
 
 logger = logging.getLogger(__name__)
 

@@ -1,12 +1,22 @@
 """
 Dependencies package for Staples Brain.
 """
-# Import the agent repository dependency from our module
+# Re-export dependencies from the main module without circular imports
 from backend.dependencies.agent_dependencies import get_agent_repository
 
-# Import essential dependencies from the main dependencies.py file
-from backend.dependencies import get_brain_service, get_telemetry_service, get_chat_service
+# Import app config here, as it has minimal dependencies
+from backend.config.config import get_config, Config
+from functools import lru_cache
 
-# Note: These imports are to expose the functions at the package level
-# We have to be careful with circular imports, which is why we're importing
-# them from the module where they're defined
+@lru_cache()
+def get_app_config() -> Config:
+    """
+    Get application configuration with caching.
+    
+    Returns:
+        Config instance
+    """
+    return get_config()
+
+# Note: We don't import get_brain_service, get_telemetry_service, and get_chat_service
+# directly to avoid circular imports. These will be imported where needed.
