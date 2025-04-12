@@ -60,21 +60,35 @@ class OptimizedBrainService:
             True if initialization was successful
         """
         try:
+            logger.info("Starting OptimizedBrainService initialization")
+            
             # Create agent factory
             self.agent_factory = OptimizedAgentFactory(self.db_session)
+            logger.info("Created OptimizedAgentFactory")
             
             # Create components (router, etc.)
             self.router = await self.agent_factory.create_components(
                 memory_service=self.memory_service
             )
+            logger.info("Created router and other components")
             
             # Load agents from database
-            await self.agent_factory.load_agents_from_database()
+            agent_count = await self.agent_factory.load_agents_from_database()
+            logger.info(f"Loaded {agent_count} agents from database/test data")
+            
+            # Verify agents in vector store
+            if self.router and self.router.agent_vector_store:
+                agent_count = len(self.router.agent_vector_store.agent_data)
+                logger.info(f"Vector store contains {agent_count} agents")
+                if agent_count > 0:
+                    logger.info(f"Agent IDs in vector store: {list(self.router.agent_vector_store.agent_data.keys())}")
+            else:
+                logger.warning("Router or vector store is not initialized properly")
             
             logger.info("Optimized brain service initialized successfully")
             return True
         except Exception as e:
-            logger.error(f"Error initializing optimized brain service: {str(e)}")
+            logger.error(f"Error initializing optimized brain service: {str(e)}", exc_info=True)
             return False
             
     async def _get_traditional_service(self) -> Any:
