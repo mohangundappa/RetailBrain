@@ -438,7 +438,7 @@ class OptimizedBrainService:
                         })
                     else:
                         # Try to determine if this is an AgentDefinition instance
-                        from backend.brain.optimized.agent_definition import AgentDefinition
+                        from backend.orchestration.agent_definition import AgentDefinition
                         if isinstance(agent_data, AgentDefinition):
                             logger.info(f"Found AgentDefinition instance: {agent_data.name} (ID: {agent_data.id})")
                             agents.append({
@@ -528,7 +528,7 @@ class OptimizedBrainService:
                         agent_type = agent_data.get("agent_type", "unknown")
                     else:
                         # Try to determine if this is an AgentDefinition instance
-                        from backend.brain.optimized.agent_definition import AgentDefinition
+                        from backend.orchestration.agent_definition import AgentDefinition
                         if isinstance(agent_data, AgentDefinition):
                             agent_type = agent_data.agent_type if hasattr(agent_data, "agent_type") else "llm"
                         else:

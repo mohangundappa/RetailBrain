@@ -7,8 +7,8 @@ import numpy as np
 import re
 from typing import Dict, List, Optional, Any, Union, Tuple
 
-from backend.brain.optimized.agent_definition import AgentDefinition
-from backend.brain.optimized.embedding_service import EmbeddingService
+from backend.orchestration.agent_definition import AgentDefinition
+from backend.orchestration.embedding_service import EmbeddingService
 
 logger = logging.getLogger(__name__)
 
