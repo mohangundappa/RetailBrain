@@ -24,16 +24,16 @@ _brain = None
 
 def get_brain():
     """
-    Get or initialize the Staples Brain instance.
+    Get or initialize the Orchestration Engine instance.
     
     Returns:
-        StaplesBrain instance
+        OrchestrationEngine instance
     """
     global _brain
     if _brain is None:
         # Import here to avoid circular imports
-        from backend.orchestration.staples_brain import initialize_staples_brain
-        _brain = initialize_staples_brain()
+        from backend.orchestration.orchestration_engine import initialize_orchestration_engine
+        _brain = initialize_orchestration_engine()
     return _brain
 
 # Define API models
@@ -112,7 +112,7 @@ async def health_check():
         agent_names = brain.list_agents()
         return {
             "status": "healthy",
-            "message": "Staples Brain is running",
+            "message": "Orchestration Engine is running",
             "version": "1.0.0",
             "agents": agent_names
         }
