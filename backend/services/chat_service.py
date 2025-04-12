@@ -122,8 +122,11 @@ class ChatService:
         Returns:
             Response with content and metadata
         """
+        logger.info(f"TRACE: Entered ChatService.process_message in backend/services/chat_service.py")
+        
         # Input validation
         if not message or not isinstance(message, str):
+            logger.info(f"TRACE: Invalid message format validation in ChatService.process_message")
             return {
                 "success": False, 
                 "error": "Invalid message format", 
@@ -131,6 +134,7 @@ class ChatService:
             }
             
         if len(message) > self.max_message_size:
+            logger.info(f"TRACE: Message size exceeded in ChatService.process_message")
             return {
                 "success": False, 
                 "error": f"Message exceeds maximum size of {self.max_message_size} characters", 

@@ -136,8 +136,12 @@ async def send_message(
     Returns:
         MessageResponse: Response from Staples Brain
     """
+    import logging
+    logger = logging.getLogger(__name__)
+    logger.info(f"TRACE: Entered send_message endpoint in backend/api/chat.py")
     try:
         # Remove response_model to avoid serialization issues
+        logger.info(f"TRACE: Calling chat_service.process_message from backend/api/chat.py")
         result = await chat_service.process_message(
             message=request.content,
             session_id=request.session_id,
@@ -146,6 +150,7 @@ async def send_message(
                 "metadata": request.metadata or {}
             }
         )
+        logger.info(f"TRACE: Completed chat_service.process_message call")
         
         # Return the result directly without FastAPI validation/serialization
         from fastapi.responses import JSONResponse
