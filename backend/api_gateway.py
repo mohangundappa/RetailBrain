@@ -20,6 +20,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.endpoints.optimized_chat import router as optimized_chat_router
 from backend.endpoints.optimized_chat import main_router as chat_router
 from backend.endpoints.state_management import state_router
+from backend.endpoints.routes import api_router
 from backend.database.db import get_db
 
 # Utility function to sanitize database URLs for asyncpg
@@ -183,6 +184,7 @@ class AgentListResponse(BaseModel):
 app.include_router(chat_router, prefix=API_PREFIX)
 app.include_router(state_router, prefix=API_PREFIX)
 app.include_router(optimized_chat_router, prefix=API_PREFIX)
+app.include_router(api_router, prefix=API_PREFIX)
 
 # Mount static directories
 app.mount("/static", StaticFiles(directory="backend/static"), name="static")
