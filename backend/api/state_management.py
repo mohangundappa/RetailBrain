@@ -16,6 +16,7 @@ from backend.brain.native_graph.state_recovery import (
     resilient_create_checkpoint,
     resilient_persist_state,
     resilient_recover_state,
+    resilient_rollback_to_checkpoint,
     get_most_recent_state,
     check_db_connection,
     process_pending_operations
@@ -359,9 +360,10 @@ async def rollback_to_checkpoint(
         except Exception as e:
             logger.warning(f"Error processing pending operations before rollback: {str(e)}")
         
-        # Roll back to the checkpoint with improved error handling
-        state = await manager.rollback_to_checkpoint(
+        # Roll back to the checkpoint with resilient error handling
+        state = await resilient_rollback_to_checkpoint(
             session_id=request.session_id,
+            db=db,
             checkpoint_name=request.checkpoint_name
         )
         

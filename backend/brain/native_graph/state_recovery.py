@@ -360,6 +360,40 @@ async def check_db_connection(db) -> bool:
         return False
 
 
+async def resilient_rollback_to_checkpoint(
+    session_id: str,
+    db,
+    checkpoint_name: Optional[str] = None
+) -> Optional[OrchestrationState]:
+    """
+    Roll back to a checkpoint with retry logic and graceful degradation.
+    
+    Args:
+        session_id: Session identifier
+        db: Database session
+        checkpoint_name: Optional checkpoint name to roll back to
+        
+    Returns:
+        Rolled back orchestration state, or None if not found or errors occur
+    """
+    from backend.brain.native_graph.state_persistence import StatePersistenceManager
+    
+    try:
+        # Create a manager instance
+        manager = StatePersistenceManager(db)
+        
+        # Attempt to roll back with retry logic
+        return await with_retry(
+            manager.rollback_to_checkpoint,
+            session_id=session_id,
+            checkpoint_name=checkpoint_name
+        )
+    except Exception as e:
+        logger.error(f"Failed to roll back to checkpoint after retries: {str(e)}", exc_info=True)
+        # In case of failure, return None
+        return None
+
+
 async def get_most_recent_state(
     session_id: str,
     db,
