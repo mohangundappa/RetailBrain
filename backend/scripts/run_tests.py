@@ -143,6 +143,56 @@ def run_agent_tests(agent_type="all", verbose=False):
         return False
 
 
+def run_error_handling_tests(verbose=False):
+    """Run error handling and state persistence tests"""
+    logger.info("Running error handling and state persistence tests...")
+    
+    try:
+        # Import our error handling and state persistence test modules
+        from backend.tests.test_error_handling import TestErrorClassification, TestErrorRecording
+        from backend.tests.test_error_handling import TestErrorRecoveryResponses, TestErrorHandlingDecorator
+        from backend.tests.test_error_handling import TestJsonParsing, TestRetryDecorator, TestUtilsRetryAsync
+        from backend.tests.test_state_persistence import TestStatePersistenceManager
+        from backend.tests.test_state_recovery import TestWithRetry, TestResilientStatePersistence
+        from backend.tests.test_state_recovery import TestResilientStateRecovery, TestResilientCheckpoint
+        from backend.tests.test_state_recovery import TestResilientRollback, TestRecoveryOperations
+        
+        # Create test suite
+        suite = unittest.TestSuite()
+        
+        # Add error handling tests
+        suite.addTest(unittest.TestLoader().loadTestsFromTestCase(TestErrorClassification))
+        suite.addTest(unittest.TestLoader().loadTestsFromTestCase(TestErrorRecording))
+        suite.addTest(unittest.TestLoader().loadTestsFromTestCase(TestErrorRecoveryResponses))
+        suite.addTest(unittest.TestLoader().loadTestsFromTestCase(TestErrorHandlingDecorator))
+        suite.addTest(unittest.TestLoader().loadTestsFromTestCase(TestJsonParsing))
+        suite.addTest(unittest.TestLoader().loadTestsFromTestCase(TestRetryDecorator))
+        suite.addTest(unittest.TestLoader().loadTestsFromTestCase(TestUtilsRetryAsync))
+        
+        # Add state persistence tests
+        suite.addTest(unittest.TestLoader().loadTestsFromTestCase(TestStatePersistenceManager))
+        
+        # Add state recovery tests
+        suite.addTest(unittest.TestLoader().loadTestsFromTestCase(TestWithRetry))
+        suite.addTest(unittest.TestLoader().loadTestsFromTestCase(TestResilientStatePersistence))
+        suite.addTest(unittest.TestLoader().loadTestsFromTestCase(TestResilientStateRecovery))
+        suite.addTest(unittest.TestLoader().loadTestsFromTestCase(TestResilientCheckpoint))
+        suite.addTest(unittest.TestLoader().loadTestsFromTestCase(TestResilientRollback))
+        suite.addTest(unittest.TestLoader().loadTestsFromTestCase(TestRecoveryOperations))
+        
+        # Run tests
+        runner = unittest.TextTestRunner(verbosity=2 if verbose else 1)
+        result = runner.run(suite)
+        
+        return result.wasSuccessful()
+    except Exception as e:
+        logger.error(f"Error running error handling tests: {e}")
+        if verbose:
+            import traceback
+            traceback.print_exc()
+        return False
+
+
 def run_all_tests(verbose=False):
     """Run all available tests"""
     logger.info("Running all tests...")
@@ -150,8 +200,9 @@ def run_all_tests(verbose=False):
     api_success = run_api_tests(verbose)
     frontend_success = run_frontend_tests(verbose)
     agent_success = run_agent_tests("all", verbose)
+    error_handling_success = run_error_handling_tests(verbose)
     
-    return api_success and frontend_success and agent_success
+    return api_success and frontend_success and agent_success and error_handling_success
 
 def main():
     """Main entry point"""
@@ -165,6 +216,8 @@ def main():
         success = run_frontend_tests(args.verbose)
     elif args.agent:
         success = run_agent_tests(args.agent_type, args.verbose)
+    elif args.error_handling:
+        success = run_error_handling_tests(args.verbose)
     else:
         # Run all tests if no specific test is requested
         success = run_all_tests(args.verbose)
