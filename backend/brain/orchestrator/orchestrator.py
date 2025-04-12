@@ -18,12 +18,12 @@ from backend.config.agent_constants import (
     MIN_CONFIDENCE_THRESHOLD,
     MAX_CONFIDENCE_THRESHOLD,
     NEGATIVE_FEEDBACK_PENALTY,
-    TOPIC_SWITCH_THRESHOLD,
     SEMANTIC_RELEVANCE_WEIGHT,
     # Special case thresholds
     GREETING_CONFIDENCE,
     HUMAN_TRANSFER_CONFIDENCE,
-    CONVERSATION_END_CONFIDENCE
+    CONVERSATION_END_CONFIDENCE,
+    HOLD_REQUEST_CONFIDENCE
 )
 from backend.utils.memory import ConversationMemory
 from backend.utils.semantic_utils import semantic_analyzer
@@ -382,6 +382,14 @@ class Orchestrator:
         context['conversation_memory'] = memory
         
         try:
+            # Check for special conversation flow handling
+            special_response = ConversationFlowHandler.handle_conversation_flow(
+                message, memory, context, start_time
+            )
+            if special_response:
+                logger.info(f"Handling special conversation flow: {special_response.get('agent', 'unknown')}")
+                return special_response
+            
             # Check if human transfer was requested in previous turn
             if memory.get_from_working_memory('human_transfer_requested', False):
                 logger.info("Processing human transfer request")

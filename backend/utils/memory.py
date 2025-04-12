@@ -1,913 +1,591 @@
 """
-Memory management utilities for Staples Brain.
+Conversation memory management for Staples Brain.
 
-This module provides classes and functions for managing conversation memory
-and context persistence between agent interactions.
-
-This module is environment-aware and will configure memory settings based on the
-current environment (development, qa, staging, production).
-
-The memory system supports bidirectional communication between Core Components and Agents,
-allowing agents to both read from and write to the shared memory system.
+This module provides memory storage and retrieval functions for conversation
+state, working memory, and conversation history.
 """
 
-import os
 import json
 import logging
-from typing import Dict, Any, List, Optional, Set, Union, Tuple
+import time
 from enum import Enum
-from datetime import datetime, timedelta
-from backend.database.models import Conversation, Message
-from backend.database.db import get_db
-from sqlalchemy.ext.asyncio import AsyncSession
+from typing import Dict, List, Any, Optional, Tuple
+
+from backend.config.agent_constants import MEMORY_EXPIRATION_SECONDS
 
 logger = logging.getLogger(__name__)
 
-# Environment-specific memory configurations
-MEMORY_CONFIG = {
-    "development": {
-        "max_history": 20,
-        "memory_ttl": 60 * 30,  # 30 minutes in seconds
-        "session_ttl": 60 * 60 * 24,  # 24 hours in seconds
-    },
-    "testing": {
-        "max_history": 10,
-        "memory_ttl": 60 * 5,  # 5 minutes in seconds
-        "session_ttl": 60 * 60,  # 1 hour in seconds
-    },
-    "qa": {
-        "max_history": 30,
-        "memory_ttl": 60 * 60,  # 1 hour in seconds
-        "session_ttl": 60 * 60 * 24 * 2,  # 2 days in seconds
-    },
-    "staging": {
-        "max_history": 50,
-        "memory_ttl": 60 * 60 * 3,  # 3 hours in seconds
-        "session_ttl": 60 * 60 * 24 * 3,  # 3 days in seconds
-    },
-    "production": {
-        "max_history": 100,
-        "memory_ttl": 60 * 60 * 6,  # 6 hours in seconds
-        "session_ttl": 60 * 60 * 24 * 7,  # 7 days in seconds
-    }
-}
+# Set environment-specific memory limits
+DEV_MAX_HISTORY = 20
+PROD_MAX_HISTORY = 50
 
-# Get current environment (default to development)
-CURRENT_ENV = os.environ.get("APP_ENV", "development")
-if CURRENT_ENV not in MEMORY_CONFIG:
-    logger.warning(f"Unknown environment '{CURRENT_ENV}'. Using development memory settings.")
-    CURRENT_ENV = "development"
+# Default for development
+MAX_HISTORY = DEV_MAX_HISTORY
 
-# Apply environment-specific configuration
-current_memory_config = MEMORY_CONFIG[CURRENT_ENV]
-DEFAULT_MAX_HISTORY = current_memory_config["max_history"]
-MEMORY_TTL = current_memory_config["memory_ttl"]
-SESSION_TTL = current_memory_config["session_ttl"]
+# Check if we're in production
+try:
+    from sqlalchemy.ext.asyncio import AsyncSession
+    # More likely to be in production if we have this import
+    MAX_HISTORY = PROD_MAX_HISTORY
+except ImportError:
+    # Stick with development default
+    pass
 
-logger.info(f"Memory configured for {CURRENT_ENV} environment with max_history={DEFAULT_MAX_HISTORY}")
+logger.info(f"Memory configured for development environment with max_history={MAX_HISTORY}")
+
 
 class MemoryAccessLevel(Enum):
-    """Access levels for memory operations."""
-    READ = "read"
-    WRITE = "write"
+    """Access level for memory items."""
+    READ_ONLY = "read_only"
     READ_WRITE = "read_write"
-
-class MemoryScope(Enum):
-    """Scope of memory storage."""
-    SESSION = "session"        # Persists for the current session only
-    CONVERSATION = "conversation"  # Persists for current conversation only
-    USER = "user"              # Persists across all user sessions
-    GLOBAL = "global"          # Shared across all users and sessions
-
-class MemoryChannel:
-    """
-    Represents a bidirectional communication channel between components.
-    
-    A channel is identified by a name and allows exchange of data
-    between Core Components and Agents with appropriate access control.
-    """
-    
-    def __init__(
-        self, 
-        name: str, 
-        description: str,
-        scope: MemoryScope = MemoryScope.SESSION,
-        permissions: Dict[str, MemoryAccessLevel] = None
-    ):
-        """
-        Initialize a memory channel.
-        
-        Args:
-            name: Channel identifier
-            description: Human-readable description of the channel's purpose
-            scope: Persistence scope (session, conversation, user, global)
-            permissions: Dict mapping component names to access levels
-        """
-        self.name = name
-        self.description = description
-        self.scope = scope
-        self.permissions = permissions or {}
-        self.data: Dict[str, Any] = {}
-        self.subscribers: Set[str] = set()
-        self.last_updated: Optional[datetime] = None
-        
-    def can_read(self, component_name: str) -> bool:
-        """Check if a component has read access."""
-        access = self.permissions.get(component_name, None)
-        if access is None:
-            # Check for wildcard access
-            access = self.permissions.get("*", None)
-        return access in (MemoryAccessLevel.READ, MemoryAccessLevel.READ_WRITE)
-    
-    def can_write(self, component_name: str) -> bool:
-        """Check if a component has write access."""
-        access = self.permissions.get(component_name, None)
-        if access is None:
-            # Check for wildcard access
-            access = self.permissions.get("*", None)
-        return access in (MemoryAccessLevel.WRITE, MemoryAccessLevel.READ_WRITE)
-    
-    def subscribe(self, component_name: str) -> bool:
-        """Subscribe a component to updates on this channel."""
-        if self.can_read(component_name):
-            self.subscribers.add(component_name)
-            return True
-        return False
-    
-    def unsubscribe(self, component_name: str) -> None:
-        """Unsubscribe a component from updates."""
-        self.subscribers.discard(component_name)
-    
-    def get_value(self, key: str, default: Any = None, component_name: str = None) -> Any:
-        """Get a value from the channel, checking read permissions if component_name provided."""
-        if component_name and not self.can_read(component_name):
-            logger.warning(f"Access denied: {component_name} attempted to read from {self.name}")
-            return default
-        return self.data.get(key, default)
-    
-    def set_value(self, key: str, value: Any, component_name: str = None) -> bool:
-        """Set a value in the channel, checking write permissions if component_name provided."""
-        if component_name and not self.can_write(component_name):
-            logger.warning(f"Access denied: {component_name} attempted to write to {self.name}")
-            return False
-        
-        self.data[key] = value
-        self.last_updated = datetime.utcnow()
-        return True
-    
-    def get_all(self, component_name: str = None) -> Dict[str, Any]:
-        """Get all data in the channel, checking read permissions if component_name provided."""
-        if component_name and not self.can_read(component_name):
-            logger.warning(f"Access denied: {component_name} attempted to read all data from {self.name}")
-            return {}
-        return self.data.copy()
-    
-    def update(self, updates: Dict[str, Any], component_name: str = None) -> bool:
-        """Update multiple values in the channel, checking write permissions if component_name provided."""
-        if component_name and not self.can_write(component_name):
-            logger.warning(f"Access denied: {component_name} attempted to update {self.name}")
-            return False
-        
-        self.data.update(updates)
-        self.last_updated = datetime.utcnow()
-        return True
-    
-    def clear(self, component_name: str = None) -> bool:
-        """Clear all data in the channel, checking write permissions if component_name provided."""
-        if component_name and not self.can_write(component_name):
-            logger.warning(f"Access denied: {component_name} attempted to clear {self.name}")
-            return False
-        
-        self.data.clear()
-        self.last_updated = datetime.utcnow()
-        return True
-
-class MemoryManager:
-    """
-    Central memory management system for Staples Brain.
-    
-    This class provides a unified interface for managing communication channels,
-    persistent conversation memory, and context sharing between core components
-    and agents. It supports bidirectional communication with access control
-    and different persistence scopes.
-    """
-    
-    # Default communication channels
-    DEFAULT_CHANNELS = [
-        {
-            "name": "orchestrator",
-            "description": "Communication channel for orchestrator to agents",
-            "scope": MemoryScope.SESSION,
-            "permissions": {
-                "orchestrator": MemoryAccessLevel.READ_WRITE,
-                "intent_handler": MemoryAccessLevel.READ,
-                "*": MemoryAccessLevel.READ  # All agents can read
-            }
-        },
-        {
-            "name": "agent_outputs",
-            "description": "Channel for agent outputs and results",
-            "scope": MemoryScope.SESSION,
-            "permissions": {
-                "orchestrator": MemoryAccessLevel.READ_WRITE,
-                "intent_handler": MemoryAccessLevel.READ,
-                "*": MemoryAccessLevel.WRITE  # All agents can write
-            }
-        },
-        {
-            "name": "user_info",
-            "description": "User profile and preferences",
-            "scope": MemoryScope.USER,
-            "permissions": {
-                "orchestrator": MemoryAccessLevel.READ_WRITE,
-                "intent_handler": MemoryAccessLevel.READ_WRITE,
-                "*": MemoryAccessLevel.READ  # All agents can read
-            }
-        },
-        {
-            "name": "shared_context",
-            "description": "Cross-agent shared context",
-            "scope": MemoryScope.SESSION,
-            "permissions": {
-                "*": MemoryAccessLevel.READ_WRITE  # All components can read/write
-            }
-        },
-        {
-            "name": "api_cache",
-            "description": "Cache for API responses",
-            "scope": MemoryScope.SESSION,
-            "permissions": {
-                "orchestrator": MemoryAccessLevel.READ_WRITE,
-                "*": MemoryAccessLevel.READ_WRITE  # All components can read/write
-            }
-        }
-    ]
-    
-    def __init__(self, session_id: str):
-        """
-        Initialize the memory manager.
-        
-        Args:
-            session_id: The unique session identifier
-        """
-        self.session_id = session_id
-        self.user_id = None  # Will be set when user is identified
-        self.channels: Dict[str, MemoryChannel] = {}
-        
-        # Initialize default channels
-        for channel_config in self.DEFAULT_CHANNELS:
-            self.create_channel(
-                name=channel_config["name"],
-                description=channel_config["description"],
-                scope=channel_config["scope"],
-                permissions=channel_config["permissions"]
-            )
-        
-        logger.debug(f"Initialized memory manager for session {session_id} with {len(self.channels)} channels")
-    
-    def create_channel(
-        self, 
-        name: str, 
-        description: str,
-        scope: MemoryScope = MemoryScope.SESSION,
-        permissions: Dict[str, MemoryAccessLevel] = None
-    ) -> MemoryChannel:
-        """
-        Create a new communication channel.
-        
-        Args:
-            name: Channel identifier
-            description: Human-readable description of the channel's purpose
-            scope: Persistence scope
-            permissions: Dict mapping component names to access levels
-            
-        Returns:
-            The created channel
-        """
-        if name in self.channels:
-            logger.warning(f"Channel {name} already exists, returning existing channel")
-            return self.channels[name]
-        
-        channel = MemoryChannel(name, description, scope, permissions)
-        self.channels[name] = channel
-        
-        logger.debug(f"Created memory channel: {name} ({scope.value})")
-        return channel
-    
-    def get_channel(self, name: str) -> Optional[MemoryChannel]:
-        """
-        Get a channel by name.
-        
-        Args:
-            name: Channel identifier
-            
-        Returns:
-            The channel or None if not found
-        """
-        return self.channels.get(name)
-    
-    def set_value(self, channel_name: str, key: str, value: Any, component_name: str = None) -> bool:
-        """
-        Set a value in a channel.
-        
-        Args:
-            channel_name: Channel identifier
-            key: Key to store the value under
-            value: The value to store
-            component_name: Optional component name for access control
-            
-        Returns:
-            True if successful, False otherwise
-        """
-        channel = self.get_channel(channel_name)
-        if not channel:
-            logger.warning(f"Channel {channel_name} not found")
-            return False
-        
-        return channel.set_value(key, value, component_name)
-    
-    def get_value(self, channel_name: str, key: str, default: Any = None, component_name: str = None) -> Any:
-        """
-        Get a value from a channel.
-        
-        Args:
-            channel_name: Channel identifier
-            key: Key to retrieve
-            default: Default value if key not found
-            component_name: Optional component name for access control
-            
-        Returns:
-            The value or default if not found
-        """
-        channel = self.get_channel(channel_name)
-        if not channel:
-            logger.warning(f"Channel {channel_name} not found")
-            return default
-        
-        return channel.get_value(key, default, component_name)
-    
-    def update_channel(self, channel_name: str, updates: Dict[str, Any], component_name: str = None) -> bool:
-        """
-        Update multiple values in a channel.
-        
-        Args:
-            channel_name: Channel identifier
-            updates: Dictionary of updates
-            component_name: Optional component name for access control
-            
-        Returns:
-            True if successful, False otherwise
-        """
-        channel = self.get_channel(channel_name)
-        if not channel:
-            logger.warning(f"Channel {channel_name} not found")
-            return False
-        
-        return channel.update(updates, component_name)
-    
-    def subscribe(self, channel_name: str, component_name: str) -> bool:
-        """
-        Subscribe a component to channel updates.
-        
-        Args:
-            channel_name: Channel identifier
-            component_name: Component to subscribe
-            
-        Returns:
-            True if successful, False otherwise
-        """
-        channel = self.get_channel(channel_name)
-        if not channel:
-            logger.warning(f"Channel {channel_name} not found")
-            return False
-        
-        return channel.subscribe(component_name)
-    
-    def get_subscribers(self, channel_name: str) -> Set[str]:
-        """
-        Get all subscribers to a channel.
-        
-        Args:
-            channel_name: Channel identifier
-            
-        Returns:
-            Set of subscriber component names
-        """
-        channel = self.get_channel(channel_name)
-        if not channel:
-            logger.warning(f"Channel {channel_name} not found")
-            return set()
-        
-        return channel.subscribers.copy()
-    
-    def get_channel_data(self, channel_name: str, component_name: str = None) -> Dict[str, Any]:
-        """
-        Get all data from a channel.
-        
-        Args:
-            channel_name: Channel identifier
-            component_name: Optional component name for access control
-            
-        Returns:
-            Dictionary of channel data
-        """
-        channel = self.get_channel(channel_name)
-        if not channel:
-            logger.warning(f"Channel {channel_name} not found")
-            return {}
-        
-        return channel.get_all(component_name)
-    
-    def serialize_channels(self) -> Dict[str, Any]:
-        """
-        Serialize all channels for storage or transmission.
-        
-        Returns:
-            Dictionary of serialized channels
-        """
-        serialized = {}
-        for name, channel in self.channels.items():
-            serialized[name] = {
-                "name": channel.name,
-                "description": channel.description,
-                "scope": channel.scope.value,
-                "data": channel.data,
-                "last_updated": channel.last_updated.isoformat() if channel.last_updated else None
-            }
-        return serialized
-    
-    def get_all_channel_data(self, component_name: str) -> Dict[str, Dict[str, Any]]:
-        """
-        Get all accessible channel data for a component.
-        
-        Args:
-            component_name: Component requesting data
-            
-        Returns:
-            Dictionary mapping channel names to their data
-        """
-        result = {}
-        for name, channel in self.channels.items():
-            if channel.can_read(component_name):
-                result[name] = channel.get_all(component_name)
-        return result
 
 
 class ConversationMemory:
     """
-    Manages persistent conversation memory across sessions and agents.
+    Memory storage for conversation contexts.
     
-    This class provides an interface for storing and retrieving conversation
-    history from the database and maintaining context between agent interactions.
-    
-    It integrates with the MemoryManager for bidirectional communication between
-    core components and agents.
+    This class provides:
+    - Conversation history management
+    - Working memory for agent coordination
+    - User profile information
+    - Entity tracking across conversation turns
+    - Memory expiration
     """
     
-    def __init__(self, session_id: str, max_history: Optional[int] = None):
+    def __init__(self, session_id: str):
         """
-        Initialize a conversation memory manager.
+        Initialize conversation memory.
         
         Args:
-            session_id: The session ID to track conversation history
-            max_history: Maximum number of messages to include in history (defaults to environment setting)
+            session_id: Unique session identifier
         """
         self.session_id = session_id
-        self.max_history = max_history if max_history is not None else DEFAULT_MAX_HISTORY
-        self.working_memory: Dict[str, Any] = {}
-        self.context: Dict[str, Any] = {}
+        self.created_at = time.time()
+        self.last_accessed = time.time()
         
-        # Initialize memory manager for bidirectional communication
-        self.memory_manager = MemoryManager(session_id)
+        # Main memory storage
+        self.conversation_history = []  # List of messages in the conversation
+        self.working_memory = {}  # Temporary storage for cross-turn context
+        self.entities = {}  # Extracted entities from the conversation
+        self.user_profile = {}  # Information about the user
         
-        logger.debug(f"Initialized conversation memory for session {session_id} with max_history={self.max_history}")
+        # Access control for memory items
+        self.memory_access = {}
         
-    def load_conversation_history(self, conversation_id: Optional[int] = None) -> List[Dict[str, Any]]:
-        """
-        Load conversation history from the database.
-        
-        Args:
-            conversation_id: Optional specific conversation ID to load
-            
-        Returns:
-            List of message dictionaries in chronological order
-        """
-        try:
-            if conversation_id:
-                # Load messages from a specific conversation
-                conversation = Conversation.query.get(conversation_id)
-                if not conversation:
-                    logger.warning(f"Conversation {conversation_id} not found")
-                    return []
-                
-                messages = Message.query.filter_by(conversation_id=conversation_id).order_by(Message.created_at).all()
-            else:
-                # Load latest messages from the session
-                conversations = Conversation.query.filter_by(session_id=self.session_id).order_by(Conversation.created_at.desc()).limit(5).all()
-                conversation_ids = [conv.id for conv in conversations]
-                
-                if not conversation_ids:
-                    return []
-                
-                messages = Message.query.filter(Message.conversation_id.in_(conversation_ids)).order_by(Message.created_at).limit(self.max_history).all()
-            
-            # Convert to list of dictionaries
-            message_list = [
-                {
-                    "role": msg.role,
-                    "content": msg.content,
-                    "timestamp": msg.created_at.isoformat(),
-                    "conversation_id": msg.conversation_id
-                }
-                for msg in messages
-            ]
-            
-            logger.debug(f"Loaded {len(message_list)} messages from history")
-            return message_list
-            
-        except Exception as e:
-            logger.error(f"Error loading conversation history: {str(e)}", exc_info=True)
-            return []
-    
-    def add_message(self, role: str, content: str, conversation_id: int) -> bool:
+    def add_message(self, role: str, content: str, metadata: Optional[Dict[str, Any]] = None) -> None:
         """
         Add a message to the conversation history.
         
         Args:
-            role: The role of the message sender ('user', 'assistant', 'system')
-            content: The message content
-            conversation_id: The ID of the conversation to add this message to
-            
-        Returns:
-            True if successful, False otherwise
-        """
-        try:
-            # Create and add message to database
-            message = Message(
-                conversation_id=conversation_id,
-                role=role,
-                content=content
-            )
-            db.session.add(message)
-            db.session.commit()
-            
-            logger.debug(f"Added {role} message to conversation {conversation_id}")
-            return True
-        except Exception as e:
-            logger.error(f"Error adding message to history: {str(e)}", exc_info=True)
-            db.session.rollback()
-            return False
-    
-    def get_system_prompt(self, agent_name: str) -> str:
-        """
-        Get a system prompt with context from conversation history.
-        
-        Args:
-            agent_name: The name of the agent requesting the prompt
-            
-        Returns:
-            A system prompt string with relevant context
-        """
-        # Load the conversation history
-        history = self.load_conversation_history()
-        
-        # Extract agent-specific context
-        agent_context = self.get_agent_context(agent_name)
-        
-        # Prepare a condensed version of the conversation history
-        history_summary = self._create_history_summary(history)
-        
-        # Combine history and context into a system prompt
-        system_prompt = f"""You are a helpful Staples assistant specializing in {agent_name}.
-        
-Conversation history summary:
-{history_summary}
-
-Relevant context:
-{self._format_context(agent_context)}
-
-Use this information to provide a helpful and contextually relevant response.
-"""
-        return system_prompt
-    
-    def _create_history_summary(self, history: List[Dict[str, Any]]) -> str:
-        """Create a summary of conversation history."""
-        if not history:
-            return "No previous conversation."
-        
-        # Include last few turns of conversation
-        recent_turns = history[-min(5, len(history)):]
-        history_text = "\n".join([
-            f"{msg['role'].title()}: {msg['content']}" 
-            for msg in recent_turns
-        ])
-        
-        return history_text
-    
-    def _format_context(self, context: Dict[str, Any]) -> str:
-        """Format context dictionary as a readable string."""
-        if not context:
-            return "No specific context information available."
-        
-        lines = []
-        for key, value in context.items():
-            if isinstance(value, dict):
-                lines.append(f"- {key}:")
-                for sub_key, sub_value in value.items():
-                    lines.append(f"  - {sub_key}: {sub_value}")
-            else:
-                lines.append(f"- {key}: {value}")
-        
-        return "\n".join(lines)
-    
-    def update_working_memory(self, key: str, value: Any, component_name: str = None) -> None:
-        """
-        Update working memory with a key-value pair.
-        
-        This method maintains backward compatibility with the legacy approach
-        while also utilizing the new MemoryManager for bidirectional communication.
-        
-        Args:
-            key: Memory key
-            value: Memory value
-            component_name: Optional component name for access control
-        """
-        # Update legacy working memory
-        self.working_memory[key] = value
-        
-        # Also update in the shared context channel
-        self.memory_manager.set_value("shared_context", key, value, component_name)
-        
-        logger.debug(f"Updated working memory: {key}")
-    
-    def get_working_memory(self, key: str, default: Any = None, component_name: str = None) -> Any:
-        """
-        Get a value from working memory.
-        
-        Args:
-            key: Memory key
-            default: Default value to return if key not found
-            component_name: Optional component name for access control
-            
-        Returns:
-            The stored value or default if not found
-        """
-        # Try to get from memory manager first (respects access control)
-        if component_name:
-            value = self.memory_manager.get_value("shared_context", key, None, component_name)
-            if value is not None:
-                return value
-                
-        # Fall back to legacy memory
-        return self.working_memory.get(key, default)
-        
-    def get_from_working_memory(self, key: str, default: Any = None) -> Any:
-        """
-        Get a value from working memory (simplified version for backward compatibility).
-        
-        Args:
-            key: Memory key
-            default: Default value to return if key not found
-            
-        Returns:
-            The stored value or default if not found
-        """
-        return self.get_working_memory(key, default)
-    
-    def update_context(self, agent_name: str, context_updates: Dict[str, Any]) -> None:
-        """
-        Update context for a specific agent.
-        
-        This method uses both legacy context storage and the new memory manager
-        to ensure backward compatibility while enabling bidirectional communication.
-        
-        Args:
-            agent_name: The name of the agent
-            context_updates: Dictionary of context updates
-        """
-        # Update legacy context
-        if agent_name not in self.context:
-            self.context[agent_name] = {}
-        
-        self.context[agent_name].update(context_updates)
-        
-        # Update in the memory manager
-        # Store in agent-specific namespace within shared context
-        agent_key = f"agent:{agent_name}"
-        current_data = self.memory_manager.get_value("shared_context", agent_key, {})
-        current_data.update(context_updates)
-        self.memory_manager.set_value("shared_context", agent_key, current_data, agent_name)
-        
-        # Also update in the agent outputs channel for other components to consume
-        self.memory_manager.update_channel("agent_outputs", {agent_name: context_updates}, agent_name)
-        
-        logger.debug(f"Updated context for {agent_name}")
-    
-    def get_agent_context(self, agent_name: str) -> Dict[str, Any]:
-        """
-        Get context for a specific agent.
-        
-        Combines data from both legacy storage and the memory manager.
-        
-        Args:
-            agent_name: The name of the agent
-            
-        Returns:
-            The agent's context dictionary
-        """
-        # Get from legacy context
-        legacy_context = self.context.get(agent_name, {})
-        
-        # Get from memory manager's shared context
-        agent_key = f"agent:{agent_name}"
-        manager_context = self.memory_manager.get_value("shared_context", agent_key, {}, agent_name)
-        
-        # Merge both contexts with manager context taking precedence
-        merged_context = {**legacy_context, **manager_context}
-        
-        return merged_context
-    
-    def get_full_context(self) -> Dict[str, Any]:
-        """
-        Get the full context across all agents.
-        
-        Returns:
-            The complete context dictionary
-        """
-        # Combine legacy working memory and agent contexts
-        legacy_context = {
-            "working_memory": self.working_memory,
-            "agent_contexts": self.context,
-            "session_id": self.session_id,
-            "last_updated": datetime.utcnow().isoformat()
-        }
-        
-        # Get context from memory manager
-        manager_context = {
-            "channels": self.memory_manager.serialize_channels(),
-            "last_updated": datetime.utcnow().isoformat()
-        }
-        
-        # Combine both sources
-        full_context = {
-            "legacy": legacy_context,
-            "memory_manager": manager_context
-        }
-        
-        return full_context
-        
-    # New methods for bidirectional communication
-    
-    def send_message(self, from_component: str, to_component: str, message_type: str, content: Any) -> bool:
-        """
-        Send a message from one component to another.
-        
-        Args:
-            from_component: Sender component name
-            to_component: Recipient component name
-            message_type: Type of message (e.g., 'command', 'result', 'status')
+            role: Role of the message sender (user, assistant, system)
             content: Message content
-            
-        Returns:
-            True if message was sent successfully
+            metadata: Optional metadata about the message
         """
+        if not metadata:
+            metadata = {}
+            
+        self.last_accessed = time.time()
+        
+        # Create message object
         message = {
-            "from": from_component,
-            "to": to_component,
-            "type": message_type,
-            "content": content,
-            "timestamp": datetime.utcnow().isoformat()
+            'role': role,
+            'content': content,
+            'timestamp': time.time(),
+            'metadata': metadata
         }
         
-        # Store message in the orchestrator channel
-        return self.memory_manager.set_value("orchestrator", 
-                                            f"message:{datetime.utcnow().timestamp()}", 
-                                            message, 
-                                            from_component)
-    
-    def get_messages_for(self, component_name: str) -> List[Dict[str, Any]]:
+        # Add to history
+        self.conversation_history.append(message)
+        
+        # Trim history if it exceeds the maximum
+        if len(self.conversation_history) > MAX_HISTORY:
+            self.conversation_history = self.conversation_history[-MAX_HISTORY:]
+            
+    def get_conversation_history(self, limit: Optional[int] = None) -> List[Dict[str, Any]]:
         """
-        Get all messages addressed to a specific component.
+        Get the conversation history.
         
         Args:
-            component_name: Component name to get messages for
+            limit: Optional maximum number of messages to return (most recent first)
             
         Returns:
             List of messages
         """
-        # Get all messages from orchestrator channel
-        all_messages = self.memory_manager.get_channel_data("orchestrator", component_name)
+        self.last_accessed = time.time()
         
-        # Filter messages for this component
-        component_messages = []
-        for key, message in all_messages.items():
-            if isinstance(message, dict) and message.get("to") == component_name:
-                component_messages.append(message)
-                
-        # Sort by timestamp
-        component_messages.sort(key=lambda m: m.get("timestamp", ""))
+        if limit and limit > 0:
+            return self.conversation_history[-limit:]
         
-        return component_messages
-    
-    def create_custom_channel(self, name: str, description: str, permissions: Dict[str, MemoryAccessLevel]) -> bool:
+        return self.conversation_history
+        
+    def set_memory_access(self, agent_name: str, access_level: MemoryAccessLevel, memory_keys: Optional[Dict[str, MemoryAccessLevel]] = None) -> None:
         """
-        Create a custom communication channel.
+        Set access levels for an agent to specific memory keys.
         
         Args:
-            name: Channel name
-            description: Channel description
-            permissions: Dictionary mapping component names to access levels
+            agent_name: Name of the agent
+            access_level: Default access level for this agent
+            memory_keys: Optional dictionary of memory keys to specific access levels
+        """
+        if not memory_keys:
+            memory_keys = {}
             
-        Returns:
-            True if channel was created
-        """
-        try:
-            self.memory_manager.create_channel(name, description, MemoryScope.SESSION, permissions)
-            return True
-        except Exception as e:
-            logger.error(f"Error creating channel {name}: {str(e)}")
-            return False
-    
-    def store_api_result(self, api_name: str, endpoint: str, params: Dict[str, Any], result: Any) -> None:
-        """
-        Store an API result in the cache.
-        
-        Args:
-            api_name: Name of the API service
-            endpoint: API endpoint
-            params: Request parameters
-            result: API result to cache
-        """
-        # Create a cache key from the API details
-        cache_key = f"{api_name}:{endpoint}:{json.dumps(params, sort_keys=True)}"
-        
-        # Store in the API cache channel
-        cache_entry = {
-            "api": api_name,
-            "endpoint": endpoint,
-            "params": params,
-            "result": result,
-            "timestamp": datetime.utcnow().isoformat(),
-            "expires": (datetime.utcnow() + timedelta(seconds=MEMORY_TTL)).isoformat()
+        self.memory_access[agent_name] = {
+            'default': access_level,
+            'keys': memory_keys
         }
         
-        self.memory_manager.set_value("api_cache", cache_key, cache_entry)
-    
-    def get_cached_api_result(self, api_name: str, endpoint: str, params: Dict[str, Any]) -> Optional[Any]:
+    def can_access(self, agent_name: str, memory_key: str, access_type: MemoryAccessLevel) -> bool:
         """
-        Get a cached API result if available.
+        Check if an agent has the specified access level to a memory key.
         
         Args:
-            api_name: Name of the API service
-            endpoint: API endpoint
-            params: Request parameters
+            agent_name: Name of the agent
+            memory_key: Memory key to check
+            access_type: Access type to check for
             
         Returns:
-            Cached result or None if not in cache or expired
+            True if agent has the specified access, False otherwise
         """
-        # Create a cache key from the API details
-        cache_key = f"{api_name}:{endpoint}:{json.dumps(params, sort_keys=True)}"
-        
-        # Get from the API cache channel
-        cache_entry = self.memory_manager.get_value("api_cache", cache_key)
-        
-        if not cache_entry:
-            return None
+        if agent_name not in self.memory_access:
+            # No specific access rules, deny access
+            return False
             
-        # Check if entry has expired
-        try:
-            expires = datetime.fromisoformat(cache_entry.get("expires", ""))
-            if expires < datetime.utcnow():
-                # Expired entry
-                return None
-        except (ValueError, TypeError):
-            # Invalid expiration, consider expired
-            return None
+        agent_access = self.memory_access[agent_name]
+        
+        # Check for specific access rule for this key
+        if 'keys' in agent_access and memory_key in agent_access['keys']:
+            key_access = agent_access['keys'][memory_key]
             
-        return cache_entry.get("result")
+            # READ_WRITE access includes READ_ONLY
+            if access_type == MemoryAccessLevel.READ_ONLY:
+                return True
+            
+            # For READ_WRITE access, the agent must have READ_WRITE access
+            return key_access == MemoryAccessLevel.READ_WRITE
+            
+        # Fall back to default access level
+        default_access = agent_access.get('default', MemoryAccessLevel.READ_ONLY)
+        
+        # READ_WRITE access includes READ_ONLY
+        if access_type == MemoryAccessLevel.READ_ONLY:
+            return True
+            
+        # For READ_WRITE access, the agent must have READ_WRITE access
+        return default_access == MemoryAccessLevel.READ_WRITE
+        
+    def get_from_working_memory(self, key: str, default=None):
+        """
+        Get an item from working memory.
+        
+        Args:
+            key: Memory key
+            default: Default value if key not found
+            
+        Returns:
+            Value from working memory, or default if not found
+        """
+        self.last_accessed = time.time()
+        return self.working_memory.get(key, default)
+        
+    def update_working_memory(self, key: str, value) -> None:
+        """
+        Update an item in working memory.
+        
+        Args:
+            key: Memory key
+            value: Value to store
+        """
+        self.last_accessed = time.time()
+        self.working_memory[key] = value
+        
+    def clear_working_memory(self) -> None:
+        """Clear all working memory."""
+        self.last_accessed = time.time()
+        self.working_memory = {}
+        
+    def add_entity(self, entity_type: str, entity_value: str, agent_name: Optional[str] = None, confidence: float = 1.0) -> None:
+        """
+        Add an entity to the entities collection.
+        
+        Args:
+            entity_type: Type of entity (e.g., product, store, order)
+            entity_value: Value of the entity
+            agent_name: Optional name of the agent that detected the entity
+            confidence: Confidence score for the entity detection
+        """
+        self.last_accessed = time.time()
+        
+        if entity_type not in self.entities:
+            self.entities[entity_type] = []
+            
+        # Add entity with metadata
+        self.entities[entity_type].append({
+            'value': entity_value,
+            'agent': agent_name,
+            'confidence': confidence,
+            'timestamp': time.time()
+        })
+        
+    def get_entities(self, entity_type: Optional[str] = None) -> Dict[str, List[Dict[str, Any]]]:
+        """
+        Get entities from memory.
+        
+        Args:
+            entity_type: Optional entity type to filter by
+            
+        Returns:
+            Dictionary of entity types to lists of entity values
+        """
+        self.last_accessed = time.time()
+        
+        if entity_type:
+            return {entity_type: self.entities.get(entity_type, [])}
+            
+        return self.entities
+        
+    def update_user_profile(self, key: str, value) -> None:
+        """
+        Update user profile information.
+        
+        Args:
+            key: Profile key
+            value: Profile value
+        """
+        self.last_accessed = time.time()
+        self.user_profile[key] = value
+        
+    def get_user_profile(self, key: Optional[str] = None):
+        """
+        Get user profile information.
+        
+        Args:
+            key: Optional profile key to get
+            
+        Returns:
+            Profile value if key provided, otherwise entire profile
+        """
+        self.last_accessed = time.time()
+        
+        if key:
+            return self.user_profile.get(key)
+            
+        return self.user_profile
         
     def is_expired(self) -> bool:
         """
-        Check if this conversation memory has expired.
-        
-        Memory is considered expired if the last update was longer ago than SESSION_TTL.
+        Check if this memory has expired.
         
         Returns:
-            True if the memory has expired, False otherwise
+            True if memory has expired, False otherwise
         """
-        # Check the last update timestamp from the memory manager
-        for channel_name in self.memory_manager.channels.keys():
-            channel = self.memory_manager.get_channel(channel_name)
-            if channel and channel.last_updated:
-                last_update = channel.last_updated
-                if (datetime.utcnow() - last_update).total_seconds() < SESSION_TTL:
-                    # If any channel was updated within SESSION_TTL, not expired
-                    return False
+        seconds_since_access = time.time() - self.last_accessed
+        return seconds_since_access > MEMORY_EXPIRATION_SECONDS
         
-        # If no recent updates found, check if there's any working memory
-        if self.working_memory:
-            # Simple presence of working memory keeps it alive
-            return False
+    def to_dict(self) -> Dict[str, Any]:
+        """
+        Convert memory to dictionary for serialization.
+        
+        Returns:
+            Dictionary representation of memory
+        """
+        return {
+            'session_id': self.session_id,
+            'created_at': self.created_at,
+            'last_accessed': self.last_accessed,
+            'conversation_history': self.conversation_history,
+            'working_memory': self.working_memory,
+            'entities': self.entities,
+            'user_profile': self.user_profile
+        }
+        
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'ConversationMemory':
+        """
+        Create memory instance from dictionary.
+        
+        Args:
+            data: Dictionary representation of memory
             
-        # No recent activity, consider expired
-        return True
+        Returns:
+            ConversationMemory instance
+        """
+        memory = cls(data['session_id'])
+        memory.created_at = data.get('created_at', time.time())
+        memory.last_accessed = data.get('last_accessed', time.time())
+        memory.conversation_history = data.get('conversation_history', [])
+        memory.working_memory = data.get('working_memory', {})
+        memory.entities = data.get('entities', {})
+        memory.user_profile = data.get('user_profile', {})
+        
+        return memory
+        
+    def to_json(self) -> str:
+        """
+        Convert memory to JSON string.
+        
+        Returns:
+            JSON string representation of memory
+        """
+        return json.dumps(self.to_dict())
+        
+    @classmethod
+    def from_json(cls, json_str: str) -> 'ConversationMemory':
+        """
+        Create memory instance from JSON string.
+        
+        Args:
+            json_str: JSON string representation of memory
+            
+        Returns:
+            ConversationMemory instance
+        """
+        data = json.loads(json_str)
+        return cls.from_dict(data)
+
+
+class AsyncConversationMemory:
+    """
+    Asynchronous wrapper for ConversationMemory that uses database storage.
+    
+    This class provides the same interface as ConversationMemory, but stores
+    the memory in a database for persistence across restarts.
+    """
+    
+    def __init__(self, session_id: str, db: AsyncSession):
+        """
+        Initialize async conversation memory.
+        
+        Args:
+            session_id: Unique session identifier
+            db: Database session
+        """
+        self.session_id = session_id
+        self.db = db
+        self.memory = None
+        
+    async def load(self) -> None:
+        """Load memory from database."""
+        from backend.repositories.memory_repository import MemoryRepository
+        
+        repository = MemoryRepository(self.db)
+        memory_data = await repository.get_memory(self.session_id)
+        
+        if memory_data:
+            self.memory = ConversationMemory.from_dict(memory_data)
+        else:
+            self.memory = ConversationMemory(self.session_id)
+            
+    async def save(self) -> None:
+        """Save memory to database."""
+        from backend.repositories.memory_repository import MemoryRepository
+        
+        if self.memory:
+            repository = MemoryRepository(self.db)
+            await repository.save_memory(self.memory.to_dict())
+            
+    async def add_message(self, role: str, content: str, metadata: Optional[Dict[str, Any]] = None) -> None:
+        """
+        Add a message to the conversation history.
+        
+        Args:
+            role: Role of the message sender (user, assistant, system)
+            content: Message content
+            metadata: Optional metadata about the message
+        """
+        if not self.memory:
+            await self.load()
+            
+        self.memory.add_message(role, content, metadata)
+        await self.save()
+        
+    async def get_conversation_history(self, limit: Optional[int] = None) -> List[Dict[str, Any]]:
+        """
+        Get the conversation history.
+        
+        Args:
+            limit: Optional maximum number of messages to return (most recent first)
+            
+        Returns:
+            List of messages
+        """
+        if not self.memory:
+            await self.load()
+            
+        return self.memory.get_conversation_history(limit)
+        
+    async def set_memory_access(self, agent_name: str, access_level: MemoryAccessLevel, memory_keys: Optional[Dict[str, MemoryAccessLevel]] = None) -> None:
+        """
+        Set access levels for an agent to specific memory keys.
+        
+        Args:
+            agent_name: Name of the agent
+            access_level: Default access level for this agent
+            memory_keys: Optional dictionary of memory keys to specific access levels
+        """
+        if not self.memory:
+            await self.load()
+            
+        self.memory.set_memory_access(agent_name, access_level, memory_keys)
+        await self.save()
+        
+    async def can_access(self, agent_name: str, memory_key: str, access_type: MemoryAccessLevel) -> bool:
+        """
+        Check if an agent has the specified access level to a memory key.
+        
+        Args:
+            agent_name: Name of the agent
+            memory_key: Memory key to check
+            access_type: Access type to check for
+            
+        Returns:
+            True if agent has the specified access, False otherwise
+        """
+        if not self.memory:
+            await self.load()
+            
+        return self.memory.can_access(agent_name, memory_key, access_type)
+        
+    async def get_from_working_memory(self, key: str, default=None):
+        """
+        Get an item from working memory.
+        
+        Args:
+            key: Memory key
+            default: Default value if key not found
+            
+        Returns:
+            Value from working memory, or default if not found
+        """
+        if not self.memory:
+            await self.load()
+            
+        return self.memory.get_from_working_memory(key, default)
+        
+    async def update_working_memory(self, key: str, value) -> None:
+        """
+        Update an item in working memory.
+        
+        Args:
+            key: Memory key
+            value: Value to store
+        """
+        if not self.memory:
+            await self.load()
+            
+        self.memory.update_working_memory(key, value)
+        await self.save()
+        
+    async def clear_working_memory(self) -> None:
+        """Clear all working memory."""
+        if not self.memory:
+            await self.load()
+            
+        self.memory.clear_working_memory()
+        await self.save()
+        
+    async def add_entity(self, entity_type: str, entity_value: str, agent_name: Optional[str] = None, confidence: float = 1.0) -> None:
+        """
+        Add an entity to the entities collection.
+        
+        Args:
+            entity_type: Type of entity (e.g., product, store, order)
+            entity_value: Value of the entity
+            agent_name: Optional name of the agent that detected the entity
+            confidence: Confidence score for the entity detection
+        """
+        if not self.memory:
+            await self.load()
+            
+        self.memory.add_entity(entity_type, entity_value, agent_name, confidence)
+        await self.save()
+        
+    async def get_entities(self, entity_type: Optional[str] = None) -> Dict[str, List[Dict[str, Any]]]:
+        """
+        Get entities from memory.
+        
+        Args:
+            entity_type: Optional entity type to filter by
+            
+        Returns:
+            Dictionary of entity types to lists of entity values
+        """
+        if not self.memory:
+            await self.load()
+            
+        return self.memory.get_entities(entity_type)
+        
+    async def update_user_profile(self, key: str, value) -> None:
+        """
+        Update user profile information.
+        
+        Args:
+            key: Profile key
+            value: Profile value
+        """
+        if not self.memory:
+            await self.load()
+            
+        self.memory.update_user_profile(key, value)
+        await self.save()
+        
+    async def get_user_profile(self, key: Optional[str] = None):
+        """
+        Get user profile information.
+        
+        Args:
+            key: Optional profile key to get
+            
+        Returns:
+            Profile value if key provided, otherwise entire profile
+        """
+        if not self.memory:
+            await self.load()
+            
+        return self.memory.get_user_profile(key)
+        
+    async def is_expired(self) -> bool:
+        """
+        Check if this memory has expired.
+        
+        Returns:
+            True if memory has expired, False otherwise
+        """
+        if not self.memory:
+            await self.load()
+            
+        return self.memory.is_expired()
+
+
+# Function to create a memory repository table in the database
+async def create_memory_table(db: AsyncSession):
+    """
+    Create the memory table in the database if it doesn't exist.
+    
+    Args:
+        db: Database session
+    """
+    # Execute raw SQL to create the table if needed
+    query = """
+    CREATE TABLE IF NOT EXISTS conversation_memory (
+        session_id VARCHAR(255) PRIMARY KEY,
+        memory_data JSONB NOT NULL,
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+    """
+    
+    await db.execute(query)
+    await db.commit()
+
+
+# Function to migrate data if needed
+async def migrate_memory_data(db: AsyncSession):
+    """
+    Migrate memory data if needed (for version upgrades).
+    
+    Args:
+        db: Database session
+    """
+    # This function would be implemented when migrations are needed
+    pass

@@ -1,95 +1,88 @@
 """
-Semantic utility functions for Staples Brain.
+Semantic analysis utilities for Staples Brain.
 
-This module provides utilities for semantic analysis and similarity
-calculations to improve agent selection and conversation flow.
+This module provides utilities for semantic analysis of text, including
+similarity calculations, embeddings, and various detection methods for
+special conversation scenarios.
 """
 
 import logging
 import os
-import numpy as np
-from typing import List, Dict, Any, Optional, Tuple, Union
+import re
+from typing import Dict, Any, List, Optional, Tuple
 
-# Import embeddings library conditionally
-try:
-    from langchain_openai import OpenAIEmbeddings
-    has_openai = True
-except ImportError:
-    has_openai = False
+import numpy as np
+from numpy.linalg import norm
+
+from langchain_openai import OpenAIEmbeddings
 
 logger = logging.getLogger(__name__)
 
 class SemanticAnalyzer:
     """
-    Utility class for semantic analysis of text.
-    
-    Provides methods for calculating semantic similarity between texts
-    and detecting specific conversation patterns.
+    Utility class for semantic analysis, including text similarity calculations,
+    embeddings, and special case detection.
     """
     
     def __init__(self):
-        """Initialize the semantic analyzer."""
-        self.embeddings = None
-        self._initialize_embeddings()
+        """Initialize the semantic analyzer with available embedding backends."""
+        self.embedding_model = None
         
-    def _initialize_embeddings(self):
-        """Initialize the embeddings model."""
-        if has_openai and os.environ.get("OPENAI_API_KEY"):
+        # Check if OpenAI API key is available for embeddings
+        if os.environ.get("OPENAI_API_KEY"):
             try:
-                self.embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
+                self.embedding_model = OpenAIEmbeddings(
+                    model="text-embedding-3-small",
+                    chunk_size=1000
+                )
                 logger.info("Initialized OpenAI embeddings for semantic analysis")
+            except ImportError:
+                logger.warning("OpenAI package not available, falling back to simpler text analysis")
             except Exception as e:
                 logger.warning(f"Failed to initialize OpenAI embeddings: {str(e)}")
-        else:
-            logger.warning("OpenAI embeddings unavailable, semantic similarity will use fallback method")
-    
-    def get_embedding(self, text: str) -> Optional[List[float]]:
+                
+    def get_embedding(self, text: str) -> List[float]:
         """
-        Get embedding vector for a text string.
+        Get embedding vector for text using the configured backend.
         
         Args:
-            text: Text to embed
+            text: Text to get embedding for
             
         Returns:
-            List of floats representing the embedding vector or None if embeddings not available
+            Embedding vector (list of floats)
         """
         if not text:
-            return None
+            # Return zero vector for empty text
+            return [0.0] * 1536  # Default dimension for OpenAI text-embedding-3-small
             
-        if self.embeddings:
+        if self.embedding_model:
             try:
-                return self.embeddings.embed_query(text)
+                return self.embedding_model.embed_query(text)
             except Exception as e:
-                logger.warning(f"Error getting embedding: {str(e)}")
-                return None
-        else:
-            # Fallback to simple bag of words representation
-            return self._simple_text_representation(text)
-    
-    def _simple_text_representation(self, text: str) -> List[float]:
-        """
-        Create a simple numerical representation of text when embeddings are not available.
-        This is a fallback method that uses character frequency.
-        
-        Args:
-            text: Input text
-            
-        Returns:
-            Simple vector representation of the text
-        """
-        # Count character frequencies and normalize
-        char_freq = {}
-        for char in text.lower():
-            if char.isalnum():
-                char_freq[char] = char_freq.get(char, 0) + 1
+                logger.warning(f"Error getting embedding: {str(e)}, falling back to simple vector")
                 
-        # Create a simple fixed-length vector (26 letters + 10 digits)
+        # Fallback: generate a simple vector based on character frequencies
+        # This is not a good embedding but serves as a fallback when no model is available
+        char_counts = {}
+        for char in text.lower():
+            if char in char_counts:
+                char_counts[char] += 1
+            else:
+                char_counts[char] = 1
+                
+        # Create a fixed-size vector (26 for letters + 10 for digits)
         vector = [0] * 36
         for i, char in enumerate("abcdefghijklmnopqrstuvwxyz0123456789"):
-            if i < len(vector):
-                vector[i] = char_freq.get(char, 0) / max(len(text), 1)
+            if char in char_counts:
+                vector[i] = char_counts[char]
                 
-        return vector
+        # Normalize vector
+        magnitude = sum(v*v for v in vector) ** 0.5
+        if magnitude > 0:
+            vector = [v/magnitude for v in vector]
+            
+        # Pad to match typical embedding size for consistency
+        return vector + [0.0] * (1536 - len(vector))
     
     def calculate_similarity(self, text1: str, text2: str) -> float:
         """
@@ -100,224 +93,257 @@ class SemanticAnalyzer:
             text2: Second text
             
         Returns:
-            Similarity score between 0 and 1
+            Similarity score (0.0-1.0)
         """
         if not text1 or not text2:
             return 0.0
             
-        emb1 = self.get_embedding(text1)
-        emb2 = self.get_embedding(text2)
+        # Try using embeddings for better semantic similarity
+        try:
+            if self.embedding_model:
+                # Get embeddings for both texts
+                embedding1 = self.get_embedding(text1)
+                embedding2 = self.get_embedding(text2)
+                
+                # Calculate cosine similarity
+                dot_product = sum(a*b for a, b in zip(embedding1, embedding2))
+                magnitude1 = sum(a*a for a in embedding1) ** 0.5
+                magnitude2 = sum(b*b for b in embedding2) ** 0.5
+                
+                if magnitude1 > 0 and magnitude2 > 0:
+                    similarity = dot_product / (magnitude1 * magnitude2)
+                    return max(0.0, min(1.0, similarity))
+        except Exception as e:
+            logger.warning(f"Error calculating embedding similarity: {str(e)}, falling back to token overlap")
+                
+        # Fallback: Use simple word overlap
+        words1 = set(self._tokenize(text1.lower()))
+        words2 = set(self._tokenize(text2.lower()))
         
-        if emb1 is None or emb2 is None:
+        if not words1 or not words2:
             return 0.0
             
-        # Calculate cosine similarity
-        dot_product = np.dot(emb1, emb2)
-        norm1 = np.linalg.norm(emb1)
-        norm2 = np.linalg.norm(emb2)
+        # Jaccard similarity
+        intersection = len(words1.intersection(words2))
+        union = len(words1.union(words2))
         
-        if norm1 == 0 or norm2 == 0:
-            return 0.0
-            
-        cosine_similarity = dot_product / (norm1 * norm2)
-        return float(max(0.0, min(1.0, cosine_similarity)))
+        return intersection / union if union > 0 else 0.0
     
-    def calculate_relevance_to_history(self, query: str, history: List[Dict[str, str]]) -> float:
+    def _tokenize(self, text: str) -> List[str]:
         """
-        Calculate relevance of a query to conversation history.
+        Simple tokenization for text.
         
         Args:
-            query: Current user query
-            history: List of previous messages as dictionaries with 'content' key
+            text: Text to tokenize
             
         Returns:
-            Relevance score between 0 and 1
+            List of tokens
         """
-        if not query or not history:
-            return 0.0
-            
-        # Extract text content from history
-        history_texts = [msg.get('content', '') for msg in history if msg.get('role') == 'user']
-        
-        if not history_texts:
-            return 0.0
-            
-        # Calculate similarity with each history item
-        similarities = [self.calculate_similarity(query, text) for text in history_texts]
-        
-        # Return max similarity as the relevance score
-        return max(similarities) if similarities else 0.0
+        # Remove punctuation and split by whitespace
+        text = re.sub(r'[^\w\s]', ' ', text)
+        return [token for token in text.split() if token]
     
     def detect_greeting(self, text: str) -> float:
         """
-        Detect if text contains a greeting.
+        Detect if the text contains a greeting.
         
         Args:
             text: Input text
             
         Returns:
-            Confidence score that text is a greeting (0-1)
+            Confidence score (0.0-1.0)
         """
         text = text.lower()
+        
+        # Common greeting patterns
         greeting_phrases = [
-            "hello", "hi ", "hey", "morning", "afternoon", "evening", 
-            "good day", "greetings", "wassup", "what's up", "howdy"
+            "hello", "hi", "hey", "greetings", "good morning", "good afternoon", 
+            "good evening", "howdy", "what's up", "how are you", "how's it going",
+            "nice to meet you", "good day"
         ]
         
-        # Check for exact greeting matches
+        # Get first few words (where greetings typically appear)
+        first_words = ' '.join(self._tokenize(text)[:3])
+        
+        # Check for exact greeting matches at the start
         for phrase in greeting_phrases:
-            if phrase in text:
-                # Higher confidence for short greetings
-                if len(text) < 20:
-                    return 0.95
-                else:
-                    return 0.8
-                    
+            if first_words.startswith(phrase) or text.startswith(phrase):
+                return 0.95
+        
         # Calculate similarity with common greetings
-        common_greetings = [
-            "Hello there",
-            "Hi, how are you?",
-            "Hey, how's it going?",
-            "Good morning",
-            "Good afternoon"
+        greeting_examples = [
+            "Hello there!",
+            "Hi, I need help with something",
+            "Hey, can you assist me?",
+            "Good morning, I have a question"
         ]
         
-        similarities = [self.calculate_similarity(text, greeting) for greeting in common_greetings]
+        similarities = [self.calculate_similarity(text, example) for example in greeting_examples]
         max_similarity = max(similarities) if similarities else 0.0
         
-        return max_similarity
+        # Higher confidence for short texts that are likely just greetings
+        if len(text) < 20 and max_similarity > 0.5:
+            max_similarity += 0.2
+            
+        return min(1.0, max_similarity)
     
     def detect_conversation_end(self, text: str) -> float:
         """
-        Detect if text indicates the end of a conversation.
+        Detect if the text indicates the end of a conversation.
         
         Args:
             text: Input text
             
         Returns:
-            Confidence score that text indicates conversation end (0-1)
+            Confidence score (0.0-1.0)
         """
         text = text.lower()
-        end_phrases = [
-            "goodbye", "bye", "see you", "farewell", "talk to you later",
-            "have a good day", "have a nice day", "thanks for your help",
-            "thank you for your assistance", "that's all", "that will be all"
+        
+        # Common goodbye patterns
+        goodbye_phrases = [
+            "goodbye", "bye", "see you", "talk to you later", "until next time",
+            "that's all", "that will be all", "nothing else", "we're done", "i'm done",
+            "thanks, bye", "thank you, bye", "have a good day", "have a nice day"
         ]
         
-        # Check for exact end phrase matches
-        for phrase in end_phrases:
+        # Check for exact goodbye matches
+        for phrase in goodbye_phrases:
             if phrase in text:
                 return 0.9
-                
-        # Calculate similarity with common end phrases
-        common_ends = [
-            "Goodbye for now",
-            "Thank you for your help",
-            "That's all I needed",
-            "I'm done now"
+        
+        # Calculate similarity with common goodbyes
+        goodbye_examples = [
+            "Thanks for your help, goodbye!",
+            "That's all I needed, thanks!",
+            "I think we're done here.",
+            "I don't need anything else, bye.",
+            "That's it, thank you."
         ]
         
-        similarities = [self.calculate_similarity(text, end) for end in common_ends]
+        similarities = [self.calculate_similarity(text, example) for example in goodbye_examples]
         max_similarity = max(similarities) if similarities else 0.0
         
         return max_similarity
     
     def detect_human_transfer_request(self, text: str) -> float:
         """
-        Detect if text contains a request to transfer to a human agent.
+        Detect if the text is requesting a transfer to a human agent.
         
         Args:
             text: Input text
             
         Returns:
-            Confidence score that text is requesting human transfer (0-1)
+            Confidence score (0.0-1.0)
         """
         text = text.lower()
-        human_phrases = [
-            "speak to a human", "talk to a person", "talk to a representative",
-            "speak with an agent", "transfer to agent", "transfer to a human",
-            "real person", "human agent", "customer service", "customer support",
-            "speak to a manager", "talk to a supervisor", "talk to someone"
+        
+        # Common human transfer request patterns
+        transfer_phrases = [
+            "speak to a human", "talk to a human", "connect to a person",
+            "speak to a representative", "talk to a representative", "real person",
+            "transfer me", "speak to someone else", "connect me with a representative",
+            "agent please", "customer service", "connect to an agent",
+            "i want to speak to a real person", "get me a human"
         ]
         
-        # Check for exact human transfer phrase matches
-        for phrase in human_phrases:
+        # Check for exact transfer request matches
+        for phrase in transfer_phrases:
             if phrase in text:
-                return 0.9
-                
-        # Calculate similarity with common human transfer requests
-        common_requests = [
-            "I want to speak to a human agent",
-            "Can I talk to a real person?",
-            "Transfer me to customer service please"
+                return 0.95
+        
+        # Calculate similarity with common transfer requests
+        transfer_examples = [
+            "I want to speak to a customer service representative please.",
+            "Can you transfer me to a real person?",
+            "I need to talk to a human agent.",
+            "This isn't working, I need to speak with a real person please.",
+            "Connect me with someone who can help me better."
         ]
         
-        similarities = [self.calculate_similarity(text, request) for request in common_requests]
+        similarities = [self.calculate_similarity(text, example) for example in transfer_examples]
         max_similarity = max(similarities) if similarities else 0.0
         
         return max_similarity
     
     def detect_negative_feedback(self, text: str) -> float:
         """
-        Detect negative feedback in text.
+        Detect if the text contains negative feedback or frustration.
         
         Args:
             text: Input text
             
         Returns:
-            Confidence score that text contains negative feedback (0-1)
+            Confidence score (0.0-1.0)
         """
         text = text.lower()
+        
+        # Common negative feedback patterns
         negative_phrases = [
-            "not helpful", "didn't help", "doesn't help", "useless",
-            "wrong answer", "incorrect", "not what I asked", "not right",
-            "doesn't understand", "didn't understand", "confused",
-            "not working", "frustrating", "waste of time", "not relevant"
+            "not what i asked", "not what i was looking for", "not helping",
+            "not relevant", "didn't understand", "don't understand",
+            "this is wrong", "incorrect", "that's not right", "wrong answer",
+            "i'm frustrated", "this is frustrating", "not working",
+            "useless", "waste of time", "not useful", "bad response"
         ]
         
-        # Check for exact negative feedback phrase matches
+        # Check for exact negative feedback matches
         for phrase in negative_phrases:
             if phrase in text:
-                return 0.85
-                
-        # Calculate similarity with common negative feedback
-        common_negative = [
-            "This is not helpful at all",
-            "You don't understand what I'm asking",
-            "You're giving me the wrong information",
-            "This is very frustrating"
+                return 0.9
+        
+        # Calculate similarity with common negative feedback examples
+        negative_examples = [
+            "That's not what I was asking about.",
+            "You're not understanding my question.",
+            "This isn't helpful at all.",
+            "You're giving me the wrong information.",
+            "This is frustrating, you're not answering my question."
         ]
         
-        similarities = [self.calculate_similarity(text, neg) for neg in common_negative]
+        similarities = [self.calculate_similarity(text, example) for example in negative_examples]
         max_similarity = max(similarities) if similarities else 0.0
         
         return max_similarity
     
-    def detect_conversation_interruption(self, 
-                                        previous_topic: str, 
-                                        current_query: str) -> Tuple[bool, float]:
+    def detect_conversation_interruption(self, previous_topic: str, current_text: str) -> Tuple[bool, float]:
         """
-        Detect if current query represents a conversation topic interruption.
+        Detect if current text represents an interruption or topic switch.
         
         Args:
-            previous_topic: Previous conversation topic or summary
-            current_query: Current user query
+            previous_topic: The previous conversation topic or message
+            current_text: The current user message
             
         Returns:
             Tuple of (is_interruption, confidence)
         """
-        if not previous_topic or not current_query:
+        if not previous_topic or not current_text:
             return False, 0.0
             
-        # Calculate similarity between previous topic and current query
-        similarity = self.calculate_similarity(previous_topic, current_query)
+        # Check for explicit interruption phrases
+        interruption_phrases = [
+            "actually", "wait", "hold on", "different question", 
+            "change the subject", "something else", "nevermind", 
+            "forget that", "different topic", "instead"
+        ]
         
-        # Low similarity indicates potential topic change/interruption
-        is_interruption = similarity < 0.3
-        confidence = 1.0 - similarity if is_interruption else 0.0
+        # Check if the text starts with any interruption phrases
+        text_lower = current_text.lower()
+        for phrase in interruption_phrases:
+            if text_lower.startswith(phrase) or f" {phrase} " in f" {text_lower} ":
+                return True, 0.9
+        
+        # If no explicit interruption, calculate semantic similarity
+        similarity = self.calculate_similarity(previous_topic, current_text)
+        
+        # Lower similarity suggests a topic switch
+        dissimilarity = 1.0 - similarity
+        
+        # Set threshold for interruption detection
+        is_interruption = dissimilarity > 0.7
+        confidence = dissimilarity if is_interruption else 0.0
         
         return is_interruption, confidence
 
 
-# Create a singleton instance
+# Create a singleton instance for use throughout the application
 semantic_analyzer = SemanticAnalyzer()
