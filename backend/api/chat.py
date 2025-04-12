@@ -17,7 +17,7 @@ def get_chat_service_direct():
     Creates a new database session with auto-commit mode.
     """
     from backend.services.chat_service import ChatService
-    from backend.services.langgraph_brain_service import LangGraphBrainService
+    from backend.services.graph_brain_service import GraphBrainService
     from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
     from backend.repositories.conversation_repository import ConversationRepository
     import os
@@ -70,8 +70,9 @@ def get_chat_service_direct():
     
     # Create minimal brain service
     from backend.config.config import get_config
+    from backend.services.graph_brain_service import GraphBrainService
     config = get_config()
-    brain_service = LangGraphBrainService(db_session=db, config=config)
+    brain_service = GraphBrainService(db_session=db, config=config)
     
     # Return properly initialized ChatService with the session
     return ChatService(db=db, brain_service=brain_service)

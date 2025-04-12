@@ -10,7 +10,8 @@ from typing import Dict, Any, List, Optional, Tuple, Union, Callable
 from datetime import datetime
 
 from langgraph.graph import StateGraph, END
-from langgraph.prebuilt import ToolNode, AgentNode
+# AgentNode is not available in the current version, removing it
+from langgraph.prebuilt import ToolNode
 from langchain_openai import ChatOpenAI
 
 from backend.brain.native_graph.state_definitions import OrchestrationState
