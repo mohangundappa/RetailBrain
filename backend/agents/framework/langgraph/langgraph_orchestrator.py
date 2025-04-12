@@ -91,7 +91,7 @@ class LangGraphOrchestrator:
         Returns:
             Response with agent output
         """
-        logger.info(f"TRACE: Entered LangGraphOrchestrator.process_message in backend/brain/agents/langgraph_orchestrator.py")
+        logger.info(f"TRACE: Entered LangGraphOrchestrator.process_message in backend/agents/framework/langgraph/langgraph_orchestrator.py")
         if not self.agents:
             return {
                 "response": "No agents are available to process your request.",

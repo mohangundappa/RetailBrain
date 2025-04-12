@@ -16,7 +16,8 @@ from sqlalchemy.orm import sessionmaker
 
 from backend.config.config import Config
 from backend.database.db import get_db
-from backend.brain.agents import LangGraphAgent, LangGraphAgentFactory, LangGraphOrchestrator
+from backend.agents.framework.langgraph import LangGraphAgent, LangGraphAgentFactory
+from backend.agents.framework.langgraph.langgraph_orchestrator import LangGraphOrchestrator
 from backend.services.graph_brain_service import GraphBrainService
 
 
@@ -142,7 +143,7 @@ class TestLangGraphIntegration(unittest.TestCase):
         self.assertIn("Test Agent 2", agents)
 
     @patch('backend.repositories.agent_repository.AgentRepository')
-    @patch('backend.brain.agents.langgraph_factory.AgentRepository')
+    @patch('backend.agents.framework.langgraph.langgraph_factory.AgentRepository')
     def test_agent_factory_initialization(self, mock_repo_class, mock_repo_import):
         """Test initializing the agent factory."""
         # Setup mock
