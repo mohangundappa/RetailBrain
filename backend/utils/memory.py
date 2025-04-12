@@ -872,3 +872,29 @@ Use this information to provide a helpful and contextually relevant response.
             return None
             
         return cache_entry.get("result")
+        
+    def is_expired(self) -> bool:
+        """
+        Check if this conversation memory has expired.
+        
+        Memory is considered expired if the last update was longer ago than SESSION_TTL.
+        
+        Returns:
+            True if the memory has expired, False otherwise
+        """
+        # Check the last update timestamp from the memory manager
+        for channel_name in self.memory_manager.channels.keys():
+            channel = self.memory_manager.get_channel(channel_name)
+            if channel and channel.last_updated:
+                last_update = channel.last_updated
+                if (datetime.utcnow() - last_update).total_seconds() < SESSION_TTL:
+                    # If any channel was updated within SESSION_TTL, not expired
+                    return False
+        
+        # If no recent updates found, check if there's any working memory
+        if self.working_memory:
+            # Simple presence of working memory keeps it alive
+            return False
+            
+        # No recent activity, consider expired
+        return True
