@@ -46,13 +46,14 @@ class DefaultLangGraphAgent(LangGraphAgent):
             "avg_response_time": 0
         }
     
-    async def process(
+    def process(
         self, 
         message: str, 
         context: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
         """
-        Process a message and generate an appropriate response.
+        Process a message synchronously and generate an appropriate response.
+        This is a non-async version for use with the LangGraph orchestrator.
         
         Args:
             message: User input message
@@ -85,8 +86,8 @@ class DefaultLangGraphAgent(LangGraphAgent):
                 f"I'm the {self.name}. {self.description} "
                 "How can I assist you today?"
             )
-        
-        # Format the response as expected by the orchestrator
+            
+        # Create the response object
         response = {
             "response": response_text,
             "agent": self.name,
@@ -104,6 +105,27 @@ class DefaultLangGraphAgent(LangGraphAgent):
         self.update_metrics(success=True, response_time=elapsed_time)
         
         return response
+        
+    async def process(
+        self, 
+        message: str, 
+        context: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, Any]:
+        """
+        Process a message asynchronously and generate an appropriate response.
+        
+        Args:
+            message: User input message
+            context: Additional context information
+            
+        Returns:
+            Dictionary containing the response and metadata
+        """
+        # For the default agent, we just call the synchronous version
+        # In a real implementation, this would be properly async
+        # Note that we aren't awaiting anything here because the synchronous version
+        # does everything we need
+        return self.process(message, context)
     
     def update_metrics(self, success: bool, response_time: float) -> None:
         """
