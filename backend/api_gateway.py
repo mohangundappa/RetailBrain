@@ -190,6 +190,7 @@ app.include_router(telemetry_router, prefix=API_PREFIX)
 app.include_router(state_router, prefix=API_PREFIX)
 app.include_router(api_router, prefix=API_PREFIX)
 app.include_router(circuit_management_router, prefix=API_PREFIX)
+app.include_router(optimized_chat_router, prefix=API_PREFIX)
 
 # Mount static directories
 app.mount("/static", StaticFiles(directory="backend/static"), name="static")

@@ -1,10 +1,11 @@
 """
-Vector Store for optimized agent selection.
-This module provides a vector store for agent embedding storage and similarity search.
+Vector store for efficient agent selection.
+This module provides a vector store for indexing and retrieving agents.
 """
 import logging
 import numpy as np
-from typing import Dict, List, Optional, Union, Any, Tuple
+import re
+from typing import Dict, List, Optional, Any, Union, Tuple
 
 from backend.brain.optimized.agent_definition import AgentDefinition
 from backend.brain.optimized.embedding_service import EmbeddingService
@@ -12,42 +13,14 @@ from backend.brain.optimized.embedding_service import EmbeddingService
 logger = logging.getLogger(__name__)
 
 
-def cosine_similarity(v1: List[float], v2: List[float]) -> float:
-    """
-    Calculate cosine similarity between two vectors.
-    
-    Args:
-        v1: First vector
-        v2: Second vector
-        
-    Returns:
-        Similarity score between 0 and 1
-    """
-    v1_array = np.array(v1)
-    v2_array = np.array(v2)
-    
-    dot_product = np.dot(v1_array, v2_array)
-    norm_v1 = np.linalg.norm(v1_array)
-    norm_v2 = np.linalg.norm(v2_array)
-    
-    # Avoid division by zero
-    if norm_v1 == 0 or norm_v2 == 0:
-        return 0.0
-        
-    similarity = dot_product / (norm_v1 * norm_v2)
-    
-    # Ensure value is between 0 and 1
-    return max(0.0, min(1.0, similarity))
-
-
 class AgentVectorStore:
     """
-    Vector store for agent selection optimization.
+    Vector store for agent embeddings.
     
-    This class provides:
-    1. Storage for agent embeddings
-    2. Semantic search for finding similar agents
-    3. Vector similarity calculations
+    This store:
+    1. Manages agent embeddings
+    2. Provides efficient search functionality
+    3. Supports keyword-based filtering before embeddings
     """
     
     def __init__(self, embedding_service: EmbeddingService):
@@ -55,11 +28,16 @@ class AgentVectorStore:
         Initialize the agent vector store.
         
         Args:
-            embedding_service: Service for generating embeddings
+            embedding_service: Embedding service for generating embeddings
         """
         self.embedding_service = embedding_service
-        self.vector_db: Dict[str, List[float]] = {}  # agent_id -> embedding
-        self.agent_data: Dict[str, AgentDefinition] = {}  # agent_id -> agent
+        
+        # Store agent definitions by ID
+        self.agent_data: Dict[str, AgentDefinition] = {}
+        
+        # Store embeddings by agent ID
+        self.agent_embeddings: Dict[str, List[float]] = {}
+        
         logger.info("Initialized AgentVectorStore")
         
     async def index_agent(self, agent: AgentDefinition) -> bool:
@@ -67,82 +45,55 @@ class AgentVectorStore:
         Index an agent in the vector store.
         
         Args:
-            agent: Agent definition to index
+            agent: Agent to index
             
         Returns:
-            True if successful, False otherwise
+            True if successful
         """
+        if not agent or not agent.id:
+            logger.warning("Attempted to index invalid agent")
+            return False
+            
         try:
-            # Generate the comprehensive text representation
-            text_rep = agent.get_text_representation()
+            # Get embedding text
+            embedding_text = agent.get_embedding_text()
             
-            # Generate embedding (cached by the embedding service)
-            embedding = await self.embedding_service.get_embedding(text_rep)
+            # Generate embedding
+            embedding = await self.embedding_service.get_embedding(embedding_text)
             
-            # Store in vector database
-            self.vector_db[agent.id] = embedding
+            # Store agent and embedding
             self.agent_data[agent.id] = agent
+            self.agent_embeddings[agent.id] = embedding
             
-            logger.info(f"Indexed agent '{agent.name}' (ID: {agent.id}) in vector store")
+            logger.info(f"Indexed agent: {agent.name} (ID: {agent.id})")
             return True
         except Exception as e:
             logger.error(f"Error indexing agent {agent.name}: {str(e)}")
             return False
-        
-    async def remove_agent(self, agent_id: str) -> bool:
-        """
-        Remove an agent from the vector store.
-        
-        Args:
-            agent_id: ID of the agent to remove
             
-        Returns:
-            True if agent was removed, False otherwise
-        """
-        if agent_id in self.vector_db:
-            del self.vector_db[agent_id]
-            agent_name = self.agent_data[agent_id].name if agent_id in self.agent_data else "Unknown"
-            if agent_id in self.agent_data:
-                del self.agent_data[agent_id]
-            logger.info(f"Removed agent '{agent_name}' (ID: {agent_id}) from vector store")
-            return True
-        else:
-            logger.warning(f"Agent ID {agent_id} not found in vector store")
-            return False
-        
-    async def update_agent(self, agent: AgentDefinition) -> bool:
-        """
-        Update an existing agent in the vector store.
-        
-        Args:
-            agent: Updated agent definition
-            
-        Returns:
-            True if successful, False otherwise
-        """
-        # Just reindex the agent
-        return await self.index_agent(agent)
-        
     async def find_similar_agents(
         self,
         query: str,
         top_k: int = 3,
-        threshold: float = 0.0
+        threshold: float = 0.5
     ) -> List[Dict[str, Any]]:
         """
-        Find agents that might handle the query.
+        Find agents that are semantically similar to the query.
         
         Args:
-            query: User query to match
-            top_k: Number of top results to return
+            query: Query to find similar agents for
+            top_k: Maximum number of results to return
             threshold: Minimum similarity threshold
             
         Returns:
-            List of dictionaries with agent info and similarity scores
+            List of similar agents with similarity scores
         """
-        # If no agents, return empty list
-        if not self.vector_db:
-            logger.warning("No agents in vector store to search")
+        if not query:
+            logger.warning("Empty query provided to find_similar_agents")
+            return []
+            
+        if not self.agent_embeddings:
+            logger.warning("No agents indexed in the vector store")
             return []
             
         try:
@@ -151,83 +102,90 @@ class AgentVectorStore:
             
             # Calculate similarities
             similarities = []
-            for agent_id, agent_embedding in self.vector_db.items():
-                similarity = cosine_similarity(query_embedding, agent_embedding)
+            for agent_id, agent_embedding in self.agent_embeddings.items():
+                similarity = self._cosine_similarity(query_embedding, agent_embedding)
                 similarities.append((agent_id, similarity))
                 
-            # Sort by similarity score
+            # Sort by similarity (descending)
             similarities.sort(key=lambda x: x[1], reverse=True)
             
-            # Return top k results above threshold
-            return [
-                {
-                    "id": agent_id,
-                    "similarity": score,
-                    "agent": self.agent_data[agent_id]
-                }
-                for agent_id, score in similarities[:top_k]
-                if score >= threshold
-            ]
+            # Filter by threshold and take top_k
+            results = []
+            for agent_id, similarity in similarities[:top_k]:
+                if similarity >= threshold:
+                    agent = self.agent_data[agent_id]
+                    results.append({
+                        "agent": agent,
+                        "similarity": similarity
+                    })
+                    
+            logger.info(f"Found {len(results)} similar agents for query: {query[:50]}...")
+            return results
         except Exception as e:
             logger.error(f"Error finding similar agents: {str(e)}")
             return []
             
-    async def keyword_prefilter(
-        self,
-        query: str
-    ) -> List[Tuple[AgentDefinition, float]]:
+    def _cosine_similarity(self, v1: List[float], v2: List[float]) -> float:
         """
-        Fast pre-filtering using keywords.
-        
-        This method uses simple keyword matching to quickly filter out agents that
-        are unlikely to handle the query, avoiding unnecessary embedding calculations.
+        Calculate cosine similarity between two vectors.
         
         Args:
-            query: User query to match
+            v1: First vector
+            v2: Second vector
             
         Returns:
-            List of tuples with agent and confidence score
+            Cosine similarity
         """
+        # Convert to numpy arrays for efficient calculation
+        a = np.array(v1)
+        b = np.array(v2)
+        
+        # Calculate dot product and norms
+        dot_product = np.dot(a, b)
+        norm_a = np.linalg.norm(a)
+        norm_b = np.linalg.norm(b)
+        
+        # Calculate cosine similarity
+        if norm_a == 0 or norm_b == 0:
+            return 0.0
+        return dot_product / (norm_a * norm_b)
+        
+    async def keyword_prefilter(
+        self,
+        query: str,
+        threshold: float = 0.3
+    ) -> List[Tuple[AgentDefinition, float]]:
+        """
+        Prefilter agents by keyword matching before embedding.
+        
+        Args:
+            query: User query
+            threshold: Minimum confidence threshold
+            
+        Returns:
+            List of (agent, confidence) tuples
+        """
+        if not query:
+            return []
+            
         results = []
-        query_lower = query.lower()
         
         for agent_id, agent in self.agent_data.items():
-            matched = False
-            confidence = 0.0
+            # Initialize confidence to 0
+            max_confidence = 0.0
             
-            # Check agent name
-            if agent.name.lower() in query_lower:
-                matched = True
-                confidence = max(confidence, 0.8)
-                
-            # Check keywords from patterns
+            # Check each capability for pattern matches
             for capability in agent.capabilities:
-                if not hasattr(capability, 'patterns'):
-                    continue
+                if hasattr(capability, 'matches'):
+                    confidence = capability.matches(query)
+                    max_confidence = max(max_confidence, confidence)
                     
-                for pattern in capability.patterns:
-                    if pattern.get("type") == "keyword":
-                        keyword = pattern.get("value", "").lower()
-                        if keyword and keyword in query_lower:
-                            matched = True
-                            boost = pattern.get("confidence_boost", 0.1)
-                            confidence = max(confidence, 0.7 + boost)
-                    elif pattern.get("type") == "regex":
-                        # Simple regex check (could be enhanced)
-                        import re
-                        regex = pattern.get("value", "")
-                        try:
-                            if regex and re.search(regex, query, re.IGNORECASE):
-                                matched = True
-                                boost = pattern.get("confidence_boost", 0.1)
-                                confidence = max(confidence, 0.7 + boost)
-                        except Exception:
-                            # Ignore regex errors
-                            pass
-            
-            if matched:
-                results.append((agent, confidence))
+            # If we have a high enough confidence, include in results
+            if max_confidence >= threshold:
+                results.append((agent, max_confidence))
                 
-        # Sort by confidence
+        # Sort by confidence (descending)
         results.sort(key=lambda x: x[1], reverse=True)
+        
+        logger.info(f"Keyword prefilter found {len(results)} agents for: {query[:50]}...")
         return results

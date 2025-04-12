@@ -1,480 +1,296 @@
 """
-Optimized Agent Definition models.
-These models support the optimized agent selection process.
+Agent definition models for the optimized brain.
+This module provides models for defining agents in the optimized brain.
 """
-import uuid
-from typing import Dict, List, Optional, Union, Any
+import logging
+import re
+from typing import Dict, List, Optional, Any, Union
+
+logger = logging.getLogger(__name__)
 
 
 class EntityDefinition:
-    """Definition of an entity that can be extracted from user input."""
+    """Entity definition for the agent."""
     
     def __init__(
         self,
         name: str,
         entity_type: str,
         description: Optional[str] = None,
-        example_values: Optional[List[str]] = None,
         validation_regex: Optional[str] = None
     ):
         """
         Initialize an entity definition.
         
         Args:
-            name: Name of the entity
-            entity_type: Type of entity (string, email, number, enum, etc.)
-            description: Description of what this entity represents
-            example_values: Example values for this entity
-            validation_regex: Regex pattern for validation
+            name: Entity name
+            entity_type: Type of entity (e.g., "email", "order_number")
+            description: Optional description
+            validation_regex: Optional regex for validation
         """
         self.name = name
         self.entity_type = entity_type
         self.description = description
-        self.example_values = example_values or []
         self.validation_regex = validation_regex
         self.enum_values: List[Dict[str, str]] = []
         
-    def add_enum_value(self, value: str, description: Optional[str] = None) -> 'EntityDefinition':
+    def add_enum_value(self, value: str, description: Optional[str] = None):
         """
-        Add a valid enum value.
+        Add an enum value for this entity.
         
         Args:
-            value: The enum value
-            description: Description of this value
-            
-        Returns:
-            Self for chaining
+            value: Value of the enum
+            description: Optional description
         """
         self.enum_values.append({
             "value": value,
             "description": description
         })
-        return self
-        
-    def to_dict(self) -> Dict[str, Any]:
-        """
-        Convert to dictionary representation.
-        
-        Returns:
-            Dictionary representation
-        """
-        return {
-            "name": self.name,
-            "entity_type": self.entity_type,
-            "description": self.description,
-            "example_values": self.example_values,
-            "validation_regex": self.validation_regex,
-            "enum_values": self.enum_values
-        }
-        
-    @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> 'EntityDefinition':
-        """
-        Create from dictionary representation.
-        
-        Args:
-            data: Dictionary representation
-            
-        Returns:
-            EntityDefinition instance
-        """
-        entity = cls(
-            name=data.get("name", ""),
-            entity_type=data.get("entity_type", "string"),
-            description=data.get("description"),
-            example_values=data.get("example_values"),
-            validation_regex=data.get("validation_regex")
-        )
-        
-        # Add enum values if they exist
-        for enum_value in data.get("enum_values", []):
-            entity.add_enum_value(
-                enum_value.get("value", ""),
-                enum_value.get("description")
-            )
-            
-        return entity
 
 
 class AgentTool:
-    """Definition of a tool that an agent can use."""
+    """Tool that an agent can use."""
     
     def __init__(
         self,
         name: str,
         description: str,
-        schema: Optional[Dict[str, Any]] = None,
-        function: Optional[str] = None,
+        schema: Dict[str, Any],
+        function: str,
         auth_required: bool = False
     ):
         """
-        Initialize a tool definition.
+        Initialize an agent tool.
         
         Args:
-            name: Name of the tool
-            description: Description of what this tool does
-            schema: JSON Schema for tool inputs
-            function: Function reference or name
-            auth_required: Whether this tool requires authentication
+            name: Tool name
+            description: Tool description
+            schema: JSON schema for the tool
+            function: Function name to call
+            auth_required: Whether authentication is required
         """
         self.name = name
         self.description = description
-        self.schema = schema or {}
+        self.schema = schema
         self.function = function
         self.auth_required = auth_required
-        self.is_system = False
-        
-    def to_dict(self) -> Dict[str, Any]:
-        """
-        Convert to dictionary representation.
-        
-        Returns:
-            Dictionary representation
-        """
-        return {
-            "name": self.name,
-            "description": self.description,
-            "schema": self.schema,
-            "function": self.function if isinstance(self.function, str) else None,
-            "auth_required": self.auth_required,
-            "is_system": self.is_system
-        }
-        
-    @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> 'AgentTool':
-        """
-        Create from dictionary representation.
-        
-        Args:
-            data: Dictionary representation
-            
-        Returns:
-            AgentTool instance
-        """
-        tool = cls(
-            name=data.get("name", ""),
-            description=data.get("description", ""),
-            schema=data.get("schema"),
-            function=data.get("function"),
-            auth_required=data.get("auth_required", False)
-        )
-        tool.is_system = data.get("is_system", False)
-        return tool
 
 
 class PatternCapability:
-    """Capability for matching patterns in user input."""
+    """Capability for matching patterns."""
     
-    def __init__(self, patterns: Optional[List[Dict[str, Any]]] = None):
-        """
-        Initialize a pattern matching capability.
-        
-        Args:
-            patterns: List of pattern dictionaries
-        """
-        self.type = "pattern_matching"
-        self.patterns = patterns or []
+    def __init__(self):
+        """Initialize a pattern capability."""
+        self.patterns: List[Dict[str, Any]] = []
         
     def add_pattern(
         self,
         pattern_type: str,
         pattern_value: str,
-        confidence_boost: float = 0.1
-    ) -> 'PatternCapability':
+        confidence_boost: float = 0.0
+    ):
         """
-        Add a pattern for this capability.
+        Add a pattern to the capability.
         
         Args:
-            pattern_type: Type of pattern (regex, keyword, semantic)
-            pattern_value: Value of the pattern
-            confidence_boost: Confidence boost when pattern matches
-            
-        Returns:
-            Self for chaining
+            pattern_type: Type of pattern (e.g., "regex", "keyword")
+            pattern_value: Pattern value
+            confidence_boost: Confidence boost when this pattern matches
         """
         self.patterns.append({
             "type": pattern_type,
             "value": pattern_value,
             "confidence_boost": confidence_boost
         })
-        return self
         
-    def to_dict(self) -> Dict[str, Any]:
+    def get_all_text(self) -> str:
         """
-        Convert to dictionary representation.
+        Get all pattern text for embedding generation.
         
         Returns:
-            Dictionary representation
+            Combined pattern text
         """
-        return {
-            "type": self.type,
-            "patterns": self.patterns
-        }
+        # Combine all patterns into a single string for embedding
+        text_parts = []
         
-    @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> 'PatternCapability':
+        for pattern in self.patterns:
+            if pattern["type"] == "regex":
+                # For regex patterns, extract keywords that might be in the regex
+                regex_keywords = re.findall(r'\b[a-zA-Z]+\b', pattern["value"])
+                if regex_keywords:
+                    text_parts.append(" ".join(regex_keywords))
+            else:
+                # For other pattern types, use the pattern value directly
+                text_parts.append(pattern["value"])
+                
+        return " ".join(text_parts)
+        
+    def matches(self, text: str) -> float:
         """
-        Create from dictionary representation.
+        Check if the text matches any patterns.
         
         Args:
-            data: Dictionary representation
+            text: Text to check
             
         Returns:
-            PatternCapability instance
+            Confidence score (0.0 to 1.0)
         """
-        capability = cls()
-        for pattern in data.get("patterns", []):
-            capability.add_pattern(
-                pattern_type=pattern.get("type", "keyword"),
-                pattern_value=pattern.get("value", ""),
-                confidence_boost=pattern.get("confidence_boost", 0.1)
-            )
-        return capability
+        max_confidence = 0.0
+        
+        for pattern in self.patterns:
+            pattern_type = pattern["type"]
+            pattern_value = pattern["value"]
+            boost = pattern.get("confidence_boost", 0.0)
+            
+            if pattern_type == "regex":
+                # Regex pattern
+                try:
+                    if re.search(pattern_value, text, re.IGNORECASE):
+                        confidence = 0.7 + boost  # Base confidence for regex match
+                        max_confidence = max(max_confidence, confidence)
+                except Exception as e:
+                    logger.error(f"Error in regex pattern: {str(e)}")
+            elif pattern_type == "keyword":
+                # Keyword pattern
+                if pattern_value.lower() in text.lower():
+                    # Higher confidence for exact matches
+                    if re.search(r'\b' + re.escape(pattern_value) + r'\b', text, re.IGNORECASE):
+                        confidence = 0.8 + boost
+                    else:
+                        confidence = 0.5 + boost
+                    max_confidence = max(max_confidence, confidence)
+            elif pattern_type == "prefix":
+                # Prefix pattern
+                if text.lower().startswith(pattern_value.lower()):
+                    confidence = 0.9 + boost  # High confidence for prefix match
+                    max_confidence = max(max_confidence, confidence)
+            # Add more pattern types as needed
+            
+        return min(max_confidence, 1.0)  # Cap at 1.0
 
 
 class AgentDefinition:
-    """
-    Complete definition of an agent with all components.
-    This is used by the optimized agent selection system.
-    """
+    """Definition of an agent in the optimized brain."""
     
     def __init__(
         self,
+        id: str,
         name: str,
         description: str,
-        id: Optional[str] = None,
         version: int = 1
     ):
         """
         Initialize an agent definition.
         
         Args:
-            name: Name of the agent
-            description: Description of what this agent does
-            id: Unique ID for this agent
-            version: Version number
+            id: Agent ID
+            name: Agent name
+            description: Agent description
+            version: Agent version
         """
-        self.id = id or str(uuid.uuid4())
+        self.id = id
         self.name = name
         self.description = description
         self.version = version
+        
+        # Additional properties
         self.status = "active"
         self.is_system = False
-        
-        # Components
-        self.capabilities: List[PatternCapability] = []
+        self.capabilities: List[Any] = []
         self.tools: List[AgentTool] = []
         self.entity_definitions: List[EntityDefinition] = []
         self.domain_examples: List[str] = []
-        self.response_templates: Dict[str, str] = {}
         self.llm_configuration: Dict[str, Any] = {}
-        self.state_schema: Dict[str, Any] = {}
+        self.response_templates: Dict[str, str] = {}
         
-        # Cached representation for embedding
-        self._text_representation: Optional[str] = None
-        
-    def add_capability(self, capability: PatternCapability) -> 'AgentDefinition':
+    def add_capability(self, capability: Any):
         """
-        Add a capability to this agent.
+        Add a capability to the agent.
         
         Args:
             capability: Capability to add
-            
-        Returns:
-            Self for chaining
         """
         self.capabilities.append(capability)
-        self._text_representation = None  # Reset cached representation
-        return self
         
-    def add_tool(self, tool: AgentTool) -> 'AgentDefinition':
+    def add_tool(self, tool: AgentTool):
         """
-        Add a tool to this agent.
+        Add a tool to the agent.
         
         Args:
             tool: Tool to add
-            
-        Returns:
-            Self for chaining
         """
         self.tools.append(tool)
-        self._text_representation = None
-        return self
         
-    def add_entity_definition(self, entity: EntityDefinition) -> 'AgentDefinition':
+    def add_entity_definition(self, entity_definition: EntityDefinition):
         """
-        Add an entity definition to this agent.
+        Add an entity definition to the agent.
         
         Args:
-            entity: Entity definition to add
-            
-        Returns:
-            Self for chaining
+            entity_definition: Entity definition to add
         """
-        self.entity_definitions.append(entity)
-        self._text_representation = None
-        return self
+        self.entity_definitions.append(entity_definition)
         
-    def add_domain_example(self, example: str) -> 'AgentDefinition':
+    def add_domain_example(self, example: str):
         """
-        Add an example query this agent can handle.
+        Add a domain example to the agent.
         
         Args:
-            example: Example query
-            
-        Returns:
-            Self for chaining
+            example: Example to add
         """
         self.domain_examples.append(example)
-        self._text_representation = None
-        return self
         
-    def add_response_template(self, name: str, template: str) -> 'AgentDefinition':
+    def set_llm_configuration(self, config: Dict[str, Any]):
         """
-        Add a response template for this agent.
+        Set the LLM configuration for the agent.
         
         Args:
-            name: Name of the template
-            template: Template string
-            
-        Returns:
-            Self for chaining
-        """
-        self.response_templates[name] = template
-        self._text_representation = None
-        return self
-        
-    def set_llm_configuration(self, config: Dict[str, Any]) -> 'AgentDefinition':
-        """
-        Set LLM configuration for this agent.
-        
-        Args:
-            config: LLM configuration dictionary
-            
-        Returns:
-            Self for chaining
+            config: LLM configuration
         """
         self.llm_configuration = config
-        return self
         
-    def get_text_representation(self) -> str:
+    def add_response_template(self, name: str, template: str):
         """
-        Get a comprehensive text representation of this agent.
-        This is used for embedding generation.
-        
-        Returns:
-            Text representation
-        """
-        if self._text_representation:
-            return self._text_representation
-            
-        sections = []
-        
-        # Basic information
-        sections.append(f"Agent: {self.name}")
-        sections.append(f"Description: {self.description}")
-        
-        # Domain examples
-        if self.domain_examples:
-            examples = "\n".join([f"- {example}" for example in self.domain_examples])
-            sections.append(f"Examples of queries this agent can handle:\n{examples}")
-        
-        # Entity extraction
-        if self.entity_definitions:
-            entities = "\n".join([
-                f"- {entity.name}: {entity.description or ''} (Type: {entity.entity_type})"
-                for entity in self.entity_definitions
-            ])
-            sections.append(f"Entities this agent can extract:\n{entities}")
-        
-        # Tools
-        if self.tools:
-            tools = "\n".join([
-                f"- {tool.name}: {tool.description}"
-                for tool in self.tools
-            ])
-            sections.append(f"Tools this agent can use:\n{tools}")
-        
-        # Patterns (from capabilities)
-        patterns = []
-        for cap in self.capabilities:
-            if isinstance(cap, PatternCapability):
-                for pattern in cap.patterns:
-                    if pattern.get("type") == "semantic":
-                        patterns.append(pattern.get("value", ""))
-        
-        if patterns:
-            patterns_text = "\n".join([f"- {pattern}" for pattern in patterns])
-            sections.append(f"Patterns this agent recognizes:\n{patterns_text}")
-        
-        # Join all sections
-        self._text_representation = "\n\n".join(sections)
-        return self._text_representation
-        
-    def to_dict(self) -> Dict[str, Any]:
-        """
-        Convert to dictionary representation.
-        
-        Returns:
-            Dictionary representation
-        """
-        return {
-            "id": self.id,
-            "name": self.name,
-            "description": self.description,
-            "version": self.version,
-            "status": self.status,
-            "is_system": self.is_system,
-            "capabilities": [cap.to_dict() for cap in self.capabilities],
-            "tools": [tool.to_dict() for tool in self.tools],
-            "entity_definitions": [entity.to_dict() for entity in self.entity_definitions],
-            "domain_examples": self.domain_examples,
-            "response_templates": self.response_templates,
-            "llm_configuration": self.llm_configuration,
-            "state_schema": self.state_schema
-        }
-        
-    @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> 'AgentDefinition':
-        """
-        Create from dictionary representation.
+        Add a response template to the agent.
         
         Args:
-            data: Dictionary representation
-            
-        Returns:
-            AgentDefinition instance
+            name: Template name
+            template: Template text
         """
-        agent = cls(
-            id=data.get("id"),
-            name=data.get("name", ""),
-            description=data.get("description", ""),
-            version=data.get("version", 1)
-        )
+        self.response_templates[name] = template
         
-        agent.status = data.get("status", "active")
-        agent.is_system = data.get("is_system", False)
+    def get_embedding_text(self) -> str:
+        """
+        Get the text to use for embedding this agent.
         
-        # Load capabilities
-        for cap_data in data.get("capabilities", []):
-            if cap_data.get("type") == "pattern_matching":
-                capability = PatternCapability.from_dict(cap_data)
-                agent.add_capability(capability)
-            
-        # Load tools
-        for tool_data in data.get("tools", []):
-            tool = AgentTool.from_dict(tool_data)
-            agent.add_tool(tool)
-            
-        # Load entity definitions
-        for entity_data in data.get("entity_definitions", []):
-            entity = EntityDefinition.from_dict(entity_data)
-            agent.add_entity_definition(entity)
-            
-        # Load examples and templates
-        agent.domain_examples = data.get("domain_examples", [])
-        agent.response_templates = data.get("response_templates", {})
-        agent.llm_configuration = data.get("llm_configuration", {})
-        agent.state_schema = data.get("state_schema", {})
+        Returns:
+            Text for embedding
+        """
+        parts = []
         
-        return agent
+        # Add name and description
+        parts.append(f"Agent: {self.name}")
+        parts.append(f"Description: {self.description}")
+        
+        # Add domain examples
+        if self.domain_examples:
+            parts.append("Examples:")
+            parts.extend(self.domain_examples)
+            
+        # Add pattern texts from capabilities
+        for capability in self.capabilities:
+            if hasattr(capability, 'get_all_text'):
+                pattern_text = capability.get_all_text()
+                if pattern_text:
+                    parts.append(pattern_text)
+                    
+        # Add entity descriptions
+        if self.entity_definitions:
+            entity_texts = []
+            for entity in self.entity_definitions:
+                if entity.description:
+                    entity_texts.append(f"{entity.name}: {entity.description}")
+            if entity_texts:
+                parts.append("Entities: " + " ".join(entity_texts))
+                
+        # Join all parts
+        return " ".join(parts)

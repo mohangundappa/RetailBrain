@@ -1,105 +1,160 @@
 """
-Optimized Embedding Service for Staples Brain.
-This service provides efficient embedding generation with caching.
+Embedding service for efficient agent selection.
+This module provides a service for generating and caching embeddings.
 """
-import hashlib
 import logging
-import os
-from typing import Dict, List, Optional, Union
+import time
+from typing import Dict, List, Optional, Any, Union, Tuple
 
-import openai
-from openai import AsyncOpenAI
+import numpy as np
+from openai import OpenAI
+from openai.types.embeddings import Embedding
 
 logger = logging.getLogger(__name__)
 
+
 class EmbeddingService:
     """
-    Service for efficient generation and caching of embeddings.
+    Service for generating and caching embeddings.
     
-    This service provides:
-    1. In-memory caching of embeddings
-    2. Consistent embedding generation
-    3. Potential for future batching optimization
+    This service:
+    1. Generates embeddings using the OpenAI API
+    2. Caches embeddings to minimize API calls
+    3. Manages cache eviction and persistence
     """
     
-    def __init__(self, model: str = "text-embedding-ada-002", cache_size: int = 1000):
+    def __init__(self, model: str = "text-embedding-3-small"):
         """
         Initialize the embedding service.
         
         Args:
-            model: The embedding model to use
-            cache_size: Maximum number of items to keep in the cache
+            model: OpenAI embedding model to use
         """
+        # Initialize the OpenAI client
+        self.client = OpenAI()
         self.model = model
-        self.cache_size = cache_size
-        self.cache: Dict[str, List[float]] = {}
         
-        # Initialize OpenAI client
-        api_key = os.environ.get("OPENAI_API_KEY")
-        if not api_key:
-            logger.warning("OPENAI_API_KEY not found in environment")
+        # Cache for embeddings
+        self.cache: Dict[str, Tuple[List[float], float]] = {}
+        self.api_calls = 0
+        self.cache_hits = 0
         
-        self.client = AsyncOpenAI(api_key=api_key)
         logger.info(f"Initialized EmbeddingService with model {model}")
-    
+        
+    async def get_embedding(self, text: str) -> List[float]:
+        """
+        Get an embedding for the given text.
+        
+        Args:
+            text: Text to embed
+            
+        Returns:
+            Embedding vector
+        """
+        if not text:
+            logger.warning("Empty text provided for embedding")
+            # Return a zero vector
+            return [0.0] * 1536  # Default embedding dimension
+            
+        # Check cache first
+        cache_key = self._get_cache_key(text)
+        if cache_key in self.cache:
+            self.cache_hits += 1
+            embedding, _ = self.cache[cache_key]
+            logger.debug(f"Cache hit for text: {text[:50]}... (hits: {self.cache_hits})")
+            return embedding
+            
+        # Generate embedding
+        try:
+            start_time = time.time()
+            response = self.client.embeddings.create(
+                model=self.model,
+                input=[text],
+                dimensions=1536
+            )
+            embedding = response.data[0].embedding
+            self.api_calls += 1
+            
+            # Cache the result
+            self.cache[cache_key] = (embedding, time.time())
+            
+            logger.info(f"Generated embedding in {time.time() - start_time:.2f}s (API calls: {self.api_calls})")
+            
+            # Prune cache if needed
+            if len(self.cache) > 1000:
+                self._prune_cache()
+                
+            return embedding
+        except Exception as e:
+            logger.error(f"Error generating embedding: {str(e)}")
+            # Return a random vector as fallback
+            return self._generate_random_embedding()
+            
     def _get_cache_key(self, text: str) -> str:
         """
-        Generate a cache key for the text.
+        Generate a cache key for the given text.
         
         Args:
             text: Text to generate key for
             
         Returns:
-            str: Cache key
+            Cache key
         """
-        # Use MD5 for fast hashing (not for security)
-        return hashlib.md5(text.encode('utf-8')).hexdigest()
-    
-    async def get_embedding(self, text: Union[str, List[str]]) -> Union[List[float], List[List[float]]]:
+        # Simple hashing for now - could use more sophisticated approach if needed
+        return f"{self.model}_{hash(text)}"
+        
+    def _prune_cache(self, max_size: int = 500):
         """
-        Get embedding for text with caching.
+        Prune the cache to the specified size.
         
         Args:
-            text: Text or list of texts to embed
+            max_size: Maximum number of entries to keep
+        """
+        if len(self.cache) <= max_size:
+            return
+            
+        # Sort by timestamp (oldest first)
+        sorted_keys = sorted(self.cache.keys(), key=lambda k: self.cache[k][1])
+        
+        # Remove oldest entries
+        to_remove = sorted_keys[:len(self.cache) - max_size]
+        for key in to_remove:
+            del self.cache[key]
+            
+        logger.info(f"Pruned embedding cache from {len(self.cache) + len(to_remove)} to {len(self.cache)} entries")
+        
+    def _generate_random_embedding(self, dimension: int = 1536) -> List[float]:
+        """
+        Generate a random embedding as a fallback.
+        
+        Args:
+            dimension: Embedding dimension
             
         Returns:
-            Embedding vector or list of vectors
+            Random embedding vector
         """
-        # Handle list input
-        if isinstance(text, list):
-            # For lists, we'll handle each item separately for now
-            # Future optimization: batch API calls
-            results = []
-            for item in text:
-                result = await self.get_embedding(item)
-                results.append(result)
-            return results
+        # Generate random vector and normalize it
+        vector = np.random.randn(dimension).astype(np.float32)
+        vector = vector / np.linalg.norm(vector)
         
-        # Check cache for single text input
-        cache_key = self._get_cache_key(text)
-        if cache_key in self.cache:
-            logger.debug(f"Cache hit for embedding: {text[:30]}...")
-            return self.cache[cache_key]
+        logger.warning("Using fallback random embedding")
+        return vector.tolist()
         
-        # Generate new embedding
-        try:
-            logger.debug(f"Generating embedding for: {text[:30]}...")
-            response = await self.client.embeddings.create(
-                model=self.model,
-                input=text
-            )
-            embedding = response.data[0].embedding
+    def get_stats(self) -> Dict[str, Any]:
+        """
+        Get statistics about the embedding service.
+        
+        Returns:
+            Dictionary of statistics
+        """
+        cache_hit_rate = 0.0
+        if self.api_calls + self.cache_hits > 0:
+            cache_hit_rate = self.cache_hits / (self.api_calls + self.cache_hits)
             
-            # Cache the result
-            self.cache[cache_key] = embedding
-            
-            # Simple cache size management
-            if len(self.cache) > self.cache_size:
-                # Remove random key (first one) if cache is full
-                self.cache.pop(next(iter(self.cache)))
-            
-            return embedding
-        except Exception as e:
-            logger.error(f"Error generating embedding: {str(e)}")
-            # Return empty embedding in case of error
-            return [0.0] * 1536  # Default dimension for text-embedding-ada-002
+        return {
+            "api_calls": self.api_calls,
+            "cache_hits": self.cache_hits,
+            "cache_size": len(self.cache),
+            "cache_hit_rate": cache_hit_rate,
+            "model": self.model
+        }
