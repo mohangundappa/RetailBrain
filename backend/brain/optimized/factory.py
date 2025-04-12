@@ -82,14 +82,14 @@ class OptimizedAgentFactory:
             from sqlalchemy import select
             from sqlalchemy.orm import selectinload
             
-            # Query all active agents with their patterns, tools, and entities
+            # Query all active agents with their patterns and tools (we'll handle entity mappings separately)
             query = (
                 select(DbAgentDefinition)
                 .where(DbAgentDefinition.status == "active")
                 .options(
                     selectinload(DbAgentDefinition.patterns),
                     selectinload(DbAgentDefinition.tools),
-                    selectinload(DbAgentDefinition.entity_mappings).selectinload("entity")
+                    selectinload(DbAgentDefinition.entity_mappings)
                 )
             )
             
@@ -98,8 +98,8 @@ class OptimizedAgentFactory:
             
             count = 0
             for db_agent in db_agents:
-                # Convert database agent to internal agent model
-                agent = await self._convert_db_agent(db_agent)
+                # Convert database agent to internal agent model (synchronously)
+                agent = self._convert_db_agent(db_agent)
                 
                 # Index the agent
                 if agent:
@@ -113,9 +113,10 @@ class OptimizedAgentFactory:
             logger.error(f"Error loading agents from database: {str(e)}")
             return 0
             
-    async def _convert_db_agent(self, db_agent: Any) -> Optional[AgentDefinition]:
+    def _convert_db_agent(self, db_agent: Any) -> Optional[AgentDefinition]:
         """
         Convert a database agent to an internal agent model.
+        This is a synchronous method to avoid async context issues.
         
         Args:
             db_agent: Database agent model
