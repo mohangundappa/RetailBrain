@@ -10,7 +10,7 @@ from typing import Dict, List, Any, Optional, Tuple, Protocol
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.repositories.conversation_repository import ConversationRepository
-from backend.services.brain_service import BrainService
+from backend.services.langgraph_brain_service import LangGraphBrainService
 from backend.services.telemetry_service import TelemetryService
 from backend.database.models import Conversation, Message
 from backend.config.config import Config
@@ -69,7 +69,7 @@ class ChatService:
     def __init__(
         self, 
         db: AsyncSession,
-        brain_service: BrainService,
+        brain_service: LangGraphBrainService,
         telemetry_service: Optional[TelemetryService] = None,
         config: Optional[Config] = None
     ):
@@ -78,7 +78,7 @@ class ChatService:
         
         Args:
             db: Database session
-            brain_service: Brain service instance
+            brain_service: LangGraphBrainService instance
             telemetry_service: Optional telemetry service instance
             config: Application configuration
         """
