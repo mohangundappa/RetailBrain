@@ -17,9 +17,9 @@ from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 # Import only the routers we need
-from backend.api.optimized_chat import router as optimized_chat_router
-from backend.api.optimized_chat import main_router as chat_router
-from backend.api.state_management import state_router
+from backend.endpoints.optimized_chat import router as optimized_chat_router
+from backend.endpoints.optimized_chat import main_router as chat_router
+from backend.endpoints.state_management import state_router
 from backend.database.db import get_db
 
 # Utility function to sanitize database URLs for asyncpg
