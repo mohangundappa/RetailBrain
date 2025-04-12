@@ -16,21 +16,10 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-# Comment out imports for files that might be missing
-# from backend.api.agent_builder_fastapi import agent_builder_router
-# from backend.api.circuit_breaker_fastapi import circuit_breaker_router
-from backend.api.telemetry_fastapi import telemetry_router
-from backend.api.routes_fastapi import api_router
-from backend.api.state_management import state_router
-# from backend.api.circuit_management import router as circuit_management_router
+# Import only the routers we need
 from backend.api.optimized_chat import router as optimized_chat_router
 from backend.api.optimized_chat import main_router as chat_router
-
-# Create a placeholder for removed routers
-from fastapi import APIRouter
-agent_builder_router = APIRouter()
-circuit_breaker_router = APIRouter()
-circuit_management_router = APIRouter()
+from backend.api.state_management import state_router
 from backend.database.db import get_db
 
 # Utility function to sanitize database URLs for asyncpg
@@ -189,15 +178,9 @@ class AgentListResponse(BaseModel):
     metadata: Optional[Dict[str, Any]] = Field(None, description="Response metadata")
 
 
-# Include routers
+# Include only essential routers
 app.include_router(chat_router, prefix=API_PREFIX)
-# Commented out router for agent_builder_fastapi which was removed
-# app.include_router(agent_builder_router, prefix=f"{API_PREFIX}/agent-builder")
-app.include_router(circuit_breaker_router, prefix=f"{API_PREFIX}/circuit-breakers")
-app.include_router(telemetry_router, prefix=API_PREFIX)
 app.include_router(state_router, prefix=API_PREFIX)
-app.include_router(api_router, prefix=API_PREFIX)
-app.include_router(circuit_management_router, prefix=API_PREFIX)
 app.include_router(optimized_chat_router, prefix=API_PREFIX)
 
 # Mount static directories
@@ -212,16 +195,7 @@ async def root():
 
 
 # API Routes
-# Removed redundant /health endpoint since it's now handled by api_router
-# and included with app.include_router(api_router, prefix=API_PREFIX)
-
-
-# Removed redundant /agents endpoint since it's now handled by api_router
-# and included with app.include_router(api_router, prefix=API_PREFIX)
-
-
-# Removed redundant telemetry endpoints since they're now handled by telemetry_router
-# and included with app.include_router(telemetry_router, prefix=API_PREFIX)
+# All endpoints are now routed through the optimized routers
 
 
 @app.get(f"{API_PREFIX}/stats")
