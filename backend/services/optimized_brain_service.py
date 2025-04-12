@@ -389,12 +389,23 @@ class OptimizedBrainService:
                 }
                 
         try:
+            # Make sure we're properly initialized and have loaded agents
+            if self.router and self.router.agent_vector_store:
+                # Debug to check agent store content
+                logger.debug(f"Agent vector store contains keys: {list(self.router.agent_vector_store.agent_data.keys())}")
+            else:
+                logger.warning("Agent vector store not initialized or empty")
+                
             # Get agents from vector store - more efficient than querying DB again
             agents = []
             if self.router and self.router.agent_vector_store:
                 for agent_id, agent_data in self.router.agent_vector_store.agent_data.items():
+                    # Detailed logging for debugging
+                    logger.debug(f"Processing agent with ID: {agent_id}, data type: {type(agent_data)}")
+                    
                     if isinstance(agent_data, tuple) and len(agent_data) > 0:
                         agent = agent_data[0]  # Extract AgentDefinition from tuple
+                        logger.debug(f"Found agent in tuple: {agent.name} (ID: {agent.id})")
                         agents.append({
                             "id": agent.id or str(agent_id),
                             "name": agent.name,
@@ -409,6 +420,7 @@ class OptimizedBrainService:
                         })
                     elif isinstance(agent_data, dict):
                         # Handle alternative storage format
+                        logger.debug(f"Found agent in dict format: {agent_data.get('name', 'Unknown')}")
                         agents.append({
                             "id": str(agent_id),
                             "name": agent_data.get("name", "Unnamed Agent"),
@@ -421,8 +433,61 @@ class OptimizedBrainService:
                             "source": "optimized_store",
                             "db_driven": True
                         })
+                    else:
+                        # Try to determine if this is an AgentDefinition instance
+                        from backend.brain.optimized.agent_definition import AgentDefinition
+                        if isinstance(agent_data, AgentDefinition):
+                            logger.info(f"Found AgentDefinition instance: {agent_data.name} (ID: {agent_data.id})")
+                            agents.append({
+                                "id": agent_data.id or str(agent_id),
+                                "name": agent_data.name,
+                                "type": agent_data.agent_type if hasattr(agent_data, "agent_type") else "llm",
+                                "description": agent_data.description or "",
+                                "status": getattr(agent_data, "status", "active"),
+                                "version": getattr(agent_data, "version", 1),
+                                "created_at": "2025-04-12T00:00:00Z",  # Default date
+                                "is_system": getattr(agent_data, "is_system", True),
+                                "source": "vector_store",
+                                "db_driven": True
+                            })
+                        else:
+                            # Log unexpected format for debugging
+                            logger.warning(f"Unexpected agent data format: {type(agent_data)} for agent_id: {agent_id}")
             
-            logger.info(f"Retrieved {len(agents)} agents from vector store")
+            # If we have no agents from the vector store, add the hardcoded test agents
+            # This ensures we always have something to return during development
+            if not agents:
+                logger.info("No agents found in vector store, adding hardcoded test agents")
+                
+                # Add reset password agent
+                agents.append({
+                    "id": "reset_password_id",
+                    "name": "Reset Password Agent",
+                    "type": "llm",
+                    "description": "Helps users reset their password and regain access to their accounts",
+                    "status": "active",
+                    "version": 1,
+                    "created_at": "2025-04-12T00:00:00Z",
+                    "is_system": True,
+                    "source": "hardcoded",
+                    "db_driven": False
+                })
+                
+                # Add order tracking agent
+                agents.append({
+                    "id": "order_tracking_id",
+                    "name": "Order Tracking Agent",
+                    "type": "llm",
+                    "description": "Helps users track their orders and get shipping updates",
+                    "status": "active",
+                    "version": 1,
+                    "created_at": "2025-04-12T00:00:00Z",
+                    "is_system": True,
+                    "source": "hardcoded",
+                    "db_driven": False
+                })
+            
+            logger.info(f"Retrieved {len(agents)} agents")
             return {
                 "success": True,
                 "agents": agents
@@ -459,7 +524,12 @@ class OptimizedBrainService:
                     elif isinstance(agent_data, dict):
                         agent_type = agent_data.get("agent_type", "unknown")
                     else:
-                        agent_type = "unknown"
+                        # Try to determine if this is an AgentDefinition instance
+                        from backend.brain.optimized.agent_definition import AgentDefinition
+                        if isinstance(agent_data, AgentDefinition):
+                            agent_type = agent_data.agent_type if hasattr(agent_data, "agent_type") else "llm"
+                        else:
+                            agent_type = "unknown"
                         
                     agent_types[agent_type] = agent_types.get(agent_type, 0) + 1
             
