@@ -140,9 +140,9 @@ class OptimizedAgentFactory:
             # Add sample entity definitions
             order_number = OptEntityDefinition(
                 name="order_number",
-                entity_type="string",
+                entity_type="order_number",
                 description="User's order number",
-                validation_regex=r"^[A-Z0-9]{8,12}$"
+                validation_regex=r"[A-Z0-9#-]{3,15}"
             )
             order_agent.add_entity_definition(order_number)
             

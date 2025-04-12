@@ -300,6 +300,14 @@ class OptimizedAgentRouter:
                 matches = re.findall(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b', query)
                 if matches:
                     entities[entity_def.name] = matches[0]
+            elif entity_def.entity_type == "order_number":
+                # Extract order numbers with common formats (#ABC123, etc.)
+                matches = re.findall(r'[A-Z0-9#-]{3,15}', query)
+                if matches:
+                    # Filter out matches that are likely not order numbers
+                    order_matches = [m for m in matches if re.search(r'[A-Z0-9]{3,}', m)]
+                    if order_matches:
+                        entities[entity_def.name] = order_matches[0].strip('#- ')
             elif entity_def.validation_regex:
                 # Use custom regex if provided
                 try:

@@ -228,24 +228,42 @@ class OptimizedBrainService:
             entities = context.get("extracted_entities", {})
             logger.info(f"Generating response for agent {agent.name} with entities: {entities}")
             
-            # Check if this is a password reset agent
+            # Check for response templates
+            templates = agent.response_templates
+            
+            # Reset Password Agent
             if agent.id == "reset_password_id":
                 # Customize response based on entities
                 email = entities.get("email")
                 if email:
-                    return f"I'll help you reset your password. We'll send reset instructions to {email}. In the meantime, can you tell me if you have access to this email account?"
+                    # Use template if available
+                    if templates and "reset_instructions" in templates:
+                        template = templates["reset_instructions"]
+                        return template.replace("{{email}}", email)
+                    else:
+                        return f"I'll help you reset your password. We'll send reset instructions to {email}. In the meantime, can you tell me if you have access to this email account?"
                 else:
                     return "I can help you reset your password. Could you please provide the email address associated with your account?"
-                    
-            # Check if this is an order tracking agent
+            
+            # Order Tracking Agent
             elif agent.id == "order_tracking_id":
                 # Customize response based on entities
                 order_number = entities.get("order_number")
                 if order_number:
-                    return f"Your order {order_number} is currently in transit and scheduled for delivery on April 15th, 2025. Would you like to receive tracking updates via text message?"
+                    # Use template if available
+                    if templates and "tracking_info" in templates:
+                        template = templates["tracking_info"]
+                        # Replace with mock data for demonstration
+                        filled_template = (template
+                            .replace("{{order_number}}", order_number)
+                            .replace("{{status}}", "in transit")
+                            .replace("{{delivery_date}}", "April 15th, 2025"))
+                        return filled_template + " Would you like to receive tracking updates via text message?"
+                    else:
+                        return f"Your order {order_number} is currently in transit and scheduled for delivery on April 15th, 2025. Would you like to receive tracking updates via text message?"
                 else:
                     return "I can help you track your order. Could you please provide your order number?"
-                    
+            
             # Default response for other agents
             return f"I'm the {agent.name} and I'll help you with your request: '{message}'. What specific information do you need?"
             
