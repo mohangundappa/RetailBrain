@@ -17,7 +17,7 @@ from backend.config.config import Config
 from backend.brain.native_graph import GraphOrchestrator
 from backend.brain.agents import LangGraphAgentFactory
 from backend.utils.api_utils import create_success_response, create_error_response
-from backend.services.langgraph_brain_service import retry_async
+from backend.utils.retry import retry_async
 
 logger = logging.getLogger(__name__)
 

@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.database.db import get_db
 from backend.services.chat_service import ChatService
 from backend.services.telemetry_service import TelemetryService
-from backend.services.langgraph_brain_service import LangGraphBrainService
+# LangGraphBrainService was removed in favor of GraphBrainService
 from backend.services.graph_brain_service import GraphBrainService
 from backend.config.config import get_config, Config
 from backend.repositories.agent_repository import AgentRepository
@@ -23,7 +23,6 @@ logger = logging.getLogger("staples_brain")
 # Service factory for better testability
 _service_factory: Dict[str, Callable] = {
     "brain_service": GraphBrainService,  # Use the native Graph brain service
-    "langgraph_brain_service": LangGraphBrainService,  # Keep for backward compatibility
     "graph_brain_service": GraphBrainService,
     "chat_service": ChatService,
     "telemetry_service": TelemetryService

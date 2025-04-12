@@ -11,21 +11,13 @@ from typing import Dict, List, Any, Optional, Tuple, Protocol, Union, TypeVar
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.repositories.conversation_repository import ConversationRepository
-from backend.services.langgraph_brain_service import LangGraphBrainService
 from backend.services.telemetry_service import TelemetryService
 from backend.database.models import Conversation, Message
 from backend.config.config import Config
-
-# Import the new brain service
-try:
-    from backend.services.graph_brain_service import GraphBrainService
-except ImportError:
-    # If the new brain service is not available, create a dummy type
-    class GraphBrainService:
-        pass
+from backend.services.graph_brain_service import GraphBrainService
 
 # Define a type alias for brain services
-BrainServiceType = Union[LangGraphBrainService, GraphBrainService]
+BrainServiceType = GraphBrainService
 
 # Set up logging
 logger = logging.getLogger("staples_brain")
