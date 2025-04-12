@@ -198,46 +198,6 @@ async def root():
 # All endpoints are now routed through the optimized routers
 
 
-@app.get(f"{API_PREFIX}/stats")
-async def get_system_stats(
-    days: int = 7,
-    chat_service=Depends(get_chat_service_direct)
-):
-    """Get system statistics"""
-    try:
-        result = await chat_service.get_system_stats(days)
-        
-        # Check if result is already in standard format
-        if not isinstance(result, dict) or "success" not in result:
-            result = create_success_response(
-                data=result if result else {
-                    "total_conversations": 0,
-                    "agent_distribution": {}
-                },
-                metadata={
-                    "days": days,
-                    "api_version": API_VERSION,
-                    "db_agents": True  # Indicate these agents are from the database
-                }
-            )
-            
-        return result
-        
-    except Exception as e:
-        logger.error(f"Error getting system stats: {str(e)}", exc_info=True)
-        return create_error_response(
-            error_message=f"Error getting system stats: {str(e)}",
-            data={
-                "total_conversations": 0,
-                "agent_distribution": {}
-            },
-            metadata={
-                "days": days
-            },
-            log_error=True
-        )
-
-
 # Middleware
 @app.middleware("http")
 async def add_process_time_header(request: Request, call_next):
@@ -280,81 +240,8 @@ async def global_exception_handler(request, exc):
     )
 
 
-# Test endpoint for checking database-driven agents
-@app.get(f"{API_PREFIX}/agent-db-test")
-async def test_database_agents(db: AsyncSession = Depends(get_db)):
-    """Test database-driven agent loading"""
-    try:
-        from backend.database.agent_schema import AgentDefinition
-        from sqlalchemy import select
-        from sqlalchemy.ext.asyncio import AsyncSession
-        from backend.repositories.agent_repository import AgentRepository
-
-        # Create a repository to fetch agents - this correctly handles async/greenlet issues
-        repo = AgentRepository(db)
-        agents = await repo.get_all_active_agents()
-        
-        # Format agent information
-        formatted_agents = []
-        for agent in agents:
-            # Be careful with lazy-loaded relationships
-            # Directly access only fields that are not relationships
-            formatted_agents.append({
-                "id": str(agent.id),
-                "name": agent.name,
-                "agent_type": agent.agent_type,
-                "description": agent.description,
-                "status": agent.status,
-                "created_at": agent.created_at.isoformat() if agent.created_at else None,
-                "updated_at": agent.updated_at.isoformat() if agent.updated_at else None,
-            })
-        
-        # Try to create a LangGraph agent factory and get agents
-        try:
-            from backend.brain.agents.langgraph_factory import LangGraphAgentFactory
-            
-            # Initialize a factory
-            factory = LangGraphAgentFactory(db)
-            
-            # This is a proxy that gets evaluated when needed, we're not actually 
-            # executing an async call here that might cause greenlet issues
-            langgraph_factory_ready = True
-            
-            return create_success_response(
-                data={
-                    "database_agents": formatted_agents,
-                    "factory_initialized": True,
-                    "langgraph_factory_ready": langgraph_factory_ready
-                },
-                metadata={
-                    "count": len(formatted_agents),
-                    "api_version": API_VERSION,
-                    "db_driven": True
-                }
-            )
-        except Exception as factory_error:
-            # Just report the factory error but still return the agents
-            logger.warning(f"LangGraph factory error: {str(factory_error)}")
-            return create_success_response(
-                data={
-                    "database_agents": formatted_agents,
-                    "factory_initialized": False,
-                    "factory_error": str(factory_error)
-                },
-                metadata={
-                    "count": len(formatted_agents),
-                    "api_version": API_VERSION,
-                    "db_driven": True
-                }
-            )
-            
-    except Exception as e:
-        logger.error(f"Error testing database agents: {str(e)}", exc_info=True)
-        return create_error_response(
-            error_message=f"Error testing database agents: {str(e)}",
-            data={"database_agents": []},
-            log_error=True
-        )
+# Removed test endpoints
+# All agent testing is now done through optimized router endpoints
 
 # Startup and shutdown events
 @app.on_event("startup")
