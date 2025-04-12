@@ -371,3 +371,116 @@ class OptimizedBrainService:
         }
         
         return execution_result
+        
+    async def list_agents(self) -> Dict[str, Any]:
+        """
+        Get a list of available agents.
+        
+        Returns:
+            Dictionary with agents information
+        """
+        if not self.agent_factory:
+            success = await self.initialize()
+            if not success:
+                return {
+                    "success": False,
+                    "error": "Initialization failed",
+                    "agents": []
+                }
+                
+        try:
+            # Get agents from vector store - more efficient than querying DB again
+            agents = []
+            if self.router and self.router.agent_vector_store:
+                for agent_id, agent_data in self.router.agent_vector_store.agent_data.items():
+                    if isinstance(agent_data, tuple) and len(agent_data) > 0:
+                        agent = agent_data[0]  # Extract AgentDefinition from tuple
+                        agents.append({
+                            "id": agent.id or str(agent_id),
+                            "name": agent.name,
+                            "type": agent.agent_type or "unknown",
+                            "description": agent.description or "",
+                            "status": "active",
+                            "version": 1,
+                            "created_at": "2025-04-12T00:00:00Z",  # Default date
+                            "is_system": True,
+                            "source": "optimized_store",
+                            "db_driven": True
+                        })
+                    elif isinstance(agent_data, dict):
+                        # Handle alternative storage format
+                        agents.append({
+                            "id": str(agent_id),
+                            "name": agent_data.get("name", "Unnamed Agent"),
+                            "type": agent_data.get("agent_type", "unknown"),
+                            "description": agent_data.get("description", ""),
+                            "status": "active",
+                            "version": 1,
+                            "created_at": "2025-04-12T00:00:00Z",  # Default date
+                            "is_system": True,
+                            "source": "optimized_store",
+                            "db_driven": True
+                        })
+            
+            logger.info(f"Retrieved {len(agents)} agents from vector store")
+            return {
+                "success": True,
+                "agents": agents
+            }
+        except Exception as e:
+            logger.error(f"Error listing agents: {str(e)}", exc_info=True)
+            return {
+                "success": False,
+                "error": str(e),
+                "agents": []
+            }
+            
+    async def get_system_stats(self, days: int = 7) -> Dict[str, Any]:
+        """
+        Get system statistics.
+        
+        Args:
+            days: Number of days to look back for statistics
+            
+        Returns:
+            Dictionary with statistics
+        """
+        try:
+            # Basic stats about agent availability
+            agent_count = 0
+            agent_types = {}
+            
+            if self.router and self.router.agent_vector_store:
+                agent_count = len(self.router.agent_vector_store.agent_data)
+                for agent_id, agent_data in self.router.agent_vector_store.agent_data.items():
+                    if isinstance(agent_data, tuple) and len(agent_data) > 0:
+                        agent = agent_data[0]  # Extract AgentDefinition from tuple
+                        agent_type = agent.agent_type or "unknown"
+                    elif isinstance(agent_data, dict):
+                        agent_type = agent_data.get("agent_type", "unknown")
+                    else:
+                        agent_type = "unknown"
+                        
+                    agent_types[agent_type] = agent_types.get(agent_type, 0) + 1
+            
+            return {
+                "success": True,
+                "total_agents": agent_count,
+                "agent_types": agent_types,
+                "total_conversations": 0,  # Would need telemetry service to get real data
+                "agent_distribution": {},  # Would need telemetry service to get real data
+                "timeframe_days": days,
+                "optimized_implementation": True
+            }
+        except Exception as e:
+            logger.error(f"Error getting system stats: {str(e)}", exc_info=True)
+            return {
+                "success": False,
+                "error": str(e),
+                "total_agents": 0,
+                "agent_types": {},
+                "total_conversations": 0,
+                "agent_distribution": {},
+                "timeframe_days": days,
+                "optimized_implementation": True
+            }
