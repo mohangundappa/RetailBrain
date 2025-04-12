@@ -320,82 +320,8 @@ async def list_agents(
         )
 
 
-@app.get(f"{API_PREFIX}/telemetry/sessions")
-async def get_telemetry_sessions(
-    limit: int = 20,
-    offset: int = 0,
-    days: int = 7,
-    telemetry_service: TelemetryService = Depends(get_telemetry_service_direct)
-):
-    """List telemetry sessions"""
-    try:
-        result = await telemetry_service.get_sessions(
-            days=days,
-            limit=limit,
-            offset=offset
-        )
-        
-        # Check if result is already in standard format
-        if not isinstance(result, dict) or "success" not in result:
-            result = create_success_response(
-                data={"sessions": result} if result else {"sessions": []},
-                metadata={
-                    "count": len(result) if result else 0,
-                    "limit": limit,
-                    "offset": offset,
-                    "days": days,
-                    "api_version": API_VERSION
-                }
-            )
-            
-        return result
-        
-    except Exception as e:
-        return create_error_response(
-            error_message=f"Error getting telemetry sessions: {str(e)}",
-            data={"sessions": []},
-            metadata={
-                "limit": limit,
-                "offset": offset,
-                "days": days
-            },
-            log_error=True
-        )
-
-
-@app.get(f"{API_PREFIX}/telemetry/sessions/{{session_id}}/events")
-async def get_session_events(
-    session_id: str,
-    telemetry_service: TelemetryService = Depends(get_telemetry_service_direct)
-):
-    """Get events for a telemetry session"""
-    try:
-        result = await telemetry_service.get_session_events(session_id)
-        
-        # Check if result is already in standard format
-        if not isinstance(result, dict) or "success" not in result:
-            result = create_success_response(
-                data={
-                    "session_id": session_id,
-                    "events": result if result else []
-                },
-                metadata={
-                    "count": len(result) if result else 0,
-                    "api_version": API_VERSION
-                }
-            )
-            
-        return result
-        
-    except Exception as e:
-        return create_error_response(
-            error_message=f"Error getting session events: {str(e)}",
-            data={
-                "session_id": session_id,
-                "events": []
-            },
-            log_error=True
-        )
+# Removed redundant telemetry endpoints since they're now handled by telemetry_router
+# and included with app.include_router(telemetry_router, prefix=f"{API_PREFIX}/telemetry")
 
 
 @app.get(f"{API_PREFIX}/stats")
