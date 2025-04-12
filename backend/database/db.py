@@ -11,21 +11,34 @@ from sqlalchemy.orm import DeclarativeBase
 DB_URL = os.environ.get("DATABASE_URL")
 
 # Convert to async URL if needed
-if DB_URL and not DB_URL.startswith("postgresql+asyncpg://"):
-    # Remove sslmode parameter if present in the URL
-    if "sslmode=" in DB_URL:
-        # Split URL to remove sslmode
-        base_url, query_string = DB_URL.split("?", 1) if "?" in DB_URL else (DB_URL, "")
-        query_params = query_string.split("&")
-        filtered_params = [p for p in query_params if not p.startswith("sslmode=")]
+if DB_URL:
+    # Parse the DB URL to handle sslmode parameter (which asyncpg doesn't accept directly)
+    import re
+    from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
+    
+    # Parse URL
+    parsed_url = urlparse(DB_URL)
+    
+    # Parse query parameters
+    query_params = parse_qs(parsed_url.query)
+    
+    # Remove sslmode parameter from query as asyncpg doesn't accept it in the connection string
+    if 'sslmode' in query_params:
+        del query_params['sslmode']
         
-        # Reconstruct the URL
-        DB_URL = base_url
-        if filtered_params:
-            DB_URL = f"{base_url}?{'&'.join(filtered_params)}"
-            
-    # Convert to asyncpg
-    DB_URL = DB_URL.replace("postgresql://", "postgresql+asyncpg://")
+    # Rebuild query string
+    query_string = urlencode(query_params, doseq=True)
+    
+    # Rebuild URL without sslmode parameter
+    parts = list(parsed_url)
+    parts[4] = query_string  # Replace query part
+    clean_url = urlunparse(parts)
+    
+    # Convert to asyncpg if needed
+    if not clean_url.startswith("postgresql+asyncpg://"):
+        DB_URL = clean_url.replace("postgresql://", "postgresql+asyncpg://")
+    else:
+        DB_URL = clean_url
 
 # Create async engine
 engine = create_async_engine(
