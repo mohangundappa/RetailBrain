@@ -20,7 +20,44 @@ from backend.api.circuit_breaker_fastapi import circuit_breaker_router
 from backend.api.telemetry_fastapi import telemetry_router
 from backend.api.routes_fastapi import api_router
 from backend.database.db import get_db
-from backend.dependencies import get_chat_service, get_telemetry_service
+# Direct dependency functions to avoid circular imports
+def get_chat_service_direct():
+    """
+    Get a ChatService instance directly.
+    This is a temporary solution to avoid circular imports.
+    """
+    from backend.services.chat_service import ChatService
+    from backend.services.brain_service import BrainService
+    from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+    import os
+    
+    # Create minimal db engine for dependency
+    db_url = os.environ.get("DATABASE_URL", "").replace("postgresql://", "postgresql+asyncpg://")
+    engine = create_async_engine(db_url)
+    db = AsyncSession(engine)
+    
+    # Create minimal brain service for dependency
+    brain_service = BrainService()
+    
+    # Return properly initialized ChatService
+    return ChatService(db=db, brain_service=brain_service)
+
+def get_telemetry_service_direct():
+    """
+    Get a TelemetryService instance directly.
+    This is a temporary solution to avoid circular imports.
+    """
+    from backend.services.telemetry_service import TelemetryService
+    from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+    import os
+    
+    # Create minimal db engine for dependency
+    db_url = os.environ.get("DATABASE_URL", "").replace("postgresql://", "postgresql+asyncpg://")
+    engine = create_async_engine(db_url)
+    db = AsyncSession(engine)
+    
+    # Return properly initialized TelemetryService
+    return TelemetryService(db=db)
 from backend.services.chat_service import ChatService
 from backend.services.telemetry_service import TelemetryService
 
@@ -127,7 +164,7 @@ async def health_check(db: AsyncSession = Depends(get_db)):
 
 @app.get(f"{API_PREFIX}/agents", response_model=AgentListResponse)
 async def list_agents(
-    chat_service: ChatService = Depends(get_chat_service)
+    chat_service: ChatService = Depends(get_chat_service_direct)
 ):
     """List all available agents"""
     try:
@@ -157,7 +194,7 @@ async def get_telemetry_sessions(
     limit: int = 20,
     offset: int = 0,
     days: int = 7,
-    telemetry_service: TelemetryService = Depends(get_telemetry_service)
+    telemetry_service: TelemetryService = Depends(get_telemetry_service_direct)
 ):
     """List telemetry sessions"""
     try:
@@ -198,7 +235,7 @@ async def get_telemetry_sessions(
 @app.get(f"{API_PREFIX}/telemetry/sessions/{{session_id}}/events")
 async def get_session_events(
     session_id: str,
-    telemetry_service: TelemetryService = Depends(get_telemetry_service)
+    telemetry_service: TelemetryService = Depends(get_telemetry_service_direct)
 ):
     """Get events for a telemetry session"""
     try:
@@ -233,7 +270,7 @@ async def get_session_events(
 @app.get(f"{API_PREFIX}/stats")
 async def get_system_stats(
     days: int = 7,
-    chat_service: ChatService = Depends(get_chat_service)
+    chat_service: ChatService = Depends(get_chat_service_direct)
 ):
     """Get system statistics"""
     try:

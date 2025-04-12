@@ -49,3 +49,9 @@ INTENT_AGENT_MAPPING = {
     'product_availability': 'product_info',
     'product_compatibility': 'product_info'
 }
+
+# Agent type constants
+PACKAGE_TRACKING_AGENT = "package_tracking"
+RESET_PASSWORD_AGENT = "reset_password"
+STORE_LOCATOR_AGENT = "store_locator"
+PRODUCT_INFO_AGENT = "product_info"

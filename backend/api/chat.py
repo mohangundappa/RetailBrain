@@ -7,7 +7,29 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
 from backend.services.chat_service import ChatService
-from backend.dependencies import get_chat_service
+
+# Create a direct dependency function to get ChatService instance
+# This avoids circular imports with the dependencies module
+def get_chat_service_direct():
+    """
+    Get a ChatService instance directly.
+    This is a temporary solution to avoid circular imports.
+    """
+    from backend.services.chat_service import ChatService
+    from backend.services.brain_service import BrainService
+    from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+    import os
+    
+    # Create minimal db engine for dependency
+    db_url = os.environ.get("DATABASE_URL", "").replace("postgresql://", "postgresql+asyncpg://")
+    engine = create_async_engine(db_url)
+    db = AsyncSession(engine)
+    
+    # Create minimal brain service for dependency
+    brain_service = BrainService()
+    
+    # Return properly initialized ChatService
+    return ChatService(db=db, brain_service=brain_service)
 
 # Set up router
 router = APIRouter(
@@ -57,7 +79,7 @@ class MessageListResponse(BaseModel):
 @router.post("/messages", response_model=MessageResponse)
 async def send_message(
     request: MessageRequest,
-    chat_service: ChatService = Depends(get_chat_service)
+    chat_service: ChatService = Depends(get_chat_service_direct)
 ):
     """
     Send a message to the Staples Brain and get a response.
@@ -89,7 +111,7 @@ async def send_message(
 async def list_sessions(
     limit: int = 20,
     offset: int = 0,
-    chat_service: ChatService = Depends(get_chat_service)
+    chat_service: ChatService = Depends(get_chat_service_direct)
 ):
     """
     List all active sessions.
@@ -117,7 +139,7 @@ async def list_sessions(
 async def get_session_messages(
     session_id: str,
     limit: int = 50,
-    chat_service: ChatService = Depends(get_chat_service)
+    chat_service: ChatService = Depends(get_chat_service_direct)
 ):
     """
     Get all messages for a session.

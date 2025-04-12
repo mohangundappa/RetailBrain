@@ -37,14 +37,23 @@ async def init_db():
     """Initialize the database."""
     logger.info("Initializing database tables...")
     try:
-        from sqlalchemy import create_engine
+        from sqlalchemy import create_engine, text
         from backend.database.db import Base, DB_URL
         
         # Convert to sync URL for initialization
         sync_url = DB_URL.replace("postgresql+asyncpg://", "postgresql://")
         
-        # Create tables
+        # Create engine
         engine = create_engine(sync_url)
+        
+        # Create vector extension first
+        with engine.connect() as connection:
+            logger.info("Creating pgvector extension...")
+            connection.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
+            connection.commit()
+            logger.info("pgvector extension created successfully")
+        
+        # Create tables
         Base.metadata.create_all(engine)
         
         logger.info("Database tables initialized successfully")
