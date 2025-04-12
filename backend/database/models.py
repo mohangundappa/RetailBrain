@@ -17,8 +17,8 @@ class Conversation(Base):
     """Conversation model to store chat sessions."""
     __tablename__ = "conversations"
     
-    id: Mapped[str] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    id: Mapped[int] = mapped_column(
+        sa.Integer, primary_key=True, autoincrement=True
     )
     session_id: Mapped[str] = mapped_column(sa.String(50), nullable=False, index=True)
     user_id: Mapped[Optional[str]] = mapped_column(sa.String(50), nullable=True)
@@ -32,6 +32,12 @@ class Conversation(Base):
         nullable=False
     )
     meta_data: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSONB, nullable=True)
+    # Additional columns from existing schema
+    confidence: Mapped[Optional[float]] = mapped_column(sa.Float, nullable=True)
+    intent: Mapped[Optional[str]] = mapped_column(sa.String, nullable=True)
+    selected_agent: Mapped[Optional[str]] = mapped_column(sa.String, nullable=True)
+    user_input: Mapped[Optional[str]] = mapped_column(sa.Text, nullable=True)
+    brain_response: Mapped[Optional[str]] = mapped_column(sa.Text, nullable=True)
     
     # Relationships
     messages: Mapped[List["Message"]] = relationship(
@@ -46,8 +52,8 @@ class Message(Base):
     id: Mapped[str] = mapped_column(
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
-    conversation_id: Mapped[str] = mapped_column(
-        UUID(as_uuid=True), sa.ForeignKey("conversations.id"), nullable=False
+    conversation_id: Mapped[int] = mapped_column(
+        sa.Integer, sa.ForeignKey("conversations.id"), nullable=False
     )
     role: Mapped[str] = mapped_column(sa.String(20), nullable=False)  # user, assistant, system
     content: Mapped[str] = mapped_column(sa.Text, nullable=False)
