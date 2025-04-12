@@ -70,7 +70,7 @@ async def get_brain_service(
         config: Application configuration
         
     Returns:
-        BrainService instance
+        GraphBrainService instance
     
     Raises:
         HTTPException: If the brain service cannot be initialized
@@ -79,7 +79,7 @@ async def get_brain_service(
     
     try:
         if _brain_service is None:
-            logger.info("Initializing BrainService")
+            logger.info("Initializing GraphBrainService")
             factory = _service_factory["brain_service"]
             
             # Create LangGraph agent factory
@@ -102,11 +102,11 @@ async def get_brain_service(
             if hasattr(_brain_service, 'initialize') and callable(getattr(_brain_service, 'initialize')):
                 await _brain_service.initialize()
             
-            logger.info("BrainService initialization complete")
+            logger.info("GraphBrainService initialization complete")
         
         return _brain_service
     except Exception as e:
-        logger.error(f"Failed to initialize BrainService: {str(e)}", exc_info=True)
+        logger.error(f"Failed to initialize GraphBrainService: {str(e)}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Brain service initialization failed"
