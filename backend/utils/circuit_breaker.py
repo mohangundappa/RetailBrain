@@ -300,6 +300,43 @@ class CircuitBreakerRegistry:
 circuit_breaker_registry = CircuitBreakerRegistry()
 
 
+def get_circuit_breaker(
+    name: str,
+    failure_threshold: int = 5,
+    recovery_timeout: int = 60,
+    timeout: float = 30.0,
+    success_threshold: int = 3,
+    max_backoff: int = 3600,
+    excluded_exceptions: Optional[List[type]] = None,
+) -> CircuitBreaker:
+    """
+    Get a circuit breaker instance by name, creating it if it doesn't exist.
+    This is an alias for get_or_create_circuit to maintain compatibility
+    with older code.
+    
+    Args:
+        name: Unique identifier for the circuit breaker
+        failure_threshold: Number of failures before opening the circuit
+        recovery_timeout: Seconds to wait before attempting recovery
+        timeout: Maximum time in seconds to wait for a response
+        success_threshold: Number of successful calls required to close the circuit
+        max_backoff: Maximum backoff in seconds
+        excluded_exceptions: List of exception types that should not count as failures
+        
+    Returns:
+        The circuit breaker instance
+    """
+    return get_or_create_circuit(
+        name=name,
+        failure_threshold=failure_threshold,
+        recovery_timeout=recovery_timeout,
+        timeout=timeout,
+        success_threshold=success_threshold,
+        max_backoff=max_backoff,
+        excluded_exceptions=excluded_exceptions
+    )
+
+
 def get_or_create_circuit(
     name: str,
     failure_threshold: int = 5,
@@ -392,4 +429,9 @@ class CircuitBreakerError(Exception):
 
 class CircuitBreakerTimeoutError(CircuitBreakerError):
     """Exception raised when a circuit breaker operation times out."""
+    pass
+
+
+class CircuitBreakerOpenException(CircuitBreakerError):
+    """Exception raised when a circuit breaker is open and a request is attempted."""
     pass
