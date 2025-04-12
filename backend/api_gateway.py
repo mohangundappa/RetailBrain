@@ -120,12 +120,27 @@ class ApiResponse(BaseModel):
     error: Optional[str] = Field(None, description="Error message if applicable")
 
 
+class AgentDetailModel(BaseModel):
+    """Model for agent details"""
+    name: str = Field(..., description="Agent name")
+    id: Optional[str] = Field(None, description="Agent ID")
+    type: Optional[str] = Field(None, description="Agent type")
+    status: Optional[str] = Field(None, description="Agent status")
+    version: Optional[int] = Field(None, description="Agent version")
+    created_at: Optional[str] = Field(None, description="Creation timestamp")
+    is_system: Optional[bool] = Field(None, description="Whether this is a system agent")
+    source: Optional[str] = Field(None, description="Agent data source")
+    db_driven: Optional[bool] = Field(None, description="Whether this agent is database-driven")
+    loaded: Optional[bool] = Field(None, description="Whether this agent is loaded")
+    description: Optional[str] = Field(None, description="Agent description")
+
+
 class AgentListResponse(BaseModel):
     """Response model for listing agents"""
     success: bool = Field(..., description="Whether the request was successful")
-    data: Dict[str, List[Dict[str, Any]]] = Field(..., description="List of agents")
-    metadata: Optional[Dict[str, Any]] = Field(None, description="Response metadata")
+    agents: Union[List[str], List[AgentDetailModel]] = Field(..., description="List of agents")
     error: Optional[str] = Field(None, description="Error message if applicable")
+    metadata: Optional[Dict[str, Any]] = Field(None, description="Response metadata")
 
 
 # Include routers
@@ -239,7 +254,7 @@ async def list_agents(
         # Ensure result is standardized
         if not isinstance(result, dict) or "success" not in result:
             result = create_success_response(
-                data=result,
+                agents=detailed_agents,
                 metadata={
                     "api_version": API_VERSION,
                     "db_agents": True,  # Indicate these agents are from the database
@@ -254,7 +269,8 @@ async def list_agents(
         logger.error(f"Error listing agents: {str(e)}", exc_info=True)
         return create_error_response(
             error_message=f"Error listing agents: {str(e)}",
-            data={"agents": []},
+            data={},
+            metadata={"api_version": API_VERSION},
             log_error=True
         )
 

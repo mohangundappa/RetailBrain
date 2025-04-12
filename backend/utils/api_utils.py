@@ -9,7 +9,8 @@ logger = logging.getLogger("staples_brain")
 
 def create_success_response(
     data: Optional[Union[Dict[str, Any], List[Any]]] = None, 
-    metadata: Optional[Dict[str, Any]] = None
+    metadata: Optional[Dict[str, Any]] = None,
+    agents: Optional[List[Any]] = None
 ) -> Dict[str, Any]:
     """
     Create a standardized success response.
@@ -17,16 +18,30 @@ def create_success_response(
     Args:
         data: The response data
         metadata: Optional metadata
+        agents: Optional list of agents for agent endpoints
         
     Returns:
         A standardized success response dictionary
     """
-    return {
+    response = {
         "success": True,
-        "data": data or {},
-        "metadata": metadata,
         "error": None
     }
+    
+    # Include metadata if provided
+    if metadata:
+        response["metadata"] = metadata
+        
+    # If agents specified, include agents list (for agent endpoints)
+    if agents is not None:
+        response["agents"] = agents
+    # Otherwise include data
+    elif data is not None:
+        response["data"] = data
+    else:
+        response["data"] = {}
+        
+    return response
 
 def create_error_response(
     error_message: str,
