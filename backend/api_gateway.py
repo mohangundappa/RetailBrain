@@ -183,7 +183,7 @@ class AgentListResponse(BaseModel):
 app.include_router(chat_router, prefix=API_PREFIX)
 app.include_router(agent_builder_router, prefix=f"{API_PREFIX}/agent-builder")
 app.include_router(circuit_breaker_router, prefix=f"{API_PREFIX}/circuit-breakers")
-app.include_router(telemetry_router, prefix=f"{API_PREFIX}/telemetry")
+app.include_router(telemetry_router, prefix=API_PREFIX)
 app.include_router(api_router, prefix=API_PREFIX)
 
 # Mount static directories
@@ -207,7 +207,7 @@ async def root():
 
 
 # Removed redundant telemetry endpoints since they're now handled by telemetry_router
-# and included with app.include_router(telemetry_router, prefix=f"{API_PREFIX}/telemetry")
+# and included with app.include_router(telemetry_router, prefix=API_PREFIX)
 
 
 @app.get(f"{API_PREFIX}/stats")
