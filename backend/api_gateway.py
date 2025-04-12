@@ -77,7 +77,8 @@ async def get_chat_service_direct():
     
     # Try to create LangGraph agent factory
     try:
-        from backend.brain.agents.langgraph_factory import LangGraphAgentFactory
+        # Import from agents/models instead of brain/agents
+        from backend.agents.models import LangGraphAgentFactory
         agent_factory = LangGraphAgentFactory(db)
         logger.debug("Created LangGraph agent factory for brain service (API direct)")
     except ImportError:
@@ -264,7 +265,7 @@ async def startup_db_client():
         
         # Initialize state persistence tables
         try:
-            from backend.brain.optimized.state_persistence import create_db_tables
+            from backend.orchestration import create_db_tables
             # Get a database session
             db = await anext(get_db())
             # Create state persistence tables
