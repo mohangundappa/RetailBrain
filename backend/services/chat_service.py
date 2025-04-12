@@ -205,16 +205,14 @@ class ChatService:
             
             # Make sure we have a valid conversation before attempting to store error
             if conversation:
-                # Store system error message in a new transaction
+                # Store system error message
                 try:
-                    async with self.db.begin():
-                        await self.conversation_repo.add_message(
-                            conversation_id=conversation.id,
-                            role="system",
-                            content=f"Error: {str(e)}",
-                            metadata={"error": True}
-                        )
-                        await self.db.commit()
+                    await self.conversation_repo.add_message(
+                        conversation_id=conversation.id,
+                        role="system",
+                        content=f"Error: {str(e)}",
+                        metadata={"error": True}
+                    )
                 except Exception as inner_error:
                     logger.error(f"Error storing error message: {str(inner_error)}", exc_info=True)
             

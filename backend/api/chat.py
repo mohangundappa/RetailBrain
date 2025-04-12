@@ -14,10 +14,12 @@ def get_chat_service_direct():
     """
     Get a ChatService instance directly.
     This is a temporary solution to avoid circular imports.
+    Creates a new database session with auto-commit mode.
     """
     from backend.services.chat_service import ChatService
-    from backend.services.brain_service import BrainService
-    from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+    from backend.services.langgraph_brain_service import LangGraphBrainService
+    from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
+    from backend.repositories.conversation_repository import ConversationRepository
     import os
     
     # Create minimal db engine for dependency
@@ -48,13 +50,31 @@ def get_chat_service_direct():
     if not clean_url.startswith("postgresql+asyncpg://"):
         clean_url = clean_url.replace("postgresql://", "postgresql+asyncpg://")
     
-    engine = create_async_engine(clean_url)
-    db = AsyncSession(engine)
+    # Create engine with pool recycling and pre-ping
+    engine = create_async_engine(
+        clean_url,
+        pool_recycle=300,
+        pool_pre_ping=True,
+        echo=False,
+    )
     
-    # Create minimal brain service for dependency
-    brain_service = BrainService()
+    # Create session maker with autocommit mode to avoid transaction issues
+    session_factory = async_sessionmaker(
+        engine,
+        expire_on_commit=False,
+        class_=AsyncSession,
+        autocommit=True  # Important: enables autocommit mode to avoid transaction conflicts
+    )
     
-    # Return properly initialized ChatService
+    # Create session
+    db = session_factory()
+    
+    # Create minimal brain service
+    from backend.config.config import get_config
+    config = get_config()
+    brain_service = LangGraphBrainService(db_session=db, config=config)
+    
+    # Return properly initialized ChatService with autocommit session
     return ChatService(db=db, brain_service=brain_service)
 
 # Set up router
