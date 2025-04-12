@@ -14,7 +14,7 @@ from langchain_openai import ChatOpenAI
 import openai
 
 from backend.config.config import Config
-from backend.brain.native_graph import GraphOrchestrator
+from backend.brain.optimized.router import OptimizedAgentRouter
 from backend.agents.framework.langgraph import LangGraphAgentFactory
 from backend.utils.api_utils import create_success_response, create_error_response
 from backend.utils.retry import retry_async
@@ -29,7 +29,7 @@ class GraphBrainService:
     
     def __init__(
         self,
-        orchestrator: Optional[GraphOrchestrator] = None,
+        orchestrator: Optional[OptimizedAgentRouter] = None,
         llm: Optional[ChatOpenAI] = None,
         config: Optional[Config] = None,
         agent_factory: Optional[LangGraphAgentFactory] = None,
@@ -55,7 +55,19 @@ class GraphBrainService:
         self.agent_factory = agent_factory
         
         # Initialize orchestrator if not provided
-        self.orchestrator = orchestrator or GraphOrchestrator(llm=self.llm)
+        from backend.brain.optimized.embedding_service import EmbeddingService
+        from backend.brain.optimized.vector_store import AgentVectorStore
+        
+        if not orchestrator:
+            # Create dependencies for OptimizedAgentRouter
+            embedding_service = EmbeddingService()
+            vector_store = AgentVectorStore(embedding_service)
+            self.orchestrator = OptimizedAgentRouter(
+                agent_vector_store=vector_store,
+                embedding_service=embedding_service
+            )
+        else:
+            self.orchestrator = orchestrator
         
         # Register a default agent for testing
         from backend.agents.framework.langgraph.langgraph_factory import DefaultLangGraphAgent

@@ -395,7 +395,7 @@ async def startup_db_client():
         
         # Initialize state persistence tables
         try:
-            from backend.brain.native_graph.state_persistence import create_db_tables
+            from backend.brain.optimized.state_persistence import create_db_tables
             # Get a database session
             db = await anext(get_db())
             # Create state persistence tables
