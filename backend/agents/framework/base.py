@@ -19,13 +19,9 @@ from backend.config.agent_constants import (
     PRODUCT_INFO_AGENT
 )
 
-# Import tool service for tool calling
-try:
-    from backend.brain.core_services.tool_service import tool_service
-except ImportError:
-    # This allows the module to be imported even if tool_service is not available
-    # We'll handle this case in the BaseAgent class
-    tool_service = None
+# Tool service will be implemented in a future update
+# For now, we'll use a simple placeholder
+tool_service = None
 
 logger = logging.getLogger(__name__)
 

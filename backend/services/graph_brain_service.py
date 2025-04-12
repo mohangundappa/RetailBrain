@@ -15,7 +15,7 @@ import openai
 
 from backend.config.config import Config
 from backend.brain.native_graph import GraphOrchestrator
-from backend.brain.agents import LangGraphAgentFactory
+from backend.agents.framework.langgraph import LangGraphAgentFactory
 from backend.utils.api_utils import create_success_response, create_error_response
 from backend.utils.retry import retry_async
 
@@ -58,7 +58,7 @@ class GraphBrainService:
         self.orchestrator = orchestrator or GraphOrchestrator(llm=self.llm)
         
         # Register a default agent for testing
-        from backend.brain.agents.langgraph_factory import DefaultLangGraphAgent
+        from backend.agents.framework.langgraph.langgraph_factory import DefaultLangGraphAgent
         default_agent = DefaultLangGraphAgent(
             id="package_tracking",
             name="Package Tracking Agent",
