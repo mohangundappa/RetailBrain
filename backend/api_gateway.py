@@ -189,7 +189,15 @@ async def list_agents(
 ):
     """List all available agents"""
     try:
+        # Get agents from chat service
         result = await chat_service.list_agents()
+        
+        # Add source information to indicate the agents are from database
+        if isinstance(result, dict) and "agents" in result:
+            agents_list = result["agents"]
+            for agent in agents_list:
+                agent["source"] = "database"
+                agent["db_driven"] = True
         
         # Ensure result is standardized
         if not isinstance(result, dict) or "success" not in result:
@@ -197,7 +205,8 @@ async def list_agents(
                 data=result,
                 metadata={
                     "api_version": API_VERSION,
-                    "db_agents": True  # Indicate these agents are from the database
+                    "db_agents": True,  # Indicate these agents are from the database
+                    "agent_factory": "enabled"
                 }
             )
             
@@ -374,43 +383,39 @@ async def global_exception_handler(request, exc):
 
 # Test endpoint for checking database-driven agents
 @app.get(f"{API_PREFIX}/agent-db-test")
-async def test_database_agents():
+async def test_database_agents(db: AsyncSession = Depends(get_db)):
     """Test database-driven agent loading"""
     try:
         from backend.database.agent_schema import AgentDefinition
         from sqlalchemy import select
-        from backend.database.db import get_async_session
 
-        # Create a session
-        async_session = get_async_session()
-        async with async_session() as session:
-            # Query all agent definitions
-            query = select(AgentDefinition)
-            result = await session.execute(query)
-            agents = result.scalars().all()
-            
-            # Format agent information
-            formatted_agents = []
-            for agent in agents:
-                formatted_agents.append({
-                    "id": str(agent.id),
-                    "name": agent.name,
-                    "agent_type": agent.agent_type,
-                    "description": agent.description,
-                    "status": agent.status,
-                    "patterns_count": len(agent.patterns) if agent.patterns else 0,
-                    "tools_count": len(agent.tools) if agent.tools else 0,
-                    "response_templates_count": len(agent.response_templates) if agent.response_templates else 0,
-                })
-            
-            return create_success_response(
-                data={"database_agents": formatted_agents},
-                metadata={
-                    "count": len(formatted_agents),
-                    "api_version": API_VERSION,
-                    "db_driven": True
-                }
-            )
+        # Query all agent definitions using the dependency-injected session
+        query = select(AgentDefinition)
+        result = await db.execute(query)
+        agents = result.scalars().all()
+        
+        # Format agent information
+        formatted_agents = []
+        for agent in agents:
+            formatted_agents.append({
+                "id": str(agent.id),
+                "name": agent.name,
+                "agent_type": agent.agent_type,
+                "description": agent.description,
+                "status": agent.status,
+                "patterns_count": len(agent.patterns) if agent.patterns else 0,
+                "tools_count": len(agent.tools) if agent.tools else 0,
+                "response_templates_count": len(agent.response_templates) if agent.response_templates else 0,
+            })
+        
+        return create_success_response(
+            data={"database_agents": formatted_agents},
+            metadata={
+                "count": len(formatted_agents),
+                "api_version": API_VERSION,
+                "db_driven": True
+            }
+        )
     except Exception as e:
         logger.error(f"Error testing database agents: {str(e)}", exc_info=True)
         return create_error_response(
