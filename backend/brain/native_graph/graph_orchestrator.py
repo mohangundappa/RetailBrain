@@ -190,9 +190,7 @@ class GraphOrchestrator:
         """
         logger.info(f"TRACE: Entered GraphOrchestrator.process_message")
         
-        # Initialize or get the state
-        # For now, we'll always create a new state, but in the future
-        # we could retrieve the state from a database based on session_id
+        # Initialize the state
         state = initialize_state()
         
         # Update the session ID
@@ -201,8 +199,6 @@ class GraphOrchestrator:
         state["conversation"] = conversation
         
         # Add the user message to the state
-        state = initialize_state()
-        state["conversation"]["session_id"] = session_id
         state["conversation"]["last_user_message"] = message
         state["conversation"]["messages"] = [{
             "role": "user",
@@ -244,19 +240,40 @@ class GraphOrchestrator:
         # Process the message through the graph
         try:
             # Execute the graph with the initial state
+            start_time = time.time()
             events = list(self.compiled_graph.stream(state))
+            execution_time = time.time() - start_time
             
             # Get the final state from the last event
             if events:
                 # Convert dict_values to a dictionary
                 final_state = dict(zip(events[-1].keys(), events[-1].values()))
+                
+                # Update execution info with total execution time
+                execution = final_state.get("execution", {})
+                execution["total_execution_time"] = execution_time
+                final_state["execution"] = execution
+                
+                # Log performance information
+                logger.info(f"Graph execution completed in {execution_time:.4f} seconds")
+                
+                # Check for errors in execution state
+                errors = execution.get("errors", [])
+                if errors:
+                    error_count = len(errors)
+                    logger.warning(f"Graph execution completed with {error_count} errors")
+                    for error in errors:
+                        logger.debug(f"Error in node {error.get('node')}: {error.get('error')}, "
+                                     f"type: {error.get('error_type')}")
             else:
                 # Return default response if no events were generated
+                logger.error("No events generated during graph execution")
                 return {
                     "response": "I'm unable to process your request at this time. No agents are available.",
                     "agent": "error",
                     "confidence": 0.0,
-                    "error": "No events generated during processing"
+                    "error": "No events generated during processing",
+                    "error_type": "orchestration_error"
                 }
             
             # Extract the response information
@@ -282,20 +299,57 @@ class GraphOrchestrator:
             execution = final_state.get("execution", {})
             tools_used = execution.get("tools_used", [])
             
-            # Return the response
-            return {
+            # Include errors in the response if any occurred
+            errors = execution.get("errors", [])
+            
+            # Build response
+            response = {
                 "response": response_content,
                 "agent": response_agent,
                 "confidence": confidence,
                 "entities": entities,
-                "tools_used": tools_used
+                "tools_used": tools_used,
+                "execution_time": execution_time,
+                "execution_path": execution.get("execution_path", [])
             }
             
+            # Add errors to response if they occurred
+            if errors:
+                response["errors"] = [
+                    {
+                        "node": error.get("node"),
+                        "error_type": error.get("error_type", "unknown"),
+                        "timestamp": error.get("timestamp")
+                    }
+                    for error in errors
+                ]
+            
+            return response
+            
         except Exception as e:
-            logger.error(f"Error processing message: {str(e)}", exc_info=True)
+            # Classify the error type
+            from backend.brain.native_graph.error_handling import classify_error, ErrorType
+            error_type = classify_error(e)
+            
+            logger.error(
+                f"Error processing message: {str(e)} (type: {error_type})", 
+                exc_info=True
+            )
+            
+            # Generate appropriate user-facing error message
+            user_message = "I encountered an issue while processing your request. Please try again."
+            
+            if error_type == ErrorType.LLM_RATE_LIMIT:
+                user_message = "I'm experiencing a lot of requests right now. Please try again in a moment."
+            elif error_type == ErrorType.LLM_CONTEXT_LIMIT:
+                user_message = "Your request is too complex for me to process right now. Could you try with a shorter message?"
+            elif error_type == ErrorType.LLM_API_ERROR:
+                user_message = "I'm having trouble connecting to my knowledge base. Please try again shortly."
+            
             return {
-                "response": "I encountered an issue while processing your request. Please try again.",
+                "response": user_message,
                 "agent": "error",
                 "confidence": 0.0,
-                "error": str(e)
+                "error": str(e),
+                "error_type": error_type
             }

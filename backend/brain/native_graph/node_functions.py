@@ -260,6 +260,7 @@ JSON Output:
     return new_state
 
 
+@with_error_handling("classify_intent")
 def classify_intent(state: OrchestrationState) -> OrchestrationState:
     """
     Classify the intent of the user message.
@@ -287,10 +288,59 @@ def classify_intent(state: OrchestrationState) -> OrchestrationState:
         logger.info("Special case detected, skipping intent classification")
         return new_state
     
-    # TODO: Implement actual intent classification
-    # For now, we'll just set default values
+    # TODO: Implement actual intent classification with LLM
+    # In a real implementation, we would have code like:
+    # try:
+    #     # Get LLM for intent classification
+    #     llm = ChatOpenAI(
+    #         model="gpt-4o",
+    #         temperature=0.2
+    #     )
+    #     
+    #     # Define intent classification prompt
+    #     intent_prompt = PromptTemplate.from_template("""
+    #     Analyze this user message and determine the primary intent.
+    #     
+    #     User message: {message}
+    #     
+    #     Output a JSON object with:
+    #     - intent: a single word describing the primary intent (e.g., "track_order", "find_store", "login_help")
+    #     - confidence: a number between 0.0 and 1.0
+    #     - sub_intent: optional more specific intent if applicable
+    #     
+    #     JSON Output:
+    #     """)
+    #     
+    #     # Create and invoke the chain with retry logic
+    #     intent_chain = intent_prompt | llm | StrOutputParser()
+    #     result = intent_chain.invoke({"message": user_message})
+    #     
+    #     # Parse the result as JSON with robust error recovery
+    #     intent_data = parse_json_with_recovery(
+    #         result,
+    #         default_value={"intent": "unknown", "confidence": 0.0}
+    #     )
+    #     
+    #     # Update metadata with intent information
+    #     metadata = {**new_state.get("metadata", {})}
+    #     metadata["intent_classification"] = {
+    #         "intent": intent_data.get("intent", "unknown"),
+    #         "confidence": float(intent_data.get("confidence", 0.0)),
+    #         "sub_intent": intent_data.get("sub_intent"),
+    #         "timestamp": datetime.now().isoformat()
+    #     }
+    #     new_state["metadata"] = metadata
+    # except Exception as e:
+    #     # Record error but continue execution
+    #     logger.error(f"Error classifying intent: {str(e)}", exc_info=True)
+    #     new_state = record_error(
+    #         new_state, 
+    #         "classify_intent", 
+    #         e, 
+    #         error_type=classify_error(e)
+    #     )
     
-    # Update metadata with intent information
+    # For now, we'll just set default values
     metadata = {**new_state.get("metadata", {})}
     metadata["intent_classification"] = {
         "intent": "unknown",
@@ -303,6 +353,7 @@ def classify_intent(state: OrchestrationState) -> OrchestrationState:
     return new_state
 
 
+@with_error_handling("select_agent")
 def select_agent(state: OrchestrationState) -> OrchestrationState:
     """
     Select the most appropriate agent for the user message.
@@ -391,49 +442,58 @@ JSON Output:
         # Create and invoke the chain
         continuity_chain = continuity_prompt | llm | StrOutputParser()
         
-        try:
+        # Use retry for LLM API calls
+        @retry_on_error(
+            max_retries=2,
+            retry_on=[ErrorType.LLM_RATE_LIMIT, ErrorType.LLM_API_ERROR]
+        )
+        def check_conversation_continuity(
+            history: str, 
+            message: str, 
+            last_agent_id: str
+        ) -> Dict[str, Any]:
             result = continuity_chain.invoke({
-                "history": formatted_history,
-                "message": user_message,
-                "last_agent": last_agent
+                "history": history,
+                "message": message,
+                "last_agent": last_agent_id
             })
             
-            # Parse the result as JSON
-            continuity_data = json.loads(result)
-            
-            continue_with_same_agent = continuity_data.get("continue_with_same_agent", False)
-            continuity_confidence = float(continuity_data.get("confidence", 0.0))
-            reasoning = continuity_data.get("reasoning", "")
-            
-            if continue_with_same_agent and continuity_confidence > 0.6:
-                # Update agent state with continuity decision
-                agent_state = {**new_state.get("agent", {})}
-                agent_state["continue_with_same_agent"] = True
-                agent_state["selected_agent"] = last_agent
-                agent_state["confidence"] = continuity_confidence
-                agent_state["selection_info"] = {
-                    "agent_id": last_agent,
-                    "agent_name": last_agent,  # Use ID as name for now
-                    "confidence": continuity_confidence,
-                    "reason": f"Continuing conversation: {reasoning}"
+            # Use robust JSON parsing with recovery
+            return parse_json_with_recovery(
+                result,
+                default_value={
+                    "continue_with_same_agent": False,
+                    "confidence": 0.0,
+                    "reasoning": "Failed to determine conversation continuity"
                 }
-                new_state["agent"] = agent_state
-                
-                logger.info(f"Continuing with same agent: {last_agent}, confidence: {continuity_confidence}")
-                return new_state
-                
-        except Exception as e:
-            logger.error(f"Error checking conversation continuity: {str(e)}", exc_info=True)
-            # Record error in execution state
-            execution = {**new_state.get("execution", {})}
-            errors = execution.get("errors", [])
-            errors.append({
-                "node": "select_agent",
-                "error": str(e),
-                "timestamp": datetime.now().isoformat()
-            })
-            execution["errors"] = errors
-            new_state["execution"] = execution
+            )
+        
+        # Check conversation continuity with retry logic and robust parsing
+        continuity_data = check_conversation_continuity(
+            formatted_history, user_message, last_agent
+        )
+        
+        # Extract data with safe defaults
+        continue_with_same_agent = continuity_data.get("continue_with_same_agent", False)
+        continuity_confidence = float(continuity_data.get("confidence", 0.0))
+        reasoning = continuity_data.get("reasoning", "")
+        
+        if continue_with_same_agent and continuity_confidence > 0.6:
+            # Update agent state with continuity decision
+            agent_state = {**new_state.get("agent", {})}
+            agent_state["continue_with_same_agent"] = True
+            agent_state["selected_agent"] = last_agent
+            agent_state["confidence"] = continuity_confidence
+            agent_state["selection_info"] = {
+                "agent_id": last_agent,
+                "agent_name": last_agent,  # Use ID as name for now
+                "confidence": continuity_confidence,
+                "reason": f"Continuing conversation: {reasoning}"
+            }
+            new_state["agent"] = agent_state
+            
+            logger.info(f"Continuing with same agent: {last_agent}, confidence: {continuity_confidence}")
+            return new_state
     
     # If not continuing with the same agent, select a new one
     # Get LLM for agent selection
@@ -477,23 +537,30 @@ JSON Output:
     # Create and invoke the chain
     agent_selection_chain = agent_selection_prompt | llm | StrOutputParser()
     
-    try:
+    # Use retry for LLM API calls
+    @retry_on_error(
+        max_retries=2,
+        retry_on=[ErrorType.LLM_RATE_LIMIT, ErrorType.LLM_API_ERROR]
+    )
+    def select_best_agent(
+        message: str, 
+        descriptions: str,
+        available_ids: List[str]
+    ) -> Tuple[Dict[str, float], str, float]:
+        # Call the LLM for agent selection
         result = agent_selection_chain.invoke({
-            "message": user_message,
-            "agent_descriptions": agent_descriptions
+            "message": message,
+            "agent_descriptions": descriptions
         })
         
-        # Parse the result as JSON with error handling
-        try:
-            scores = json.loads(result)
-        except json.JSONDecodeError as e:
-            logger.error(f"Error parsing agent selection JSON: {str(e)}")
-            logger.debug(f"Raw result: {result}")
-            # Use a default scoring approach instead
-            scores = {}
-            # If message contains keywords related to each agent, assign scores
-            for agent_id in agent_ids:
-                if agent_id.lower() in user_message.lower():
+        # Use robust JSON parsing with recovery
+        scores = parse_json_with_recovery(result, default_value={})
+        
+        # If parsing failed or returned empty, use keyword matching as fallback
+        if not scores:
+            logger.warning("Failed to parse agent selection scores, using keyword matching fallback")
+            for agent_id in available_ids:
+                if agent_id.lower() in message.lower():
                     scores[agent_id] = 0.9
                 else:
                     scores[agent_id] = 0.1
@@ -501,54 +568,50 @@ JSON Output:
         # Find the best scoring agent
         best_agent = None
         best_score = 0.0
-        for agent_id in agent_ids:
-            score = scores.get(agent_id, 0.0)
+        for agent_id in available_ids:
+            score = float(scores.get(agent_id, 0.0))
             if score > best_score:
                 best_agent = agent_id
                 best_score = score
         
-        # Update agent state with selection result
-        agent_state = {**new_state.get("agent", {})}
-        if best_agent and best_score > 0.5:  # Require a minimum confidence
-            agent_state["selected_agent"] = best_agent
-            agent_state["confidence"] = best_score
-            agent_state["selection_info"] = {
-                "agent_id": best_agent,
-                "agent_name": best_agent,  # Use ID as name for now
-                "confidence": best_score,
-                "reason": f"Best match for user request with score {best_score}"
-            }
-        else:
-            # No confident selection
-            agent_state["selected_agent"] = None
-            agent_state["confidence"] = best_score
-            agent_state["selection_info"] = {
-                "agent_id": "",
-                "agent_name": "",
-                "confidence": best_score,
-                "reason": "No agent confidently matched the request"
-            }
-        
-        new_state["agent"] = agent_state
-        
-        logger.info(f"Selected agent: {best_agent}, confidence: {best_score}")
-        
-    except Exception as e:
-        logger.error(f"Error selecting agent: {str(e)}", exc_info=True)
-        # Record error in execution state
-        execution = {**new_state.get("execution", {})}
-        errors = execution.get("errors", [])
-        errors.append({
-            "node": "select_agent",
-            "error": str(e),
-            "timestamp": datetime.now().isoformat()
-        })
-        execution["errors"] = errors
-        new_state["execution"] = execution
+        return scores, best_agent, best_score
+    
+    # Select the best agent with retry logic
+    scores, best_agent, best_score = select_best_agent(
+        user_message, agent_descriptions, agent_ids
+    )
+    
+    # Update agent state with selection result
+    agent_state = {**new_state.get("agent", {})}
+    if best_agent and best_score > 0.5:  # Require a minimum confidence
+        agent_state["selected_agent"] = best_agent
+        agent_state["confidence"] = best_score
+        agent_state["selection_info"] = {
+            "agent_id": best_agent,
+            "agent_name": agent_configs.get(best_agent, {}).get("name", best_agent),
+            "confidence": best_score,
+            "reason": f"Best match for user request with score {best_score:.2f}"
+        }
+    else:
+        # No confident selection
+        agent_state["selected_agent"] = None
+        agent_state["confidence"] = best_score
+        agent_state["selection_info"] = {
+            "agent_id": "",
+            "agent_name": "",
+            "confidence": best_score,
+            "reason": "No agent confidently matched the request"
+        }
+    
+    new_state["agent"] = agent_state
+    
+    logger.info(f"Selected agent: {best_agent}, confidence: {best_score:.2f}")
+    logger.debug(f"Agent selection scores: {scores}")
     
     return new_state
 
 
+@with_error_handling("process_with_agent")
 def process_with_agent(state: OrchestrationState) -> OrchestrationState:
     """
     Process the user message with the selected agent.
@@ -606,47 +669,19 @@ def process_with_agent(state: OrchestrationState) -> OrchestrationState:
     available_agents = agent_state.get("available_agents", {})
     agent_instance = available_agents.get(selected_agent_id)
     
-    if agent_instance:
-        try:
-            # Process the message with the agent
-            logger.info(f"Processing message with agent {selected_agent_id}")
-            # Since this isn't an async function, we need to handle async agents differently
-            # For now, we'll just call the agent directly and assume it's synchronous
-            # In the future, we'd need to refactor this to be async
-            response = None
-            if hasattr(agent_instance, 'process'):
-                if callable(agent_instance.process):
-                    # Just call the method directly for now
-                    response = agent_instance.process(user_message)
-            
-            # Extract the response text
-            if isinstance(response, dict):
-                response_text = response.get("response", "")
-            else:
-                response_text = str(response)
-                
-            # Add the response to the conversation
-            new_state = add_message_to_conversation(
-                new_state,
-                response_text,
-                role="assistant",
-                agent=selected_agent_id
-            )
-        except Exception as e:
-            logger.error(f"Error processing with agent {selected_agent_id}: {str(e)}", exc_info=True)
-            # Generate fallback response
-            fallback_response = f"I encountered an error while trying to process your request about '{user_message}'. Please try again or ask a different question."
-            
-            # Add fallback response to conversation
-            new_state = add_message_to_conversation(
-                new_state,
-                fallback_response,
-                role="assistant",
-                agent=f"{selected_agent_id}_error"
-            )
-    else:
-        # Agent instance not found, use a generic response
+    if not agent_instance:
+        # Agent instance not found, record error and use a generic response
         logger.warning(f"Agent {selected_agent_id} instance not found, using generic response")
+        
+        # Record specific error type
+        new_state = record_error(
+            new_state,
+            "process_with_agent",
+            Exception(f"Agent instance '{selected_agent_id}' not found"),
+            error_type=ErrorType.AGENT_NOT_FOUND,
+            additional_info={"agent_id": selected_agent_id}
+        )
+        
         generic_response = f"I understand you're asking about '{user_message}'. Let me help you with that."
         
         # Add generic response to conversation
@@ -656,18 +691,96 @@ def process_with_agent(state: OrchestrationState) -> OrchestrationState:
             role="assistant",
             agent=selected_agent_id
         )
+        return new_state
     
-    # Add to tools used if any
-    execution = {**new_state.get("execution", {})}
-    tools_used = execution.get("tools_used", [])
-    tools_used.append("placeholder_tool")
-    execution["tools_used"] = tools_used
-    new_state["execution"] = execution
+    # Use retry for agent processing
+    @retry_on_error(
+        max_retries=2,
+        retry_on=[ErrorType.AGENT_EXECUTION_ERROR, ErrorType.LLM_API_ERROR]
+    )
+    def process_with_agent_instance(
+        agent: Any, 
+        message: str
+    ) -> Tuple[str, Dict[str, Any]]:
+        """Process message with agent instance with retry and error recovery."""
+        # Track any tools used during processing
+        tools_used = []
+        
+        logger.info(f"Processing message with agent {selected_agent_id}")
+        
+        # Since this isn't an async function, we need to handle async agents differently
+        # For now, we'll just call the agent directly and assume it's synchronous
+        response = None
+        if hasattr(agent, 'process'):
+            if callable(agent.process):
+                # Just call the method directly for now
+                response = agent.process(message)
+                
+                # If response contains tools used, extract them
+                if isinstance(response, dict) and "tools_used" in response:
+                    tools_used = response.get("tools_used", [])
+        
+        # Extract the response text
+        if isinstance(response, dict):
+            response_text = response.get("response", "")
+        else:
+            response_text = str(response) if response is not None else ""
+        
+        return response_text, {"tools_used": tools_used}
+    
+    try:
+        # Process the message with the agent, with retry logic
+        response_text, metadata = process_with_agent_instance(agent_instance, user_message)
+        
+        # Add the response to the conversation
+        new_state = add_message_to_conversation(
+            new_state,
+            response_text,
+            role="assistant",
+            agent=selected_agent_id
+        )
+        
+        # Add to tools used if any
+        execution = {**new_state.get("execution", {})}
+        tools_used = execution.get("tools_used", [])
+        tools_used.extend(metadata.get("tools_used", []))
+        execution["tools_used"] = tools_used
+        new_state["execution"] = execution
+    
+    except Exception as e:
+        # All retries failed, generate a user-friendly error response
+        error_type = classify_error(e)
+        logger.error(
+            f"Error processing with agent {selected_agent_id}: {str(e)} "
+            f"(type: {error_type})",
+            exc_info=True
+        )
+        
+        # Record error in state
+        new_state = record_error(
+            new_state,
+            "process_with_agent",
+            e,
+            error_type=error_type,
+            additional_info={"agent_id": selected_agent_id, "message": user_message}
+        )
+        
+        # Get an appropriate error recovery response
+        recovery_response = get_error_recovery_response(new_state, e, error_type)
+        
+        # Add recovery response to conversation
+        new_state = add_message_to_conversation(
+            new_state,
+            recovery_response,
+            role="assistant",
+            agent=f"{selected_agent_id}_error"
+        )
     
     logger.info(f"Processed message with agent {selected_agent_id}")
     return new_state
 
 
+@with_error_handling("update_memory")
 def update_memory(state: OrchestrationState) -> OrchestrationState:
     """
     Update memory with the latest conversation information.
@@ -681,9 +794,37 @@ def update_memory(state: OrchestrationState) -> OrchestrationState:
     # Create a new state to avoid modifying the input
     new_state = record_execution_step(state, "update_memory")
     
+    # Get conversation for memory update
+    conversation = state.get("conversation", {})
+    messages = conversation.get("messages", [])
+    
+    # Skip if there are no messages to store
+    if not messages:
+        logger.debug("No messages to store in memory")
+        return new_state
+    
     # For now, just update the timestamp
+    # In future implementations, we would connect to a memory storage system
+    # and store the conversation data
     memory = {**new_state.get("memory", {})}
     memory["memory_last_updated"] = datetime.now()
+    
+    # In a real implementation, we would have code like:
+    # try:
+    #     # Store memory in database or external memory system
+    #     memory_ids = await memory_service.store_conversation(messages)
+    #     memory["working_memory_ids"].append(memory_ids["working_memory"])
+    #     memory["episodic_memory_ids"].append(memory_ids["episodic_memory"])
+    # except Exception as e:
+    #     logger.error(f"Error updating memory: {str(e)}", exc_info=True)
+    #     # Record error but continue execution
+    #     new_state = record_error(
+    #         new_state, 
+    #         "update_memory", 
+    #         e, 
+    #         error_type=ErrorType.MEMORY_ERROR
+    #     )
+    
     new_state["memory"] = memory
     
     logger.info("Memory updated")
