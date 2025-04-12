@@ -59,6 +59,15 @@ class Orchestrator:
         except ImportError:
             self.telemetry = None
             logger.warning("Telemetry system not available, proceeding without telemetry")
+            
+    def list_agents(self):
+        """
+        List all registered agents.
+        
+        Returns:
+            List of agent names
+        """
+        return [agent.name for agent in self.agents]
         
     def get_memory(self, session_id: str) -> ConversationMemory:
         """
@@ -74,9 +83,11 @@ class Orchestrator:
             self.memories[session_id] = ConversationMemory(session_id)
         return self.memories[session_id]
         
+    # Legacy method maintained for compatibility
     def list_available_agents(self) -> List[Dict[str, Any]]:
         """
-        List all available agents.
+        Legacy method - use list_agents() instead.
+        List all available agents with detailed information.
         
         Returns:
             List of agent information dictionaries

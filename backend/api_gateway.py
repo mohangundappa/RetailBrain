@@ -185,19 +185,56 @@ async def health_check(db: AsyncSession = Depends(get_db)):
 
 @app.get(f"{API_PREFIX}/agents", response_model=AgentListResponse)
 async def list_agents(
-    chat_service=Depends(get_chat_service_direct)
+    chat_service=Depends(get_chat_service_direct),
+    db: AsyncSession = Depends(get_db)
 ):
     """List all available agents"""
     try:
         # Get agents from chat service
         result = await chat_service.list_agents()
         
-        # Add source information to indicate the agents are from database
+        # Get additional information from the database
+        from backend.database.agent_schema import AgentDefinition
+        from sqlalchemy import select
+        
+        # Query all agent definitions
+        query = select(AgentDefinition)
+        query_result = await db.execute(query)
+        agent_definitions = query_result.scalars().all()
+        
+        # Create mapping of agent names to database info
+        agent_db_info = {}
+        for agent_def in agent_definitions:
+            agent_db_info[agent_def.name] = {
+                "id": str(agent_def.id),
+                "name": agent_def.name,
+                "type": agent_def.agent_type,
+                "status": agent_def.status,
+                "created_at": agent_def.created_at.isoformat() if agent_def.created_at else None,
+                "is_system": agent_def.is_system,
+                "version": agent_def.version
+            }
+        
+        # Enhanced agent information format
+        detailed_agents = []
         if isinstance(result, dict) and "agents" in result:
-            agents_list = result["agents"]
-            for agent in agents_list:
-                agent["source"] = "database"
-                agent["db_driven"] = True
+            agent_names = result["agents"]
+            for agent_name in agent_names:
+                agent_info = {
+                    "name": agent_name,
+                    "source": "database",
+                    "db_driven": True,
+                    "loaded": True
+                }
+                
+                # Add database information if available
+                if agent_name in agent_db_info:
+                    agent_info.update(agent_db_info[agent_name])
+                
+                detailed_agents.append(agent_info)
+            
+            # Replace simple agent list with detailed list
+            result = {"agents": detailed_agents}
         
         # Ensure result is standardized
         if not isinstance(result, dict) or "success" not in result:
@@ -206,7 +243,8 @@ async def list_agents(
                 metadata={
                     "api_version": API_VERSION,
                     "db_agents": True,  # Indicate these agents are from the database
-                    "agent_factory": "enabled"
+                    "agent_factory": "enabled",
+                    "agent_count": len(detailed_agents) if detailed_agents else 0
                 }
             )
             
