@@ -82,9 +82,19 @@ def classify_error(error: Exception) -> str:
     # Check for state persistence errors
     elif "state" in error_str.lower() and "persist" in error_str.lower():
         error_type = ErrorType.STATE_PERSISTENCE_ERROR
-    elif "orchestration_state" in error_str.lower():
+    # Check for state persistence and database connectivity errors
+    elif any(pattern in error_str.lower() for pattern in [
+        "orchestration_state", 
+        "connection refused", 
+        "cannot connect to database",
+        "database connection",
+        "persistence",
+        "persist state"
+    ]):
         error_type = ErrorType.STATE_PERSISTENCE_ERROR
-    elif "checkpoint" in error_str.lower() and ("save" in error_str.lower() or "load" in error_str.lower()):
+    elif "checkpoint" in error_str.lower() and ("save" in error_str.lower() or "load" in error_str.lower() or "create" in error_str.lower()):
+        error_type = ErrorType.STATE_PERSISTENCE_ERROR
+    elif "database" in error_str.lower() and ("timeout" in error_str.lower() or "connection" in error_str.lower()):
         error_type = ErrorType.STATE_PERSISTENCE_ERROR
     
     # Check for agent errors
@@ -202,7 +212,7 @@ def get_error_recovery_response(
         return "I ran into an issue processing your request. Could you provide more details or try a different approach?"
     
     elif error_type == ErrorType.STATE_PERSISTENCE_ERROR:
-        return "I'm having trouble saving our conversation. Your request was processed, but we might need to repeat some information if we continue."
+        return "I'm having trouble with my memory storage. Your request was processed, but our conversation state may not be fully saved. If we continue, I'll maintain as much context as possible, but you might need to repeat some details if I forget them."
     
     elif error_type == ErrorType.DATABASE_ERROR:
         return "I'm experiencing a technical issue with my memory. Let's continue, but I might need you to repeat information you've shared before."

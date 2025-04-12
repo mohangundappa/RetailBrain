@@ -200,22 +200,39 @@ class GraphOrchestrator:
         state = None
         if recover_state and db_session:
             try:
-                from backend.brain.native_graph.state_persistence import recover_state as recover_state_func
-                logger.info(f"Attempting to recover state for session {session_id}")
-                state = await recover_state_func(session_id, db_session)
+                from backend.brain.native_graph.state_recovery import (
+                    resilient_recover_state, 
+                    process_pending_operations,
+                    check_db_connection
+                )
                 
-                if state:
-                    logger.info(f"Successfully recovered state for session {session_id}")
+                logger.info(f"Attempting to recover state for session {session_id}")
+                
+                # First, check if the database connection is available
+                db_available = await check_db_connection(db_session)
+                if not db_available:
+                    logger.warning("Database connection unavailable for state recovery, starting with fresh state")
+                else:
+                    # Try to recover state with resilient function
+                    state = await resilient_recover_state(session_id, db_session)
                     
-                    # Add the new user message to the recovered state
-                    state["conversation"]["last_user_message"] = message
-                    state["conversation"]["messages"].append({
-                        "role": "user",
-                        "content": message,
-                        "timestamp": datetime.now().isoformat()
-                    })
+                    if state:
+                        logger.info(f"Successfully recovered state for session {session_id}")
+                        
+                        # Process any pending operations that might have failed in previous interactions
+                        state = await process_pending_operations(state, session_id, db_session)
+                        
+                        # Add the new user message to the recovered state
+                        state["conversation"]["last_user_message"] = message
+                        state["conversation"]["messages"].append({
+                            "role": "user",
+                            "content": message,
+                            "timestamp": datetime.now().isoformat()
+                        })
+                    else:
+                        logger.info(f"No previous state found for session {session_id}, starting fresh")
             except Exception as e:
-                logger.warning(f"Error recovering state: {str(e)}")
+                logger.warning(f"Error recovering state: {str(e)}", exc_info=True)
                 state = None
         
         # Initialize new state if recovery failed or was disabled
@@ -290,21 +307,36 @@ class GraphOrchestrator:
                 # Persist the final state to the database if a session was provided
                 if db_session:
                     try:
-                        from backend.brain.native_graph.state_persistence import persist_state
+                        from backend.brain.native_graph.state_recovery import (
+                            resilient_persist_state, 
+                            resilient_create_checkpoint,
+                            process_pending_operations
+                        )
                         
-                        # Save the state
+                        # Get session ID
                         session_id = final_state.get("conversation", {}).get("session_id")
                         if session_id:
                             logger.info(f"Persisting final state for session {session_id}")
-                            await persist_state(final_state, session_id, db_session)
+                            
+                            # First, try to process any pending operations that may have failed previously
+                            final_state = await process_pending_operations(final_state, session_id, db_session)
+                            
+                            # Save the state with resilient persistence
+                            final_state = await resilient_persist_state(final_state, session_id, db_session)
                             
                             # Create a checkpoint after every complete interaction
-                            from backend.brain.native_graph.state_persistence import create_state_checkpoint
-                            checkpoint_name = f"interaction_{len(final_state.get('conversation', {}).get('messages', []))//2}"
-                            await create_state_checkpoint(final_state, session_id, checkpoint_name, db_session)
-                            logger.info(f"Created checkpoint '{checkpoint_name}' for session {session_id}")
+                            message_count = len(final_state.get("conversation", {}).get("messages", []))
+                            if message_count >= 2:  # Only create checkpoint if we have at least one exchange
+                                checkpoint_name = f"interaction_{message_count//2}"
+                                final_state = await resilient_create_checkpoint(
+                                    final_state, 
+                                    session_id, 
+                                    checkpoint_name, 
+                                    db_session
+                                )
+                                logger.info(f"Created checkpoint '{checkpoint_name}' for session {session_id}")
                     except Exception as persist_error:
-                        logger.warning(f"Error persisting state: {str(persist_error)}")
+                        logger.warning(f"Error persisting state: {str(persist_error)}", exc_info=True)
                 
                 # Check for errors in execution state
                 errors = execution.get("errors", [])

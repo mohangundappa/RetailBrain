@@ -12,10 +12,15 @@ from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.database.db import get_db
+from backend.brain.native_graph.state_recovery import (
+    resilient_create_checkpoint,
+    resilient_persist_state,
+    resilient_recover_state,
+    get_most_recent_state,
+    check_db_connection,
+    process_pending_operations
+)
 from backend.brain.native_graph.state_persistence import (
-    create_state_checkpoint,
-    persist_state,
-    recover_state,
     StatePersistenceManager,
     ErrorType
 )
@@ -261,8 +266,19 @@ async def create_checkpoint(
         # Create state persistence manager
         manager = StatePersistenceManager(db)
         
-        # Recover the latest state for the session
-        state = await recover_state(request.session_id, db)
+        # First check database connectivity
+        db_available = await check_db_connection(db)
+        if not db_available:
+            return CreateCheckpointResponse(
+                success=False,
+                checkpoint_name=request.checkpoint_name,
+                session_id=request.session_id,
+                created_at=datetime.now().isoformat(),
+                error="Database connection unavailable"
+            )
+            
+        # Recover the latest state for the session with resilient function
+        state = await get_most_recent_state(request.session_id, db)
         
         if not state:
             return CreateCheckpointResponse(
@@ -273,12 +289,19 @@ async def create_checkpoint(
                 error="No state found for the session"
             )
         
-        # Create the checkpoint
-        checkpoint_id = await manager.create_checkpoint(
+        # Process any pending operations
+        state = await process_pending_operations(state, request.session_id, db)
+        
+        # Create the checkpoint with resilient function
+        updated_state = await resilient_create_checkpoint(
             state=state,
             session_id=request.session_id,
-            checkpoint_name=request.checkpoint_name
+            checkpoint_name=request.checkpoint_name,
+            db=db
         )
+        
+        # Get the checkpoint ID from the state if available
+        checkpoint_id = updated_state.get("execution", {}).get("last_checkpoint_id")
         
         return CreateCheckpointResponse(
             success=True,
@@ -314,10 +337,29 @@ async def rollback_to_checkpoint(
         Result of rollback operation
     """
     try:
-        # Create state persistence manager
+        # First check database connectivity
+        db_available = await check_db_connection(db)
+        if not db_available:
+            return RollbackResponse(
+                success=False,
+                session_id=request.session_id,
+                checkpoint_name=request.checkpoint_name,
+                rollback_time=datetime.now().isoformat(),
+                error="Database connection unavailable"
+            )
+        
+        # Create state persistence manager (for using specific methods)
         manager = StatePersistenceManager(db)
         
-        # Roll back to the checkpoint
+        try:
+            # Process any pending operations first
+            current_state = await get_most_recent_state(request.session_id, db)
+            if current_state:
+                await process_pending_operations(current_state, request.session_id, db)
+        except Exception as e:
+            logger.warning(f"Error processing pending operations before rollback: {str(e)}")
+        
+        # Roll back to the checkpoint with improved error handling
         state = await manager.rollback_to_checkpoint(
             session_id=request.session_id,
             checkpoint_name=request.checkpoint_name
