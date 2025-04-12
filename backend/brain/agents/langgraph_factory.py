@@ -398,27 +398,40 @@ class LangGraphAgentFactory:
             logger.error(f"Error creating agent: {str(e)}", exc_info=True)
             return None
     
-    async def get_agent_by_id(self, agent_id: str) -> Optional[LangGraphAgent]:
+    async def get_agent_by_id(self, agent_id: str, version: Optional[int] = None) -> Optional[LangGraphAgent]:
         """
-        Get an agent by its ID.
+        Get an agent by its ID, optionally specifying a version.
         
         Args:
             agent_id: Agent ID
+            version: Specific version to retrieve (None for latest)
             
         Returns:
             LangGraphAgent instance or None if not found
         """
+        # Generate a cache key that includes the version if provided
+        cache_key = f"{agent_id}_v{version}" if version else agent_id
+        
         # Check cache first
-        if agent_id in self.agents:
-            return self.agents[agent_id]
+        if cache_key in self.agents:
+            return self.agents[cache_key]
         
         try:
             # Get agent definition from repository
-            agent_def = await self.agent_repository.get_agent_definition(agent_id, load_related=True)
+            agent_def = None
             
-            if not agent_def:
-                logger.warning(f"Agent with ID {agent_id} not found")
-                return None
+            if version:
+                # Get a specific version
+                agent_def = await self.agent_repository.get_agent_version(agent_id, version)
+                if not agent_def:
+                    logger.warning(f"Agent with ID {agent_id} version {version} not found")
+                    return None
+            else:
+                # Get the latest version
+                agent_def = await self.agent_repository.get_agent_definition(agent_id, load_related=True)
+                if not agent_def:
+                    logger.warning(f"Agent with ID {agent_id} not found")
+                    return None
             
             # Convert the model to a dictionary
             agent_dict = self._agent_model_to_dict(agent_def)
@@ -428,12 +441,12 @@ class LangGraphAgentFactory:
             
             # Cache the agent if created successfully
             if agent:
-                self.agents[agent_id] = agent
+                self.agents[cache_key] = agent
             
             return agent
             
         except Exception as e:
-            logger.error(f"Error getting agent by ID {agent_id}: {str(e)}", exc_info=True)
+            logger.error(f"Error getting agent by ID {agent_id} version {version}: {str(e)}", exc_info=True)
             return None
     
     async def get_agent_by_name(self, agent_name: str) -> Optional[LangGraphAgent]:

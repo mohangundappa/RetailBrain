@@ -227,6 +227,7 @@ class AgentRepository:
     async def update_agent(
         self, 
         agent_id: Union[uuid.UUID, str],
+        increment_version: bool = False,
         **kwargs
     ) -> bool:
         """
@@ -234,6 +235,7 @@ class AgentRepository:
         
         Args:
             agent_id: ID of the agent to update
+            increment_version: Whether to increment the agent version
             **kwargs: Fields to update
             
         Returns:
@@ -251,13 +253,97 @@ class AgentRepository:
             return False
         
         # Update the fields
-        valid_fields = ['name', 'description', 'status', 'version']
+        valid_fields = ['name', 'description', 'status']
         for field, value in kwargs.items():
             if field in valid_fields:
                 setattr(agent, field, value)
         
+        # Increment version if requested
+        if increment_version:
+            agent.version += 1
+            logger.info(f"Incremented version for agent {agent_id} to {agent.version}")
+        
         await self.session.flush()
         return True
+        
+    async def get_agent_version(
+        self,
+        agent_id: Union[uuid.UUID, str],
+        version: int
+    ) -> Optional[AgentDefinition]:
+        """
+        Get a specific version of an agent.
+        This requires a versioning system to be in place.
+        
+        Args:
+            agent_id: ID of the agent
+            version: Version number to retrieve
+            
+        Returns:
+            AgentDefinition for the specified version, or None if not found
+        """
+        if isinstance(agent_id, str):
+            try:
+                agent_id = uuid.UUID(agent_id)
+            except ValueError:
+                logger.error(f"Invalid UUID: {agent_id}")
+                return None
+        
+        # For now, this is a simple implementation that just checks the version field
+        # In a more advanced system, we might have separate tables for each version
+        agent = await self.get_agent_definition(agent_id, load_related=True)
+        
+        # If the agent doesn't exist or version doesn't match, return None
+        if not agent or agent.version != version:
+            return None
+            
+        return agent
+        
+    async def create_agent_version(
+        self,
+        agent_id: Union[uuid.UUID, str],
+        **updates
+    ) -> Optional[uuid.UUID]:
+        """
+        Create a new version of an agent.
+        This will increment the version number and update the fields provided.
+        
+        Args:
+            agent_id: ID of the agent to version
+            **updates: Fields to update for the new version
+            
+        Returns:
+            Agent ID of the new version (currently the same as the input ID)
+        """
+        if isinstance(agent_id, str):
+            try:
+                agent_id = uuid.UUID(agent_id)
+            except ValueError:
+                logger.error(f"Invalid UUID: {agent_id}")
+                return None
+        
+        # Get the current agent
+        agent = await self.get_agent_definition(agent_id, load_related=False)
+        if not agent:
+            logger.error(f"Agent not found: {agent_id}")
+            return None
+        
+        # Apply updates to the agent
+        valid_fields = ['name', 'description', 'status']
+        for field, value in updates.items():
+            if field in valid_fields:
+                setattr(agent, field, value)
+        
+        # Increment the version
+        agent.version += 1
+        
+        # Log the version increment
+        logger.info(f"Created new version {agent.version} for agent {agent_id}")
+        
+        # Save changes
+        await self.session.flush()
+        
+        return agent_id
     
     async def delete_agent(self, agent_id: Union[uuid.UUID, str]) -> bool:
         """
