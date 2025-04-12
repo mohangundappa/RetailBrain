@@ -1,27 +1,11 @@
 """
-Native LangGraph implementation for Staples Brain.
+Native LangGraph orchestration components.
 
-This package contains the LangGraph native implementation of the Staples Brain
-orchestration system, designed to replace the custom orchestrator with a more
-declarative, graph-based approach.
+This package contains components for implementing orchestration with LangGraph's native
+graph functionality, including state definitions, node functions, and the orchestrator class.
 """
 
-from backend.brain.native_graph.state_definitions import OrchestrationState
 from backend.brain.native_graph.graph_orchestrator import GraphOrchestrator
-from backend.brain.native_graph.node_functions import (
-    classify_intent,
-    select_agent,
-    process_with_agent,
-    update_memory,
-    handle_special_cases
-)
+from backend.brain.native_graph.state_definitions import OrchestrationState
 
-__all__ = [
-    "GraphOrchestrator",
-    "OrchestrationState",
-    "classify_intent",
-    "select_agent",
-    "process_with_agent",
-    "update_memory",
-    "handle_special_cases"
-]
+__all__ = ["GraphOrchestrator", "OrchestrationState"]

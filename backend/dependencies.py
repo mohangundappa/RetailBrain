@@ -13,6 +13,7 @@ from backend.database.db import get_db
 from backend.services.chat_service import ChatService
 from backend.services.telemetry_service import TelemetryService
 from backend.services.langgraph_brain_service import LangGraphBrainService
+from backend.services.graph_brain_service import GraphBrainService
 from backend.config.config import get_config, Config
 from backend.repositories.agent_repository import AgentRepository
 
@@ -21,8 +22,9 @@ logger = logging.getLogger("staples_brain")
 
 # Service factory for better testability
 _service_factory: Dict[str, Callable] = {
-    "brain_service": LangGraphBrainService,  # Use the LangGraph brain service
-    "langgraph_brain_service": LangGraphBrainService,
+    "brain_service": GraphBrainService,  # Use the native Graph brain service
+    "langgraph_brain_service": LangGraphBrainService,  # Keep for backward compatibility
+    "graph_brain_service": GraphBrainService,
     "chat_service": ChatService,
     "telemetry_service": TelemetryService
 }
@@ -59,7 +61,7 @@ def get_app_config() -> Config:
 async def get_brain_service(
     db: AsyncSession = Depends(get_db),
     config: Config = Depends(get_app_config)
-) -> LangGraphBrainService:
+) -> GraphBrainService:
     """
     Get or create a brain service instance.
     Uses a singleton pattern to ensure only one instance exists.
@@ -147,7 +149,7 @@ async def get_telemetry_service(
 
 async def get_chat_service(
     db: AsyncSession = Depends(get_db),
-    brain_service: LangGraphBrainService = Depends(get_brain_service),
+    brain_service: GraphBrainService = Depends(get_brain_service),
     telemetry_service: TelemetryService = Depends(get_telemetry_service),
     config: Config = Depends(get_app_config)
 ) -> AsyncGenerator[ChatService, None]:
