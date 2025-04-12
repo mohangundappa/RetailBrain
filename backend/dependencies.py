@@ -14,6 +14,7 @@ from backend.services.brain_service import BrainService
 from backend.services.chat_service import ChatService
 from backend.services.telemetry_service import TelemetryService
 from backend.services.langgraph_brain_service import LangGraphBrainService
+from backend.services.hybrid_brain_service import HybridBrainService
 from backend.config.config import get_config, Config
 from backend.repositories.agent_repository import AgentRepository
 
@@ -22,7 +23,9 @@ logger = logging.getLogger("staples_brain")
 
 # Service factory for better testability
 _service_factory: Dict[str, Callable] = {
-    "brain_service": BrainService,
+    "brain_service": HybridBrainService,  # Use the hybrid brain service by default
+    "legacy_brain_service": BrainService,
+    "langgraph_brain_service": LangGraphBrainService,
     "chat_service": ChatService,
     "telemetry_service": TelemetryService
 }
@@ -59,7 +62,7 @@ def get_app_config() -> Config:
 async def get_brain_service(
     db: AsyncSession = Depends(get_db),
     config: Config = Depends(get_app_config)
-) -> BrainService:
+) -> HybridBrainService:
     """
     Get or create a brain service instance.
     Uses a singleton pattern to ensure only one instance exists.
@@ -147,7 +150,7 @@ async def get_telemetry_service(
 
 async def get_chat_service(
     db: AsyncSession = Depends(get_db),
-    brain_service: BrainService = Depends(get_brain_service),
+    brain_service: HybridBrainService = Depends(get_brain_service),
     telemetry_service: TelemetryService = Depends(get_telemetry_service),
     config: Config = Depends(get_app_config)
 ) -> AsyncGenerator[ChatService, None]:
