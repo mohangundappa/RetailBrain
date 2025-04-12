@@ -146,44 +146,42 @@ class ChatService:
         
         try:
             # Step 1: Get or create conversation
+            # Using a fresh transaction explicitly
+            conversation = None
+            user_message = None
+            assistant_message = None
+            
+            # Get conversation
             conversation = await self.conversation_repo.get_conversation_by_session_id(session_id)
+            
+            # Create conversation if it doesn't exist
             if not conversation:
                 logger.debug(f"Creating new conversation for session: {session_id}")
-                # Start a new transaction for creating the conversation
-                async with self.db.begin():
-                    conversation = await self.conversation_repo.create_conversation(session_id)
-                    await self.db.commit()
+                conversation = await self.conversation_repo.create_conversation(session_id)
             
-            # Step 2: Begin a new transaction for the messages
-            async with self.db.begin():
-                # Store user message
-                user_message = await self.conversation_repo.add_message(
-                    conversation_id=conversation.id,
-                    role="user",
-                    content=message
-                )
-                # Commit the transaction to avoid keeping it open during brain processing
-                await self.db.commit()
+            # Store user message
+            user_message = await self.conversation_repo.add_message(
+                conversation_id=conversation.id,
+                role="user",
+                content=message
+            )
             
-            # Step 3: Process with brain outside of transaction
+            # Step 2: Process with brain outside of transaction
             brain_response = await self.brain_service.process_request(
                 message=message,
                 session_id=session_id,
                 context=context
             )
             
-            # Step 4: Store response in a new transaction
-            async with self.db.begin():
-                # Store assistant response
-                assistant_message = await self.conversation_repo.add_message(
-                    conversation_id=conversation.id,
-                    role="assistant",
-                    content=brain_response["response"],
-                    metadata=brain_response["metadata"]
-                )
-                await self.db.commit()
+            # Step 3: Store the assistant response
+            assistant_message = await self.conversation_repo.add_message(
+                conversation_id=conversation.id,
+                role="assistant",
+                content=brain_response["response"],
+                metadata=brain_response["metadata"]
+            )
             
-            # Step 5: Record telemetry in a separate transaction if needed
+            # Step 4: Record telemetry if needed
             await self.telemetry_service.record_conversation(
                 session_id=session_id,
                 user_input=message,
@@ -195,9 +193,11 @@ class ChatService:
             
             return {
                 "success": True,
-                "response": brain_response["response"],
-                "metadata": brain_response["metadata"],
-                "session_id": session_id
+                "message_id": str(assistant_message.id),
+                "content": brain_response["response"],
+                "session_id": session_id,
+                "agent_type": brain_response["metadata"].get("agent", "default"),
+                "metadata": brain_response["metadata"]
             }
             
         except Exception as e:
@@ -218,10 +218,13 @@ class ChatService:
                 except Exception as inner_error:
                     logger.error(f"Error storing error message: {str(inner_error)}", exc_info=True)
             
+            # For error responses, we still need to include required fields from the schema
             return {
                 "success": False,
-                "error": str(e),
-                "session_id": session_id
+                "message_id": "error-" + str(uuid.uuid4()),
+                "content": f"An error occurred: {str(e)}",
+                "session_id": session_id,
+                "error": str(e)
             }
     
     async def get_conversation_with_messages(
