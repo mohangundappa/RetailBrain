@@ -27,6 +27,7 @@ from backend.config.agent_constants import (
 )
 from backend.utils.memory import ConversationMemory
 from backend.utils.semantic_utils import semantic_analyzer
+from backend.brain.orchestrator.conversation_flow_handlers import ConversationFlowHandler
 
 logger = logging.getLogger(__name__)
 
@@ -113,25 +114,8 @@ class Orchestrator:
         Returns:
             Tuple of (special_case_type, confidence, response)
         """
-        # Check for greeting
-        greeting_confidence = semantic_analyzer.detect_greeting(user_input)
-        if greeting_confidence >= GREETING_CONFIDENCE:
-            logger.debug(f"Detected greeting with confidence {greeting_confidence:.2f}")
-            return "greeting", greeting_confidence, "Hello! I'm your Staples virtual assistant. How can I help you today?"
-        
-        # Check for conversation end
-        end_confidence = semantic_analyzer.detect_conversation_end(user_input)
-        if end_confidence >= CONVERSATION_END_CONFIDENCE:
-            logger.debug(f"Detected conversation end with confidence {end_confidence:.2f}")
-            return "conversation_end", end_confidence, "Thank you for contacting Staples! Is there anything else I can help you with?"
-        
-        # Check for human transfer request
-        transfer_confidence = semantic_analyzer.detect_human_transfer_request(user_input)
-        if transfer_confidence >= HUMAN_TRANSFER_CONFIDENCE:
-            logger.debug(f"Detected human transfer request with confidence {transfer_confidence:.2f}")
-            return "human_transfer", transfer_confidence, "I understand you'd like to speak with a human agent. I'll transfer you to a customer service representative who can assist you further."
-        
-        return None, 0.0, None
+        # Use the ConversationFlowHandler to check for special cases
+        return ConversationFlowHandler.check_special_cases(user_input)
     
     def _check_negative_feedback(self, user_input: str, memory: ConversationMemory) -> bool:
         """
@@ -144,18 +128,8 @@ class Orchestrator:
         Returns:
             True if negative feedback detected, False otherwise
         """
-        # Detect negative feedback
-        negative_feedback_confidence = semantic_analyzer.detect_negative_feedback(user_input)
-        if negative_feedback_confidence > 0.7:
-            logger.debug(f"Detected negative feedback with confidence {negative_feedback_confidence:.2f}")
-            
-            # Store negative feedback in memory for threshold adjustment
-            memory.update_working_memory('negative_feedback_detected', True)
-            memory.update_working_memory('negative_feedback_confidence', negative_feedback_confidence)
-            
-            return True
-        
-        return False
+        # Use the ConversationFlowHandler to check for negative feedback
+        return ConversationFlowHandler.check_negative_feedback(user_input, memory)
     
     def _get_dynamic_threshold(self, memory: ConversationMemory) -> float:
         """
@@ -167,23 +141,9 @@ class Orchestrator:
         Returns:
             Dynamic confidence threshold
         """
-        # Start with default threshold
-        threshold = DEFAULT_CONFIDENCE_THRESHOLD
-        
-        # Lower threshold if negative feedback was detected in the previous turn
-        if memory.get_from_working_memory('negative_feedback_detected', False):
-            # Apply penalty to make it easier to switch agents after negative feedback
-            threshold -= NEGATIVE_FEEDBACK_PENALTY
-            logger.debug(f"Lowering confidence threshold due to negative feedback: {threshold:.2f}")
-            
-            # Reset negative feedback flag
-            memory.update_working_memory('negative_feedback_detected', False)
-        
-        # Ensure threshold stays within reasonable bounds
-        threshold = max(MIN_CONFIDENCE_THRESHOLD, min(MAX_CONFIDENCE_THRESHOLD, threshold))
-        
-        return threshold
-
+        # Use the ConversationFlowHandler to get dynamic threshold
+        return ConversationFlowHandler.get_dynamic_threshold(memory)
+    
     def _detect_topic_switch(self, user_input: str, memory: ConversationMemory) -> bool:
         """
         Detect if the current input represents a topic switch.
@@ -195,19 +155,8 @@ class Orchestrator:
         Returns:
             True if topic switch detected, False otherwise
         """
-        # Get the last topic summary if available
-        last_topic = memory.get_from_working_memory('current_topic')
-        if not last_topic:
-            return False
-            
-        # Check if current input is semantically different from the last topic
-        is_interruption, confidence = semantic_analyzer.detect_conversation_interruption(last_topic, user_input)
-        
-        if is_interruption and confidence > 0.7:
-            logger.debug(f"Detected topic switch with confidence {confidence:.2f}")
-            return True
-            
-        return False
+        # Use the ConversationFlowHandler to detect topic switch
+        return ConversationFlowHandler.detect_topic_switch(user_input, memory)
         
     def _select_agent(self, user_input: str, context: Dict[str, Any]) -> Tuple[Any, float, bool]:
         """
