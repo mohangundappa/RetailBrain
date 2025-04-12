@@ -13,6 +13,8 @@ OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
 if not OPENAI_API_KEY:
     logger.warning("OPENAI_API_KEY not found. Make sure it's set in your .env file.")
 OPENAI_MODEL = os.environ.get("OPENAI_MODEL", "gpt-4o")
+OPENAI_TEMPERATURE = float(os.environ.get("OPENAI_TEMPERATURE", "0.2"))
+OPENAI_MAX_TOKENS = int(os.environ.get("OPENAI_MAX_TOKENS", "1024"))
 
 # Databricks configuration
 DATABRICKS_HOST = os.environ.get("DATABRICKS_HOST")
@@ -89,6 +91,8 @@ class Config:
     
     # Model configuration
     OPENAI_MODEL = OPENAI_MODEL
+    OPENAI_TEMPERATURE = OPENAI_TEMPERATURE
+    OPENAI_MAX_TOKENS = OPENAI_MAX_TOKENS
 
 class DevelopmentConfig(Config):
     """Development configuration."""
