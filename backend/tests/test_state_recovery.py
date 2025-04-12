@@ -49,7 +49,7 @@ class TestWithRetry(unittest.IsolatedAsyncioTestCase):
             Exception("Temporary error"),
             {"result": "success after retry"}
         ]
-        decorated_func = with_retry(max_attempts=3, base_delay=0.01)(mock_func)
+        decorated_func = with_retry(max_retries=3, retry_delay=0.01)(mock_func)
         
         # Act
         result = await decorated_func("test_arg")

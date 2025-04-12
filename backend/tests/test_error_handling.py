@@ -434,8 +434,8 @@ class TestUtilsRetryAsync(unittest.IsolatedAsyncioTestCase):
         
         # Apply the decorator
         decorated_func = retry_async(
-            max_attempts=3,
-            base_delay=0.01  # Short delay for testing
+            max_retries=3,
+            retry_delay=0.01  # Short delay for testing
         )(mock_func)
         
         # Act
@@ -455,8 +455,8 @@ class TestUtilsRetryAsync(unittest.IsolatedAsyncioTestCase):
         
         # Apply the decorator
         decorated_func = retry_async(
-            max_attempts=2,
-            base_delay=0.01  # Short delay for testing
+            max_retries=2,
+            retry_delay=0.01  # Short delay for testing
         )(mock_func)
         
         # Act/Assert

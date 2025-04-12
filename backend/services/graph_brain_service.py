@@ -142,7 +142,7 @@ class GraphBrainService:
         # Nothing to clean up for now
         pass
     
-    @retry_async(max_attempts=3, base_delay=1, max_delay=10)
+    @retry_async(max_retries=3, retry_delay=1, max_delay=10)
     async def process_request(
         self, 
         message: str, 

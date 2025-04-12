@@ -22,6 +22,7 @@ from backend.api.circuit_breaker_fastapi import circuit_breaker_router
 from backend.api.telemetry_fastapi import telemetry_router
 from backend.api.routes_fastapi import api_router
 from backend.api.state_management import state_router
+from backend.api.circuit_management import router as circuit_management_router
 from backend.database.db import get_db
 
 # Utility function to sanitize database URLs for asyncpg
@@ -187,6 +188,7 @@ app.include_router(circuit_breaker_router, prefix=f"{API_PREFIX}/circuit-breaker
 app.include_router(telemetry_router, prefix=API_PREFIX)
 app.include_router(state_router, prefix=API_PREFIX)
 app.include_router(api_router, prefix=API_PREFIX)
+app.include_router(circuit_management_router, prefix=API_PREFIX)
 
 # Mount static directories
 app.mount("/static", StaticFiles(directory="backend/static"), name="static")

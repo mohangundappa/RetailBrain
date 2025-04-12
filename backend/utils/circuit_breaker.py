@@ -1,401 +1,395 @@
 """
-Circuit breaker pattern implementation for external API calls.
+Circuit Breaker Implementation for Staples Brain.
 
-This module provides a circuit breaker pattern implementation that can be used to
-wrap external API calls to prevent cascading failures when services are unavailable.
+This module provides a circuit breaker pattern implementation to prevent
+cascading failures when external services are unavailable. It includes:
+
+1. A configurable CircuitBreaker class
+2. State tracking for failure rates
+3. Automatic recovery with exponential backoff
+4. Fallback mechanisms
 """
-import time
-import logging
-import threading
-from enum import Enum
-from typing import Any, Callable, Dict, Optional, TypeVar, cast
-from functools import wraps
 
-from backend.utils.observability import record_error, metrics_store
+import asyncio
+import logging
+import time
+import functools
+from enum import Enum
+from typing import Any, Callable, TypeVar, Dict, Optional, List, Awaitable, Union, cast
+from datetime import datetime, timedelta
+import random
 
 logger = logging.getLogger(__name__)
 
-# Type variable for generic return type
+# Type variable for the return type of the function
 T = TypeVar('T')
 
-
 class CircuitState(Enum):
-    """
-    Possible states for the circuit breaker.
-    """
-    CLOSED = "closed"  # Normal operation, requests are allowed
-    OPEN = "open"  # Circuit is open, requests are blocked
-    HALF_OPEN = "half_open"  # Testing if service is back online
+    """Possible states for the circuit breaker."""
+    CLOSED = 'closed'       # Normal operation, requests pass through
+    OPEN = 'open'           # Circuit is open, requests fail fast
+    HALF_OPEN = 'half_open' # Testing if the service is back online
 
 
 class CircuitBreaker:
     """
-    Implementation of the circuit breaker pattern.
+    Circuit Breaker implementation.
     
-    The circuit breaker pattern is used to detect failures and encapsulate the logic
-    of preventing a failure from constantly recurring during maintenance, temporary
-    external system failure, or unexpected system difficulties.
+    This class implements the circuit breaker pattern to prevent cascading failures
+    and provide graceful degradation when external services fail.
+    
+    Attributes:
+        name: Unique identifier for this circuit breaker
+        failure_threshold: Number of failures before opening the circuit
+        recovery_timeout: Seconds to wait before attempting recovery
+        timeout: Maximum time in seconds to wait for a response before considering it a failure
+        fallback: Optional fallback function to call when the circuit is open
+        state: Current state of the circuit breaker
+        failure_count: Current count of consecutive failures
+        last_failure_time: Timestamp of the last failure
+        success_count: Count of successful calls in half-open state
+        success_threshold: Number of successful calls required to close the circuit
     """
     
     def __init__(
         self,
         name: str,
         failure_threshold: int = 5,
-        recovery_timeout: int = 30,
-        fallback_function: Optional[Callable[..., Any]] = None,
+        recovery_timeout: int = 60,
+        timeout: float = 30.0,
+        success_threshold: int = 3,
+        max_backoff: int = 3600,  # Maximum backoff in seconds (1 hour)
+        excluded_exceptions: Optional[List[type]] = None,
     ):
         """
-        Initialize a circuit breaker.
+        Initialize a new circuit breaker.
         
         Args:
-            name: Name of the circuit breaker (used for logging and metrics)
+            name: Unique identifier for this circuit breaker
             failure_threshold: Number of failures before opening the circuit
-            recovery_timeout: Seconds to wait before attempting recovery
-            fallback_function: Function to call when the circuit is open
+            recovery_timeout: Initial seconds to wait before attempting recovery
+            timeout: Maximum time in seconds to wait for a response
+            success_threshold: Number of successful calls required to close the circuit
+            max_backoff: Maximum backoff in seconds
+            excluded_exceptions: List of exception types that should not count as failures
         """
         self.name = name
         self.failure_threshold = failure_threshold
-        self.recovery_timeout = recovery_timeout
-        self.fallback_function = fallback_function
+        self.base_recovery_timeout = recovery_timeout
+        self.current_recovery_timeout = recovery_timeout
+        self.max_backoff = max_backoff
+        self.timeout = timeout
+        self.success_threshold = success_threshold
+        self.excluded_exceptions = excluded_exceptions or []
         
+        # State tracking
         self.state = CircuitState.CLOSED
         self.failure_count = 0
-        self.last_failure_time = 0
-        self.lock = threading.RLock()
+        self.last_failure_time: Optional[datetime] = None
+        self.success_count = 0
         
-        # Record the creation of this circuit breaker in metrics
-        metrics_store.add_error("circuit_breaker_created", f"Circuit breaker '{name}' created")
-        logger.info(f"Circuit breaker '{name}' initialized")
-    
-    def _increment_failure(self) -> None:
-        """
-        Increment the failure count and open the circuit if threshold is reached.
-        """
-        with self.lock:
-            self.failure_count += 1
-            self.last_failure_time = time.time()
-            
-            if self.failure_count >= self.failure_threshold:
-                # Trip the circuit open
-                if self.state != CircuitState.OPEN:
-                    prev_state = self.state
-                    self.state = CircuitState.OPEN
-                    logger.warning(
-                        f"Circuit '{self.name}' tripped from {prev_state.value} to {self.state.value} "
-                        f"after {self.failure_count} failures"
-                    )
-                    metrics_store.add_error(
-                        "circuit_breaker_tripped", 
-                        f"Circuit '{self.name}' tripped open after {self.failure_count} failures"
-                    )
-    
-    def _handle_success(self) -> None:
-        """
-        Handle a successful call by resetting failure count and closing circuit.
-        """
-        with self.lock:
-            if self.state == CircuitState.HALF_OPEN:
-                logger.info(f"Circuit '{self.name}' closed after successful test request")
-                metrics_store.add_error(
-                    "circuit_breaker_closed", 
-                    f"Circuit '{self.name}' closed after successful test"
-                )
-                
-            self.failure_count = 0
-            self.state = CircuitState.CLOSED
-    
-    def _can_execute(self) -> bool:
-        """
-        Check if a call can be executed based on the circuit state.
+        # Fallback handler
+        self._fallback: Optional[Callable] = None
         
-        Returns:
-            True if the call can proceed, False otherwise
-        """
-        with self.lock:
-            if self.state == CircuitState.CLOSED:
-                return True
-                
-            elif self.state == CircuitState.OPEN:
-                # Check if recovery timeout has elapsed
-                if time.time() > self.last_failure_time + self.recovery_timeout:
-                    logger.info(
-                        f"Circuit '{self.name}' state changed from open to half-open after "
-                        f"{self.recovery_timeout} seconds"
-                    )
-                    metrics_store.add_error(
-                        "circuit_breaker_half_open", 
-                        f"Circuit '{self.name}' entering half-open state"
-                    )
-                    self.state = CircuitState.HALF_OPEN
-                    return True
-                return False
-                
-            elif self.state == CircuitState.HALF_OPEN:
-                # In half-open state, only allow one test request
-                return True
-                
-            return False
+        # For thread safety in concurrent environments
+        self._lock = asyncio.Lock()
+        
+        logger.info(f"Circuit breaker '{name}' initialized (threshold={failure_threshold}, "
+                   f"recovery_timeout={recovery_timeout}s, timeout={timeout}s)")
     
-    def execute(self, function: Callable[..., T], *args: Any, **kwargs: Any) -> T:
+    def set_fallback(self, fallback: Callable[..., T]) -> None:
         """
-        Execute the given function with circuit breaker protection.
+        Set a fallback function to be called when the circuit is open.
         
         Args:
-            function: The function to call
-            *args: Arguments to pass to the function
-            **kwargs: Keyword arguments to pass to the function
-            
-        Returns:
-            The result of the function call
-            
-        Raises:
-            Exception: If the circuit is open or the function call fails
+            fallback: Function to call when the circuit is open
         """
-        if not self._can_execute():
-            logger.warning(f"Circuit '{self.name}' is open, request rejected")
-            metrics_store.add_error(
-                "circuit_breaker_rejected",
-                f"Request rejected by open circuit '{self.name}'"
-            )
-            
-            # If a fallback function is provided, call it
-            if self.fallback_function:
-                logger.info(f"Circuit '{self.name}' using fallback function")
-                return cast(T, self.fallback_function(*args, **kwargs))
-            
-            raise CircuitBreakerOpenException(
-                f"Circuit '{self.name}' is open due to {self.failure_count} consecutive failures"
-            )
+        self._fallback = fallback
         
-        try:
-            # Call the protected function
-            result = function(*args, **kwargs)
-            self._handle_success()
-            return result
-        except Exception as e:
-            # Record the failure
-            self._increment_failure()
-            logger.error(f"Circuit '{self.name}' recorded failure: {str(e)}")
-            record_error(
-                "circuit_breaker_failure", 
-                f"Circuit '{self.name}' failure: {e.__class__.__name__} - {str(e)}"
-            )
-            raise
-    
-    def __call__(self, function: Callable[..., T]) -> Callable[..., T]:
-        """
-        Decorator to apply circuit breaker to a function.
-        
-        Example:
-            @circuit_breaker
-            def api_call():
-                pass
-        
-        Args:
-            function: The function to wrap with the circuit breaker
-            
-        Returns:
-            Wrapped function with circuit breaker logic
-        """
-        @wraps(function)
-        def wrapper(*args: Any, **kwargs: Any) -> T:
-            return self.execute(function, *args, **kwargs)
-        return wrapper
-    
     def get_state(self) -> Dict[str, Any]:
         """
         Get the current state of the circuit breaker.
         
         Returns:
-            Dictionary with state information
+            Dictionary containing the circuit breaker state information
         """
-        with self.lock:
-            return {
-                "name": self.name,
-                "state": self.state.value,
-                "failure_count": self.failure_count,
-                "failure_threshold": self.failure_threshold,
-                "recovery_timeout": self.recovery_timeout,
-                "last_failure_time": self.last_failure_time,
-                "time_remaining": max(
-                    0, 
-                    (self.last_failure_time + self.recovery_timeout) - time.time()
-                ) if self.state == CircuitState.OPEN else 0
-            }
+        return {
+            'name': self.name,
+            'state': self.state.value,
+            'failure_count': self.failure_count,
+            'success_count': self.success_count,
+            'last_failure_time': self.last_failure_time.isoformat() if self.last_failure_time else None,
+            'recovery_timeout': self.current_recovery_timeout,
+            'base_recovery_timeout': self.base_recovery_timeout,
+            'failure_threshold': self.failure_threshold,
+            'success_threshold': self.success_threshold,
+            'timeout': self.timeout,
+        }
+    
+    async def _update_state(self) -> None:
+        """Update the state of the circuit breaker based on current conditions."""
+        if self.state == CircuitState.OPEN and self.last_failure_time:
+            # Check if recovery timeout has elapsed
+            elapsed = datetime.now() - self.last_failure_time
+            if elapsed.total_seconds() >= self.current_recovery_timeout:
+                logger.info(f"Circuit breaker '{self.name}' transitioning from OPEN to HALF_OPEN")
+                self.state = CircuitState.HALF_OPEN
+                self.success_count = 0
+        
+        elif self.state == CircuitState.HALF_OPEN:
+            # Check if we've had enough successes to close the circuit
+            if self.success_count >= self.success_threshold:
+                logger.info(f"Circuit breaker '{self.name}' transitioning from HALF_OPEN to CLOSED")
+                self.state = CircuitState.CLOSED
+                self.failure_count = 0
+                self.success_count = 0
+                # Reset the recovery timeout after successful recovery
+                self.current_recovery_timeout = self.base_recovery_timeout
+    
+    async def _record_failure(self) -> None:
+        """Record a failure and potentially open the circuit."""
+        self.failure_count += 1
+        self.last_failure_time = datetime.now()
+        
+        if self.state == CircuitState.CLOSED and self.failure_count >= self.failure_threshold:
+            logger.warning(f"Circuit breaker '{self.name}' threshold reached, transitioning to OPEN")
+            self.state = CircuitState.OPEN
+        
+        elif self.state == CircuitState.HALF_OPEN:
+            logger.warning(f"Circuit breaker '{self.name}' failed in HALF_OPEN state, returning to OPEN")
+            self.state = CircuitState.OPEN
+            # Exponential backoff with jitter for recovery timeout
+            self.current_recovery_timeout = min(
+                self.current_recovery_timeout * 2,
+                self.max_backoff
+            )
+            # Add jitter (±20%)
+            jitter = random.uniform(0.8, 1.2)
+            self.current_recovery_timeout = int(self.current_recovery_timeout * jitter)
+            logger.info(f"Circuit breaker '{self.name}' next recovery attempt in {self.current_recovery_timeout}s")
+    
+    async def _record_success(self) -> None:
+        """Record a success and potentially close the circuit."""
+        if self.state == CircuitState.CLOSED:
+            self.failure_count = 0  # Reset failure count on success
+        
+        elif self.state == CircuitState.HALF_OPEN:
+            self.success_count += 1
+            logger.info(f"Circuit breaker '{self.name}' recorded success "
+                       f"({self.success_count}/{self.success_threshold}) in HALF_OPEN state")
+    
+    def __call__(self, func: Callable[..., Awaitable[T]]) -> Callable[..., Awaitable[T]]:
+        """
+        Decorator for functions to apply the circuit breaker pattern.
+        
+        Args:
+            func: The async function to wrap with circuit breaker functionality
+            
+        Returns:
+            Wrapped function with circuit breaker logic
+        """
+        @functools.wraps(func)
+        async def wrapper(*args: Any, **kwargs: Any) -> T:
+            # Check and potentially update circuit state
+            async with self._lock:
+                await self._update_state()
+                
+                if self.state == CircuitState.OPEN:
+                    logger.warning(f"Circuit breaker '{self.name}' is OPEN, failing fast")
+                    if self._fallback:
+                        try:
+                            return await self._fallback(*args, **kwargs)
+                        except Exception as e:
+                            logger.error(f"Fallback for circuit '{self.name}' also failed: {str(e)}")
+                            raise CircuitBreakerError(f"Service '{self.name}' is unavailable and "
+                                                     f"fallback failed: {str(e)}")
+                    raise CircuitBreakerError(f"Service '{self.name}' is unavailable")
+            
+            # Execute the function with a timeout
+            try:
+                # Create a task for the function and wait with a timeout
+                task = asyncio.create_task(func(*args, **kwargs))
+                result = await asyncio.wait_for(task, timeout=self.timeout)
+                
+                # Record the success
+                async with self._lock:
+                    await self._record_success()
+                    await self._update_state()
+                
+                return result
+                
+            except asyncio.TimeoutError:
+                # Handle timeout
+                logger.warning(f"Circuit breaker '{self.name}' - operation timed out after {self.timeout}s")
+                
+                # Record the failure
+                async with self._lock:
+                    await self._record_failure()
+                    await self._update_state()
+                
+                # Try fallback if available
+                if self._fallback:
+                    try:
+                        logger.info(f"Circuit breaker '{self.name}' - using fallback after timeout")
+                        return await self._fallback(*args, **kwargs)
+                    except Exception as fallback_error:
+                        logger.error(f"Fallback for circuit '{self.name}' failed: {str(fallback_error)}")
+                
+                raise CircuitBreakerTimeoutError(f"Operation in '{self.name}' timed out after {self.timeout}s")
+                
+            except Exception as e:
+                # Check if this exception type should be excluded from circuit breaker logic
+                if any(isinstance(e, exc_type) for exc_type in self.excluded_exceptions):
+                    logger.info(f"Circuit breaker '{self.name}' - excluded exception occurred: {type(e).__name__}")
+                    raise  # Re-raise excluded exceptions without affecting circuit state
+                
+                # Record the failure for all other exceptions
+                logger.warning(f"Circuit breaker '{self.name}' - operation failed with error: {str(e)}")
+                async with self._lock:
+                    await self._record_failure()
+                    await self._update_state()
+                
+                # Try fallback if available
+                if self._fallback:
+                    try:
+                        logger.info(f"Circuit breaker '{self.name}' - using fallback after error")
+                        return await self._fallback(*args, **kwargs)
+                    except Exception as fallback_error:
+                        logger.error(f"Fallback for circuit '{self.name}' failed: {str(fallback_error)}")
+                
+                raise CircuitBreakerError(f"Operation in '{self.name}' failed: {str(e)}") from e
+        
+        return wrapper
 
 
-class CircuitBreakerOpenException(Exception):
-    """
-    Exception raised when a request is rejected due to an open circuit.
-    """
-    pass
+# Registry to track and manage circuit breakers across the application
+_circuit_registry: Dict[str, CircuitBreaker] = {}
 
-
+# Define CircuitBreakerRegistry class for compatibility with existing code
 class CircuitBreakerRegistry:
-    """
-    Registry for all circuit breakers in the application.
-    Allows for centralized tracking and management of circuit breakers.
-    """
+    """Registry for managing circuit breakers."""
     
     def __init__(self):
-        """Initialize the circuit breaker registry."""
-        self.circuit_breakers: Dict[str, CircuitBreaker] = {}
-        self.lock = threading.RLock()
-    
-    def register(self, circuit_breaker: CircuitBreaker) -> None:
-        """
-        Register a circuit breaker with the registry.
-        
-        Args:
-            circuit_breaker: The circuit breaker to register
-        """
-        with self.lock:
-            self.circuit_breakers[circuit_breaker.name] = circuit_breaker
-            logger.debug(f"Registered circuit breaker: {circuit_breaker.name}")
+        """Initialize the registry."""
+        # The actual registry is module-level so this is just a wrapper
+        pass
     
     def get(self, name: str) -> Optional[CircuitBreaker]:
-        """
-        Get a circuit breaker by name.
-        
-        Args:
-            name: The name of the circuit breaker
-            
-        Returns:
-            The circuit breaker, or None if not found
-        """
-        with self.lock:
-            return self.circuit_breakers.get(name)
+        """Get a circuit breaker by name."""
+        return _circuit_registry.get(name)
     
-    def create_or_get(
-        self,
-        name: str,
-        failure_threshold: int = 5,
-        recovery_timeout: int = 30,
-        fallback_function: Optional[Callable[..., Any]] = None,
-    ) -> CircuitBreaker:
-        """
-        Create a new circuit breaker or get an existing one.
-        
-        Args:
-            name: Name of the circuit breaker
-            failure_threshold: Number of failures before opening the circuit
-            recovery_timeout: Seconds to wait before attempting recovery
-            fallback_function: Function to call when the circuit is open
-            
-        Returns:
-            New or existing circuit breaker
-        """
-        with self.lock:
-            circuit_breaker = self.get(name)
-            if not circuit_breaker:
-                circuit_breaker = CircuitBreaker(
-                    name=name,
-                    failure_threshold=failure_threshold,
-                    recovery_timeout=recovery_timeout,
-                    fallback_function=fallback_function,
-                )
-                self.register(circuit_breaker)
-            return circuit_breaker
-    
-    def get_all_circuit_states(self) -> Dict[str, Dict[str, Any]]:
-        """
-        Get the state of all registered circuit breakers.
-        
-        Returns:
-            Dictionary mapping circuit breaker names to their states
-        """
-        with self.lock:
-            return {name: cb.get_state() for name, cb in self.circuit_breakers.items()}
+    def get_all_circuit_states(self) -> List[Dict[str, Any]]:
+        """Get states of all circuit breakers."""
+        states = []
+        for name, circuit in _circuit_registry.items():
+            states.append({
+                'name': name,
+                'state': circuit.state.value,
+                'failure_count': circuit.failure_count,
+                'success_count': circuit.success_count,
+                'last_failure_time': circuit.last_failure_time.isoformat() if circuit.last_failure_time else None,
+                'recovery_timeout': circuit.current_recovery_timeout,
+            })
+        return states
     
     def reset(self, name: str) -> bool:
-        """
-        Reset a circuit breaker to closed state.
-        
-        Args:
-            name: Name of the circuit breaker to reset
-            
-        Returns:
-            True if the circuit was reset, False if not found
-        """
-        with self.lock:
-            circuit_breaker = self.get(name)
-            if circuit_breaker:
-                with circuit_breaker.lock:
-                    circuit_breaker.failure_count = 0
-                    circuit_breaker.state = CircuitState.CLOSED
-                    logger.info(f"Circuit '{name}' manually reset to closed state")
-                    metrics_store.add_error(
-                        "circuit_breaker_reset", 
-                        f"Circuit '{name}' manually reset"
-                    )
-                return True
-            return False
+        """Reset a circuit breaker by name."""
+        return reset_circuit(name)
 
-
-# Create global registry for circuit breakers
+# Create a singleton instance for import
 circuit_breaker_registry = CircuitBreakerRegistry()
 
 
-def get_circuit_breaker(
+def get_or_create_circuit(
     name: str,
     failure_threshold: int = 5,
-    recovery_timeout: int = 30,
-    fallback_function: Optional[Callable[..., Any]] = None,
+    recovery_timeout: int = 60,
+    timeout: float = 30.0,
+    success_threshold: int = 3,
+    max_backoff: int = 3600,
+    excluded_exceptions: Optional[List[type]] = None,
 ) -> CircuitBreaker:
     """
-    Get or create a circuit breaker with the given name.
+    Get an existing circuit breaker or create a new one.
     
     Args:
-        name: Name of the circuit breaker
+        name: Unique identifier for the circuit breaker
         failure_threshold: Number of failures before opening the circuit
         recovery_timeout: Seconds to wait before attempting recovery
-        fallback_function: Function to call when the circuit is open
+        timeout: Maximum time in seconds to wait for a response
+        success_threshold: Number of successful calls required to close the circuit
+        max_backoff: Maximum backoff in seconds
+        excluded_exceptions: List of exception types that should not count as failures
         
     Returns:
         The circuit breaker instance
     """
-    return circuit_breaker_registry.create_or_get(
-        name=name,
-        failure_threshold=failure_threshold,
-        recovery_timeout=recovery_timeout,
-        fallback_function=fallback_function,
-    )
+    if name not in _circuit_registry:
+        _circuit_registry[name] = CircuitBreaker(
+            name=name,
+            failure_threshold=failure_threshold,
+            recovery_timeout=recovery_timeout,
+            timeout=timeout,
+            success_threshold=success_threshold,
+            max_backoff=max_backoff,
+            excluded_exceptions=excluded_exceptions,
+        )
+    return _circuit_registry[name]
 
 
-def circuit_breaker(
-    name: str,
-    failure_threshold: int = 5,
-    recovery_timeout: int = 30,
-    fallback_function: Optional[Callable[..., Any]] = None,
-) -> Callable[[Callable[..., T]], Callable[..., T]]:
+def get_circuit_status() -> Dict[str, Dict[str, Any]]:
     """
-    Decorator factory for circuit breaker pattern.
+    Get the status of all circuit breakers.
     
-    Example:
-        @circuit_breaker(name="api_call", failure_threshold=3)
-        def api_call():
-            pass
+    Returns:
+        Dictionary of circuit breaker states and statistics
+    """
+    status = {}
+    for name, circuit in _circuit_registry.items():
+        status[name] = {
+            'state': circuit.state.value,
+            'failure_count': circuit.failure_count,
+            'success_count': circuit.success_count,
+            'last_failure_time': circuit.last_failure_time.isoformat() if circuit.last_failure_time else None,
+            'recovery_timeout': circuit.current_recovery_timeout,
+        }
+    return status
+
+
+def reset_circuit(name: str) -> bool:
+    """
+    Reset a circuit breaker to its initial state.
     
     Args:
-        name: Name of the circuit breaker
-        failure_threshold: Number of failures before opening the circuit
-        recovery_timeout: Seconds to wait before attempting recovery
-        fallback_function: Function to call when the circuit is open
+        name: Name of the circuit breaker to reset
         
     Returns:
-        Decorator that wraps a function with circuit breaker logic
+        True if the circuit was reset, False if it doesn't exist
     """
-    cb = get_circuit_breaker(
-        name=name,
-        failure_threshold=failure_threshold,
-        recovery_timeout=recovery_timeout,
-        fallback_function=fallback_function,
-    )
-    
-    def decorator(function: Callable[..., T]) -> Callable[..., T]:
-        @wraps(function)
-        def wrapper(*args: Any, **kwargs: Any) -> T:
-            return cb.execute(function, *args, **kwargs)
-        return wrapper
-    
-    return decorator
+    if name in _circuit_registry:
+        circuit = _circuit_registry[name]
+        circuit.state = CircuitState.CLOSED
+        circuit.failure_count = 0
+        circuit.success_count = 0
+        circuit.last_failure_time = None
+        circuit.current_recovery_timeout = circuit.base_recovery_timeout
+        logger.info(f"Circuit breaker '{name}' has been reset")
+        return True
+    return False
+
+
+def reset_all_circuits() -> None:
+    """Reset all circuit breakers to their initial state."""
+    for name in _circuit_registry:
+        reset_circuit(name)
+    logger.info("All circuit breakers have been reset")
+
+
+class CircuitBreakerError(Exception):
+    """Generic exception for circuit breaker failures."""
+    pass
+
+
+class CircuitBreakerTimeoutError(CircuitBreakerError):
+    """Exception raised when a circuit breaker operation times out."""
+    pass
