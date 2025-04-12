@@ -3,9 +3,9 @@ Configuration and fixtures for tests
 """
 import os
 import sys
-import pytest
 import asyncio
 from pathlib import Path
+from unittest import TestCase
 
 # Add the project root to the Python path
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -17,7 +17,7 @@ from tests.test_utils import (
     patch_llm_in_brain
 )
 
-@pytest.fixture
+# Functions to replace pytest fixtures
 def mock_llm():
     """Mock LLM for testing"""
     responses = [
@@ -28,7 +28,6 @@ def mock_llm():
     ]
     return create_mock_chat_model(responses=responses)
 
-@pytest.fixture
 def mock_chain():
     """Mock chain for testing"""
     return create_async_chain_mock("This is a mock response")
