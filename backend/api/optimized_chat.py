@@ -59,13 +59,14 @@ async def optimized_chat(
         context=request.context
     )
     
-    # Construct response
+    # Construct response - now handling both agent and agent_name fields
+    # as we're in a transition period between the old and new implementations
     response = OptimizedChatResponse(
         success=result.get("success", False),
-        response=result.get("response", ""),
-        agent=result.get("agent_name"),
+        response=result.get("response", "No response generated" if not result.get("response") else result.get("response")),
+        agent=result.get("agent") or result.get("agent_name"),
         agent_id=result.get("agent_id"),
-        confidence=result.get("selection_confidence"),
+        confidence=result.get("confidence") or result.get("selection_confidence"),
         entities=result.get("entities"),
         metadata={
             "selection_time": result.get("selection_time"),
@@ -110,11 +111,12 @@ async def execute_agent(
         context=request.context
     )
     
-    # Construct response
+    # Construct response - now handling both agent and agent_name fields
+    # as we're in a transition period between the old and new implementations
     response = OptimizedChatResponse(
         success=result.get("success", False),
-        response=result.get("response", ""),
-        agent=result.get("agent_name"),
+        response=result.get("response", "No response generated" if not result.get("response") else result.get("response")),
+        agent=result.get("agent") or result.get("agent_name"),
         agent_id=request.agent_id,  # Use the requested agent ID
         confidence=1.0,  # Direct execution, so confidence is 1.0
         entities=result.get("entities"),

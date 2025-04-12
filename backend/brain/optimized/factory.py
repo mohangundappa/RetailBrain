@@ -101,9 +101,9 @@ class OptimizedAgentFactory:
             # Add sample entity definitions
             email_entity = OptEntityDefinition(
                 name="email",
-                entity_type="string",
+                entity_type="email",
                 description="User's email address",
-                validation_regex=r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$"
+                validation_regex=r"[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+"
             )
             password_agent.add_entity_definition(email_entity)
             
