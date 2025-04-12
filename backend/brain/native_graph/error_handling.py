@@ -76,25 +76,34 @@ def classify_error(error: Exception) -> str:
             error_type = ErrorType.LLM_API_ERROR
     
     # Check for database errors
-    elif "database" in error_str.lower() or "sql" in error_class.lower():
-        error_type = ErrorType.DATABASE_ERROR
+    elif any(pattern in error_str.lower() for pattern in [
+        "sqlalchemy", 
+        "sql",
+        "postgresql",
+        "database",
+        "connection refused", 
+        "cannot connect to database",
+        "database connection",
+        "db session",
+        "timeout",
+        "operational error"
+    ]):
+        # Further classify based on more specific patterns
+        if any(pattern in error_str.lower() for pattern in [
+            "state", "persist", "checkpoint", "orchestration_state", "save state", "load state"
+        ]):
+            error_type = ErrorType.STATE_PERSISTENCE_ERROR
+        elif any(pattern in error_str.lower() for pattern in [
+            "memory", "conversation history", "chat history", "previous messages"
+        ]):
+            error_type = ErrorType.MEMORY_ERROR
+        else:
+            error_type = ErrorType.DATABASE_ERROR
     
     # Check for state persistence errors
     elif "state" in error_str.lower() and "persist" in error_str.lower():
         error_type = ErrorType.STATE_PERSISTENCE_ERROR
-    # Check for state persistence and database connectivity errors
-    elif any(pattern in error_str.lower() for pattern in [
-        "orchestration_state", 
-        "connection refused", 
-        "cannot connect to database",
-        "database connection",
-        "persistence",
-        "persist state"
-    ]):
-        error_type = ErrorType.STATE_PERSISTENCE_ERROR
-    elif "checkpoint" in error_str.lower() and ("save" in error_str.lower() or "load" in error_str.lower() or "create" in error_str.lower()):
-        error_type = ErrorType.STATE_PERSISTENCE_ERROR
-    elif "database" in error_str.lower() and ("timeout" in error_str.lower() or "connection" in error_str.lower()):
+    elif "checkpoint" in error_str.lower() and ("save" in error_str.lower() or "load" in error_str.lower() or "create" in error_str.lower() or "rollback" in error_str.lower()):
         error_type = ErrorType.STATE_PERSISTENCE_ERROR
     
     # Check for agent errors
@@ -216,6 +225,12 @@ def get_error_recovery_response(
     
     elif error_type == ErrorType.DATABASE_ERROR:
         return "I'm experiencing a technical issue with my memory. Let's continue, but I might need you to repeat information you've shared before."
+        
+    elif error_type == ErrorType.MEMORY_ERROR:
+        return "I'm having difficulty accessing my previous memory of our conversation. Let's continue, but I may not remember everything we discussed earlier."
+        
+    elif error_type == ErrorType.ORCHESTRATION_ERROR:
+        return "I'm having trouble coordinating between my different capabilities to handle your request. Could you try again with a more specific question?"
     
     # Default generic error message
     return "I apologize, but I encountered an issue while processing your request. Could you try again or rephrase your question?"
@@ -341,7 +356,12 @@ def retry_on_error(
         Decorated function
     """
     if retry_on is None:
-        retry_on = [ErrorType.LLM_RATE_LIMIT, ErrorType.STATE_PERSISTENCE_ERROR]
+        retry_on = [
+            ErrorType.LLM_RATE_LIMIT, 
+            ErrorType.STATE_PERSISTENCE_ERROR,
+            ErrorType.DATABASE_ERROR,
+            ErrorType.MEMORY_ERROR
+        ]
         
     def decorator(func):
         @wraps(func)

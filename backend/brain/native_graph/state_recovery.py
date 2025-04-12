@@ -109,6 +109,11 @@ async def resilient_persist_state(
     from backend.brain.native_graph.state_persistence import persist_state
     
     try:
+        # First check database connection before attempting persistence
+        db_connected = await check_db_connection(db)
+        if not db_connected:
+            logger.warning("Database connection check failed, will attempt persistence with retry logic")
+        
         # Attempt to persist state with retry logic
         return await with_retry(
             persist_state,
@@ -120,12 +125,19 @@ async def resilient_persist_state(
     except Exception as e:
         logger.error(f"Failed to persist state after retries: {str(e)}", exc_info=True)
         
+        # Determine the appropriate error type
+        error_str = str(e).lower()
+        error_type = ErrorType.STATE_PERSISTENCE_ERROR
+        
+        if any(pattern in error_str for pattern in ["connection", "timeout", "operational error"]):
+            error_type = ErrorType.DATABASE_ERROR
+        
         # Record the error but continue execution with graceful degradation
         error_state = record_error(
             state, 
             "resilient_persist_state", 
             e,
-            error_type=ErrorType.STATE_PERSISTENCE_ERROR
+            error_type=error_type
         )
         
         # Add information about the failed persistence
