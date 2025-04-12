@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 from typing import List, Dict, Any, Optional, Tuple
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, desc, and_
+from sqlalchemy import select, func, desc, and_, or_
 from sqlalchemy.orm import selectinload
 from pgvector.sqlalchemy import Vector
 
@@ -42,10 +42,14 @@ class ConversationRepository:
         Returns:
             Created conversation instance
         """
+        # Explicitly set timestamps
+        current_time = datetime.utcnow()
         conversation = Conversation(
             session_id=session_id,
             user_id=user_id,
-            meta_data=metadata or {}
+            meta_data=metadata or {},
+            created_at=current_time,
+            updated_at=current_time
         )
         self.db.add(conversation)
         await self.db.flush()
@@ -97,15 +101,30 @@ class ConversationRepository:
         Returns:
             Created message instance
         """
+        # Explicitly set the timestamp
+        current_time = datetime.utcnow()
         message = Message(
             conversation_id=conversation_id,
             role=role,
             content=content,
             embedding=embedding,
-            meta_data=metadata or {}
+            meta_data=metadata or {},
+            created_at=current_time
         )
         self.db.add(message)
         await self.db.flush()
+        
+        # Also update the conversation's updated_at timestamp
+        query = (
+            select(Conversation)
+            .where(Conversation.id == conversation_id)
+        )
+        result = await self.db.execute(query)
+        conversation = result.scalars().first()
+        
+        if conversation:
+            conversation.updated_at = current_time
+            
         return message
     
     async def get_conversation_messages(
@@ -184,10 +203,14 @@ class ConversationRepository:
         """
         start_date = datetime.utcnow() - timedelta(days=days)
         
+        # Handle the case where created_at might be null
         query = (
             select(Conversation)
-            .where(Conversation.created_at >= start_date)
-            .order_by(desc(Conversation.updated_at))
+            .where(or_(
+                Conversation.created_at >= start_date,
+                Conversation.created_at.is_(None)  # Include conversations with null timestamps
+            ))
+            .order_by(desc(Conversation.id))  # Fall back to ID ordering when timestamps are null
             .offset(offset)
             .limit(limit)
         )
