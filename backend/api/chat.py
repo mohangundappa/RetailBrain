@@ -21,8 +21,34 @@ def get_chat_service_direct():
     import os
     
     # Create minimal db engine for dependency
-    db_url = os.environ.get("DATABASE_URL", "").replace("postgresql://", "postgresql+asyncpg://")
-    engine = create_async_engine(db_url)
+    db_url = os.environ.get("DATABASE_URL", "")
+    
+    # Parse the DB URL to handle sslmode parameter (which asyncpg doesn't accept directly)
+    from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
+    
+    # Parse URL
+    parsed_url = urlparse(db_url)
+    
+    # Parse query parameters
+    query_params = parse_qs(parsed_url.query)
+    
+    # Remove sslmode parameter from query as asyncpg doesn't accept it
+    if 'sslmode' in query_params:
+        del query_params['sslmode']
+        
+    # Rebuild query string
+    query_string = urlencode(query_params, doseq=True)
+    
+    # Rebuild URL without sslmode parameter
+    parts = list(parsed_url)
+    parts[4] = query_string  # Replace query part
+    clean_url = urlunparse(parts)
+    
+    # Convert to asyncpg if needed
+    if not clean_url.startswith("postgresql+asyncpg://"):
+        clean_url = clean_url.replace("postgresql://", "postgresql+asyncpg://")
+    
+    engine = create_async_engine(clean_url)
     db = AsyncSession(engine)
     
     # Create minimal brain service for dependency

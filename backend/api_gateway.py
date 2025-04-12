@@ -4,7 +4,9 @@ This serves as the entry point for all API interactions with the Staples Brain s
 """
 import time
 import logging
+import os
 from typing import Dict, List, Any, Optional, Union
+from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
 
 import uvicorn
 from fastapi import FastAPI, Request, Response, Depends, HTTPException
@@ -20,6 +22,40 @@ from backend.api.circuit_breaker_fastapi import circuit_breaker_router
 from backend.api.telemetry_fastapi import telemetry_router
 from backend.api.routes_fastapi import api_router
 from backend.database.db import get_db
+
+# Utility function to sanitize database URLs for asyncpg
+def get_sanitized_db_url():
+    """
+    Get a database URL with the sslmode parameter removed for asyncpg compatibility.
+    
+    Returns:
+        str: Sanitized database URL
+    """
+    db_url = os.environ.get("DATABASE_URL", "")
+    
+    # Parse URL
+    parsed_url = urlparse(db_url)
+    
+    # Parse query parameters
+    query_params = parse_qs(parsed_url.query)
+    
+    # Remove sslmode parameter from query as asyncpg doesn't accept it
+    if 'sslmode' in query_params:
+        del query_params['sslmode']
+        
+    # Rebuild query string
+    query_string = urlencode(query_params, doseq=True)
+    
+    # Rebuild URL without sslmode parameter
+    parts = list(parsed_url)
+    parts[4] = query_string  # Replace query part
+    clean_url = urlunparse(parts)
+    
+    # Convert to asyncpg if needed
+    if not clean_url.startswith("postgresql+asyncpg://"):
+        clean_url = clean_url.replace("postgresql://", "postgresql+asyncpg://")
+    
+    return clean_url
 # Direct dependency functions to avoid circular imports
 async def get_chat_service_direct():
     """
