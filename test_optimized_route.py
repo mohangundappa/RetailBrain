@@ -85,10 +85,10 @@ def test_optimized_route():
         
         # Print results
         print(f"Success: {success}")
-        print(f"Selected Agent: {agent_name}")
-        print(f"Confidence: {confidence}")
+        print(f"Selected Agent: {agent_name if agent_name is not None else 'None'}")
+        print(f"Confidence: {confidence if confidence is not None else 'None'}")
         print(f"Response: {response_text[:100]}..." if len(response_text) > 100 else f"Response: {response_text}")
-        print(f"Selection time: {selection_time:.2f} seconds")
+        print(f"Selection time: {selection_time if selection_time is not None else 0:.2f} seconds")
         
         # Show embedding stats if available
         if embedding_stats:
