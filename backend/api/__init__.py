@@ -9,3 +9,6 @@ This file remains for backward compatibility, redirecting imports to the new loc
 from backend.endpoints.optimized_chat import router as optimized_chat_router
 from backend.endpoints.optimized_chat import main_router as chat_router
 from backend.endpoints.state_management import state_router
+
+# Forward schema imports for backward compatibility
+from backend.endpoints.schemas import agent_schema, entity_schema
