@@ -64,7 +64,7 @@ async def get_chat_service_direct():
     This is a temporary solution to avoid circular imports.
     """
     from backend.services.chat_service import ChatService
-    from backend.services.langgraph_brain_service import LangGraphBrainService
+    from backend.services.graph_brain_service import GraphBrainService
     from backend.config.config import get_config
     from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
     import os
@@ -86,8 +86,8 @@ async def get_chat_service_direct():
         logger.warning("Could not import LangGraphAgentFactory, continuing without database-driven agents")
         agent_factory = None
     
-    # Create LangGraph brain service with database session and agent factory
-    brain_service = LangGraphBrainService(
+    # Create Graph brain service with database session and agent factory
+    brain_service = GraphBrainService(
         db_session=db,
         config=config,
         agent_factory=agent_factory
