@@ -23,6 +23,7 @@ from backend.api.telemetry_fastapi import telemetry_router
 from backend.api.routes_fastapi import api_router
 from backend.api.state_management import state_router
 from backend.api.circuit_management import router as circuit_management_router
+from backend.api.optimized_chat import router as optimized_chat_router
 from backend.database.db import get_db
 
 # Utility function to sanitize database URLs for asyncpg
