@@ -660,6 +660,19 @@ Use this information to provide a helpful and contextually relevant response.
                 
         # Fall back to legacy memory
         return self.working_memory.get(key, default)
+        
+    def get_from_working_memory(self, key: str, default: Any = None) -> Any:
+        """
+        Get a value from working memory (simplified version for backward compatibility).
+        
+        Args:
+            key: Memory key
+            default: Default value to return if key not found
+            
+        Returns:
+            The stored value or default if not found
+        """
+        return self.get_working_memory(key, default)
     
     def update_context(self, agent_name: str, context_updates: Dict[str, Any]) -> None:
         """

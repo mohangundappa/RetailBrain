@@ -696,7 +696,65 @@ class BaseAgent(ABC):
         Returns:
             A confidence score between 0 and 1 indicating how well this agent can handle the input
         """
-        pass
+        # Default implementation uses a simple keyword matcher
+        # Subclasses should override this with more sophisticated logic
+        keywords = self.get_agent_keywords()
+        if not keywords:
+            return 0.5  # Default medium confidence
+            
+        # Count the number of keywords present in the input
+        user_input_lower = user_input.lower()
+        matched_keywords = sum(1 for keyword in keywords if keyword.lower() in user_input_lower)
+        
+        # Calculate confidence based on keyword matches
+        if not matched_keywords:
+            return 0.1  # Low base confidence if no keywords match
+            
+        # Scale confidence based on the ratio of matched keywords
+        # But ensure even a single match gives reasonable confidence
+        confidence = min(0.3 + (matched_keywords / len(keywords)) * 0.7, 0.95)
+        
+        return confidence
+    
+    def get_agent_keywords(self) -> List[str]:
+        """
+        Get a list of keywords that indicate this agent might be able to handle a request.
+        
+        Returns:
+            A list of keywords
+        """
+        # Default implementation, should be overridden by subclasses
+        return []
+        
+    async def handle_message(self, message: str, context: Optional[Dict[str, Any]] = None) -> str:
+        """
+        Handle a user message and generate a response.
+        
+        This is the main entry point for processing messages through the agent.
+        It calls the process method and extracts the text response.
+        
+        Args:
+            message: The user's message
+            context: Additional context information
+            
+        Returns:
+            The agent's response as a string
+        """
+        try:
+            # Process the message with the agent's specialized logic
+            result = await self.process(message, context)
+            
+            # Extract the response text
+            if isinstance(result, dict) and "response" in result:
+                return result["response"]
+            elif isinstance(result, str):
+                return result
+            else:
+                return f"I processed your request about '{message}', but I'm not sure how to respond."
+                
+        except Exception as e:
+            logger.error(f"Error handling message in {self.name}: {str(e)}", exc_info=True)
+            return "I'm sorry, but I encountered an error while processing your request. Please try again or rephrase your question."
     
     def _create_chain(self, template: str, input_variables: List[str]) -> RunnableSequence:
         """

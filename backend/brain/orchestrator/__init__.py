@@ -363,6 +363,39 @@ class Orchestrator:
         """
         return self.agents
         
+    def register_agent(self, agent):
+        """
+        Register a new agent with the orchestrator.
+        
+        Args:
+            agent: The agent instance to register
+            
+        Returns:
+            True if registration was successful
+        """
+        # Check if agent is already registered
+        for existing_agent in self.agents:
+            if existing_agent.name == agent.name:
+                logger.warning(f"Agent {agent.name} is already registered")
+                return False
+                
+        # Add the agent to the list
+        self.agents.append(agent)
+        logger.info(f"Registered agent: {agent.name}")
+        
+        # Track in telemetry if available
+        if self.telemetry:
+            try:
+                # Check if the method exists before calling it
+                if hasattr(self.telemetry, 'track_agent_registered'):
+                    self.telemetry.track_agent_registered(agent.name)
+                else:
+                    logger.debug(f"Telemetry doesn't have track_agent_registered method, skipping telemetry for agent registration")
+            except Exception as e:
+                logger.warning(f"Failed to track agent registration in telemetry: {str(e)}")
+            
+        return True
+        
     async def cleanup(self):
         """
         Clean up resources used by the orchestrator.
