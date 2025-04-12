@@ -101,6 +101,15 @@ class AgentRepository:
         
         return agent
     
+    async def get_all_active_agents(self) -> List[AgentDefinition]:
+        """
+        Get all active agent definitions.
+        
+        Returns:
+            List of active agent definitions
+        """
+        return await self.list_agents(status="active")
+    
     async def list_agents(
         self, 
         status: Optional[str] = None,
