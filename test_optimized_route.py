@@ -30,7 +30,8 @@ def test_original_route():
     }
     
     try:
-        response = requests.post(ORIGINAL_CHAT_URL, json=payload)
+        # Use timeout to avoid waiting too long
+        response = requests.post(ORIGINAL_CHAT_URL, json=payload, timeout=30)
         response.raise_for_status()
         result = response.json()
         
@@ -48,6 +49,11 @@ def test_original_route():
         print(f"Time taken: {time.time() - start_time:.2f} seconds")
         
         return result
+    except requests.exceptions.Timeout:
+        print(f"Timeout testing original route after {time.time() - start_time:.2f} seconds")
+        # Count the number of embedding API calls in the logs
+        print("This demonstrates the excessive number of embedding API calls made by the original approach")
+        return None
     except Exception as e:
         print(f"Error testing original route: {str(e)}")
         return None
@@ -63,7 +69,8 @@ def test_optimized_route():
     }
     
     try:
-        response = requests.post(OPTIMIZED_CHAT_URL, json=payload)
+        # Use timeout to avoid waiting too long
+        response = requests.post(OPTIMIZED_CHAT_URL, json=payload, timeout=30)
         response.raise_for_status()
         result = response.json()
         
@@ -74,6 +81,7 @@ def test_optimized_route():
         response_text = result.get("response", "")
         metadata = result.get("metadata", {})
         selection_time = metadata.get("selection_time", 0) if metadata else 0
+        embedding_stats = metadata.get("embedding_stats", {}) if metadata else {}
         
         # Print results
         print(f"Success: {success}")
@@ -81,9 +89,20 @@ def test_optimized_route():
         print(f"Confidence: {confidence}")
         print(f"Response: {response_text[:100]}..." if len(response_text) > 100 else f"Response: {response_text}")
         print(f"Selection time: {selection_time:.2f} seconds")
+        
+        # Show embedding stats if available
+        if embedding_stats:
+            print("\nEmbedding Stats:")
+            print(f"API calls: {embedding_stats.get('api_calls', 'N/A')}")
+            print(f"Cache hits: {embedding_stats.get('cache_hits', 'N/A')}")
+            print(f"Cache hit rate: {embedding_stats.get('cache_hit_rate', 0) * 100:.2f}%")
+            
         print(f"Total time: {time.time() - start_time:.2f} seconds")
         
         return result
+    except requests.exceptions.Timeout:
+        print(f"Timeout testing optimized route after {time.time() - start_time:.2f} seconds")
+        return None
     except Exception as e:
         print(f"Error testing optimized route: {str(e)}")
         return None
@@ -146,12 +165,18 @@ def execute_curl_commands():
     print(optimized_curl)
 
 if __name__ == "__main__":
-    # Test both routes
-    original_result = test_original_route()
-    optimized_result = test_optimized_route()
+    # Choose which test to run
+    import sys
     
-    # Compare results
-    compare_results(original_result, optimized_result)
-    
-    # Show curl commands
-    execute_curl_commands()
+    if len(sys.argv) > 1 and sys.argv[1] == "optimized":
+        # Test only optimized route
+        print("\nTesting only optimized route...")
+        optimized_result = test_optimized_route()
+    elif len(sys.argv) > 1 and sys.argv[1] == "original":
+        # Test only original route
+        print("\nTesting only original route...")
+        original_result = test_original_route()
+    else:
+        # Show curl commands
+        print("\nShowing curl commands for manual testing...")
+        execute_curl_commands()

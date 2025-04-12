@@ -7,7 +7,7 @@ from typing import Dict, List, Optional, Any, Union
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.brain.optimized.agent_definition import AgentDefinition, PatternCapability, AgentTool, EntityDefinition
+from backend.brain.optimized.agent_definition import AgentDefinition, PatternCapability, AgentTool, EntityDefinition as OptEntityDefinition
 from backend.brain.optimized.embedding_service import EmbeddingService
 from backend.brain.optimized.vector_store import AgentVectorStore
 from backend.brain.optimized.router import OptimizedAgentRouter
@@ -160,7 +160,7 @@ class OptimizedAgentFactory:
                 
             # Add entity definitions
             for db_entity in db_agent.entity_definitions:
-                entity = EntityDefinition(
+                entity = OptEntityDefinition(
                     name=db_entity.name,
                     entity_type=db_entity.entity_type,
                     description=db_entity.description,
