@@ -80,6 +80,12 @@ async def with_retry(
             )
             
             await asyncio.sleep(delay)
+    
+    # This should never be reached due to the if attempt > retries check above,
+    # but we include it to satisfy type checking
+    if last_exception:
+        raise last_exception
+    return await func(*args, **kwargs)
 
 
 async def resilient_persist_state(
@@ -259,46 +265,77 @@ async def process_pending_operations(
     
     # Check if state is dirty and needs to be persisted
     if execution.get("state_dirty", False):
-        try:
-            logger.info(f"Processing pending state persistence for session {session_id}")
-            from backend.brain.native_graph.state_persistence import persist_state
-            
-            # Attempt to persist the state
-            await persist_state(updated_state, session_id, db)
-            
-            # Mark state as clean
-            execution["state_dirty"] = False
-            updated_state["execution"] = execution
-            
-            logger.info(f"Successfully processed pending state persistence for session {session_id}")
-        except Exception as e:
-            logger.warning(f"Failed to process pending state persistence: {str(e)}")
+        # First check if DB connection is available
+        db_available = await check_db_connection(db)
+        if not db_available:
+            logger.warning("Database connection unavailable, skipping pending state persistence")
+        else:
+            try:
+                logger.info(f"Processing pending state persistence for session {session_id}")
+                from backend.brain.native_graph.state_persistence import persist_state
+                
+                # Attempt to persist the state with single retry
+                try:
+                    await persist_state(updated_state, session_id, db)
+                    
+                    # Mark state as clean
+                    execution["state_dirty"] = False
+                    updated_state["execution"] = execution
+                    
+                    logger.info(f"Successfully processed pending state persistence for session {session_id}")
+                except Exception as first_error:
+                    # One retry after a short delay
+                    logger.warning(f"First attempt to process pending state failed: {str(first_error)}, retrying once...")
+                    await asyncio.sleep(0.5)
+                    await persist_state(updated_state, session_id, db)
+                    
+                    # Mark state as clean if second attempt succeeds
+                    execution["state_dirty"] = False
+                    updated_state["execution"] = execution
+                    
+                    logger.info(f"Successfully processed pending state persistence on retry for session {session_id}")
+            except Exception as e:
+                logger.warning(f"Failed to process pending state persistence: {str(e)}", exc_info=True)
     
     # Process any pending checkpoints
     pending_checkpoints = execution.get("pending_checkpoints", [])
     if pending_checkpoints:
-        remaining_checkpoints = []
-        
-        for checkpoint in pending_checkpoints:
-            checkpoint_name = checkpoint.get("checkpoint_name")
-            if not checkpoint_name:
-                continue
-                
-            try:
-                logger.info(f"Processing pending checkpoint '{checkpoint_name}' for session {session_id}")
-                from backend.brain.native_graph.state_persistence import create_state_checkpoint
-                
-                # Attempt to create the checkpoint
-                await create_state_checkpoint(updated_state, session_id, checkpoint_name, db)
-                
-                logger.info(f"Successfully processed pending checkpoint '{checkpoint_name}' for session {session_id}")
-            except Exception as e:
-                logger.warning(f"Failed to process pending checkpoint '{checkpoint_name}': {str(e)}")
-                remaining_checkpoints.append(checkpoint)
-        
-        # Update pending checkpoints list
-        execution["pending_checkpoints"] = remaining_checkpoints
-        updated_state["execution"] = execution
+        # First check if DB connection is available
+        db_available = await check_db_connection(db)
+        if not db_available:
+            logger.warning("Database connection unavailable, skipping pending checkpoints")
+        else:
+            remaining_checkpoints = []
+            
+            for checkpoint in pending_checkpoints:
+                checkpoint_name = checkpoint.get("checkpoint_name")
+                if not checkpoint_name:
+                    continue
+                    
+                try:
+                    logger.info(f"Processing pending checkpoint '{checkpoint_name}' for session {session_id}")
+                    from backend.brain.native_graph.state_persistence import create_state_checkpoint
+                    
+                    # Attempt to create the checkpoint with single retry
+                    try:
+                        await create_state_checkpoint(updated_state, session_id, checkpoint_name, db)
+                        logger.info(f"Successfully processed pending checkpoint '{checkpoint_name}' for session {session_id}")
+                    except Exception as first_error:
+                        # One retry after a short delay
+                        logger.warning(f"First attempt to process checkpoint failed: {str(first_error)}, retrying once...")
+                        await asyncio.sleep(0.5)
+                        await create_state_checkpoint(updated_state, session_id, checkpoint_name, db)
+                        logger.info(f"Successfully processed pending checkpoint '{checkpoint_name}' on retry for session {session_id}")
+                except Exception as e:
+                    logger.warning(f"Failed to process pending checkpoint '{checkpoint_name}': {str(e)}", exc_info=True)
+                    # Add retry count or last attempt timestamp to help with cleanup later
+                    checkpoint["last_attempt"] = datetime.now().isoformat()
+                    checkpoint["retry_count"] = checkpoint.get("retry_count", 0) + 1
+                    remaining_checkpoints.append(checkpoint)
+            
+            # Update pending checkpoints list
+            execution["pending_checkpoints"] = remaining_checkpoints
+            updated_state["execution"] = execution
     
     return updated_state
 

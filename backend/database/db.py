@@ -72,8 +72,17 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
     Yields:
         AsyncSession: Database session
     """
-    async with async_session_factory() as session:
+    session = async_session_factory()
+    try:
+        yield session
+        await session.commit()
+    except Exception:
+        await session.rollback()
+        raise
+    finally:
         try:
-            yield session
-        finally:
             await session.close()
+        except Exception as e:
+            # Handle session already closed case
+            import logging
+            logging.getLogger("staples_brain").warning(f"Error closing session: {str(e)}")
