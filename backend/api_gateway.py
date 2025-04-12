@@ -21,6 +21,7 @@ from backend.api.agent_builder_fastapi import agent_builder_router
 from backend.api.circuit_breaker_fastapi import circuit_breaker_router
 from backend.api.telemetry_fastapi import telemetry_router
 from backend.api.routes_fastapi import api_router
+from backend.api.state_management import state_router
 from backend.database.db import get_db
 
 # Utility function to sanitize database URLs for asyncpg
@@ -184,6 +185,7 @@ app.include_router(chat_router, prefix=API_PREFIX)
 app.include_router(agent_builder_router, prefix=f"{API_PREFIX}/agent-builder")
 app.include_router(circuit_breaker_router, prefix=f"{API_PREFIX}/circuit-breakers")
 app.include_router(telemetry_router, prefix=API_PREFIX)
+app.include_router(state_router, prefix=API_PREFIX)
 app.include_router(api_router, prefix=API_PREFIX)
 
 # Mount static directories
