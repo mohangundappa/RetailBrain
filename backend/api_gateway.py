@@ -198,7 +198,7 @@ async def health_check(db: AsyncSession = Depends(get_db)):
         )
 
 
-@app.get(f"{API_PREFIX}/agents", response_model=AgentListResponse)
+@app.get(f"{API_PREFIX}/agents")
 async def list_agents(
     chat_service=Depends(get_chat_service_direct),
     db: AsyncSession = Depends(get_db)
@@ -213,22 +213,31 @@ async def list_agents(
         from sqlalchemy import select
         
         # Query all agent definitions
-        query = select(AgentDefinition)
-        query_result = await db.execute(query)
-        agent_definitions = query_result.scalars().all()
-        
-        # Create mapping of agent names to database info
-        agent_db_info = {}
-        for agent_def in agent_definitions:
-            agent_db_info[agent_def.name] = {
-                "id": str(agent_def.id),
-                "name": agent_def.name,
-                "type": agent_def.agent_type,
-                "status": agent_def.status,
-                "created_at": agent_def.created_at.isoformat() if agent_def.created_at else None,
-                "is_system": agent_def.is_system,
-                "version": agent_def.version
-            }
+        try:
+            query = select(AgentDefinition)
+            query_result = await db.execute(query)
+            agent_definitions = query_result.scalars().all()
+            
+            # Log the number of agent definitions found
+            logger.info(f"Found {len(agent_definitions)} agent definitions in database")
+            
+            # Create mapping of agent names to database info
+            agent_db_info = {}
+            for agent_def in agent_definitions:
+                logger.info(f"Processing agent definition: {agent_def.name}")
+                agent_db_info[agent_def.name] = {
+                    "id": str(agent_def.id),
+                    "name": agent_def.name,
+                    "type": agent_def.agent_type,
+                    "status": agent_def.status,
+                    "created_at": agent_def.created_at.isoformat() if agent_def.created_at else None,
+                    "is_system": agent_def.is_system,
+                    "version": agent_def.version,
+                    "description": agent_def.description
+                }
+        except Exception as db_error:
+            logger.error(f"Error querying agent definitions: {str(db_error)}", exc_info=True)
+            agent_db_info = {}
         
         # Enhanced agent information format
         detailed_agents = []
