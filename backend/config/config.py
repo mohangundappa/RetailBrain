@@ -38,6 +38,10 @@ API_VERSIONS = {
 }
 API_PREFIX = f"/api/{API_VERSION}"
 
+# Service configuration
+SERVICE_TIMEOUT = int(os.environ.get("SERVICE_TIMEOUT", "30"))  # Default timeout for service operations
+SERVICE_MAX_RETRIES = int(os.environ.get("SERVICE_MAX_RETRIES", "3"))  # Default number of retries for operations
+
 # Application version
 APP_VERSION = os.environ.get("APP_VERSION", "1.0.0")
 APP_NAME = "Staples Brain API"
@@ -68,6 +72,23 @@ class Config:
         "pool_timeout": DB_POOL_TIMEOUT,
         "pool_pre_ping": DB_POOL_PRE_PING,
     }
+    
+    # Service configuration
+    SERVICE_TIMEOUT = SERVICE_TIMEOUT
+    SERVICE_MAX_RETRIES = SERVICE_MAX_RETRIES
+    
+    # API configuration
+    API_VERSION = API_VERSION
+    API_VERSIONS = API_VERSIONS
+    API_PREFIX = API_PREFIX
+    
+    # Application information
+    APP_NAME = APP_NAME
+    APP_VERSION = APP_VERSION
+    APP_DESCRIPTION = APP_DESCRIPTION
+    
+    # Model configuration
+    OPENAI_MODEL = OPENAI_MODEL
 
 class DevelopmentConfig(Config):
     """Development configuration."""
