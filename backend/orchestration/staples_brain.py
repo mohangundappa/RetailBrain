@@ -175,6 +175,23 @@ class StaplesBrain:
             Agent details
         """
         return self.factory.get_agent_details(agent_id)
+        
+    def get_agent_by_name(self, agent_name: str) -> Any:
+        """
+        Get agent by its display name.
+        
+        Args:
+            agent_name: Agent display name
+            
+        Returns:
+            Agent instance
+        """
+        # Find agent ID by name
+        agent_details = self.factory.list_agent_details()
+        for agent_id, details in agent_details.items():
+            if details.get("name") == agent_name:
+                return self.factory.get_agent(agent_id)
+        return None
     
     def get_telemetry(self, session_id: Optional[str] = None, limit: int = 100) -> Dict[str, Any]:
         """

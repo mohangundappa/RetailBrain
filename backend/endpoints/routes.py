@@ -144,7 +144,7 @@ async def process_request(data: ProcessRequest):
         brain = get_brain()
         
         # Process request
-        response = await brain.process_request(user_input, context)
+        response = await brain.process_request(input_text=user_input, session_id=session_id, context=context)
         
         return response
         
@@ -472,7 +472,7 @@ async def chat(data: ChatRequest):
             context["agent_id"] = agent_id
             
         # Process request
-        response = await brain.process_request(message, context)
+        response = await brain.process_request(input_text=message, session_id=session_id, context=context)
         
         return {
             "success": True,
