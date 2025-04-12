@@ -251,7 +251,7 @@ class BrainService:
                 }
             }
     
-    async def list_agents(self) -> Dict[str, List[Dict[str, Any]]]:
+    async def list_agents(self) -> Dict[str, Any]:
         """
         Get a list of available agents.
         
@@ -259,22 +259,12 @@ class BrainService:
             Dictionary containing agent information
         """
         try:
-            agents = self.orchestrator.list_agents()
+            # Get agent names from orchestrator
+            agent_names = self.orchestrator.list_agents()
             
-            # Format agent information
-            formatted_agents = []
-            for agent in agents:
-                formatted_agents.append({
-                    "id": agent.id,
-                    "name": agent.name,
-                    "description": agent.description,
-                    "is_built_in": agent.is_built_in,
-                    "capabilities": agent.capabilities,
-                    "creator": agent.creator if hasattr(agent, "creator") else None,
-                    "created_at": agent.created_at if hasattr(agent, "created_at") else None,
-                })
-            
-            return {"agents": formatted_agents}
+            # For simple integration just return the names
+            # The API endpoint will add additional details from database
+            return {"agents": agent_names}
             
         except Exception as e:
             logger.error(f"Error listing agents: {str(e)}", exc_info=True)
@@ -380,12 +370,12 @@ class BrainService:
         # This would be implemented with actual telemetry data
         # For now, return placeholder data based on available agents
         try:
-            agents = self.orchestrator.list_agents()
+            agent_names = self.orchestrator.list_agents()
             distribution = {}
             
             # Create distribution based on agent names
-            for agent in agents:
-                distribution[agent.name] = 0
+            for agent_name in agent_names:
+                distribution[agent_name] = 0
             
             # For now, we're returning zeroes since we don't have real data
             # In a real system, this would query a database
