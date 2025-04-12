@@ -265,7 +265,7 @@ async def startup_db_client():
         
         # Initialize state persistence tables
         try:
-            from backend.orchestration import create_db_tables
+            from backend.orchestration.state import create_db_tables
             # Get a database session
             db = await anext(get_db())
             # Create state persistence tables

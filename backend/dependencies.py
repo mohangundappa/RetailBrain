@@ -84,7 +84,8 @@ async def get_brain_service(
             
             # Create LangGraph agent factory
             try:
-                from backend.brain.agents.langgraph_factory import LangGraphAgentFactory
+                # Use existing framework module
+                from backend.agents.framework.langgraph import LangGraphAgentFactory
                 agent_factory = LangGraphAgentFactory(db)
                 logger.debug("Created LangGraph agent factory for brain service")
             except ImportError:

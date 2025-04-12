@@ -12,7 +12,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.database.db import get_db
-from backend.brain.optimized.state_recovery import (
+from backend.orchestration.state.recovery import (
     resilient_create_checkpoint,
     resilient_persist_state,
     resilient_recover_state,
@@ -21,7 +21,7 @@ from backend.brain.optimized.state_recovery import (
     check_db_connection,
     process_pending_operations
 )
-from backend.brain.optimized.state_persistence import (
+from backend.orchestration.state.persistence import (
     StatePersistenceManager,
     ErrorType
 )
