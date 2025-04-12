@@ -66,6 +66,8 @@ class AgentVectorStore:
             self.agent_embeddings[agent.id] = embedding
             
             logger.info(f"Indexed agent: {agent.name} (ID: {agent.id})")
+            logger.info(f"Agent data store now contains {len(self.agent_data)} agents")
+            logger.info(f"Agent IDs in store: {list(self.agent_data.keys())}")
             return True
         except Exception as e:
             logger.error(f"Error indexing agent {agent.name}: {str(e)}")

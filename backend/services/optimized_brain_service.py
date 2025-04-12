@@ -133,6 +133,17 @@ class OptimizedBrainService:
         try:
             # Use optimized router to select agent
             start_time = __import__('time').time()
+            
+            # Make sure the router is initialized
+            if not self.router:
+                logger.error("Router not initialized in process_message")
+                return {
+                    "success": False,
+                    "error": "Router not initialized",
+                    "response": "I'm having trouble processing your request. Please try again later."
+                }
+                
+            # Call the route_and_prepare method on the router
             agent, confidence, route_context = await self.router.route_and_prepare(
                 message, session_id, context
             )
