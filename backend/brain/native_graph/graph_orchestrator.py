@@ -6,6 +6,7 @@ orchestration system for routing user requests to appropriate agents.
 """
 
 import logging
+import time
 from typing import Dict, Any, List, Optional, Tuple, Union, Callable
 from datetime import datetime
 
@@ -13,6 +14,7 @@ from langgraph.graph import StateGraph, END
 # AgentNode is not available in the current version, removing it
 from langgraph.prebuilt import ToolNode
 from langchain_openai import ChatOpenAI
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.brain.native_graph.state_definitions import OrchestrationState
 from backend.brain.native_graph.node_functions import (
@@ -175,7 +177,9 @@ class GraphOrchestrator:
         self, 
         message: str, 
         session_id: str,
-        context: Optional[Dict[str, Any]] = None
+        context: Optional[Dict[str, Any]] = None,
+        db_session: Optional[AsyncSession] = None,
+        recover_state: bool = True
     ) -> Dict[str, Any]:
         """
         Process a message and route to the appropriate agent.
@@ -184,27 +188,53 @@ class GraphOrchestrator:
             message: User's message text
             session_id: Session identifier
             context: Additional context for processing
+            db_session: Optional database session for state persistence
+            recover_state: Whether to attempt to recover state from previous session
             
         Returns:
             Response with agent output
         """
         logger.info(f"TRACE: Entered GraphOrchestrator.process_message")
         
-        # Initialize the state
-        state = initialize_state()
+        # Attempt to recover state from previous conversation if enabled
+        state = None
+        if recover_state and db_session:
+            try:
+                from backend.brain.native_graph.state_persistence import recover_state as recover_state_func
+                logger.info(f"Attempting to recover state for session {session_id}")
+                state = await recover_state_func(session_id, db_session)
+                
+                if state:
+                    logger.info(f"Successfully recovered state for session {session_id}")
+                    
+                    # Add the new user message to the recovered state
+                    state["conversation"]["last_user_message"] = message
+                    state["conversation"]["messages"].append({
+                        "role": "user",
+                        "content": message,
+                        "timestamp": datetime.now().isoformat()
+                    })
+            except Exception as e:
+                logger.warning(f"Error recovering state: {str(e)}")
+                state = None
         
-        # Update the session ID
-        conversation = state.get("conversation", {})
-        conversation["session_id"] = session_id
-        state["conversation"] = conversation
-        
-        # Add the user message to the state
-        state["conversation"]["last_user_message"] = message
-        state["conversation"]["messages"] = [{
-            "role": "user",
-            "content": message,
-            "timestamp": datetime.now().isoformat()
-        }]
+        # Initialize new state if recovery failed or was disabled
+        if not state:
+            # Initialize the state
+            state = initialize_state()
+            
+            # Update the session ID
+            conversation = state.get("conversation", {})
+            conversation["session_id"] = session_id
+            state["conversation"] = conversation
+            
+            # Add the user message to the state
+            state["conversation"]["last_user_message"] = message
+            state["conversation"]["messages"] = [{
+                "role": "user",
+                "content": message,
+                "timestamp": datetime.now().isoformat()
+            }]
         
         # Add available agents and their configs to the state
         agent_state = state.get("agent", {})
@@ -256,6 +286,25 @@ class GraphOrchestrator:
                 
                 # Log performance information
                 logger.info(f"Graph execution completed in {execution_time:.4f} seconds")
+                
+                # Persist the final state to the database if a session was provided
+                if db_session:
+                    try:
+                        from backend.brain.native_graph.state_persistence import persist_state
+                        
+                        # Save the state
+                        session_id = final_state.get("conversation", {}).get("session_id")
+                        if session_id:
+                            logger.info(f"Persisting final state for session {session_id}")
+                            await persist_state(final_state, session_id, db_session)
+                            
+                            # Create a checkpoint after every complete interaction
+                            from backend.brain.native_graph.state_persistence import create_state_checkpoint
+                            checkpoint_name = f"interaction_{len(final_state.get('conversation', {}).get('messages', []))//2}"
+                            await create_state_checkpoint(final_state, session_id, checkpoint_name, db_session)
+                            logger.info(f"Created checkpoint '{checkpoint_name}' for session {session_id}")
+                    except Exception as persist_error:
+                        logger.warning(f"Error persisting state: {str(persist_error)}")
                 
                 # Check for errors in execution state
                 errors = execution.get("errors", [])

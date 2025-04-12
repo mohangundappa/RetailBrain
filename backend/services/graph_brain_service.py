@@ -171,7 +171,9 @@ class GraphBrainService:
             result = await self.orchestrator.process_message(
                 message=message,
                 session_id=session_id,
-                context=context or {}
+                context=context or {},
+                db_session=self.db_session,
+                recover_state=True
             )
             
             # Return processed result
