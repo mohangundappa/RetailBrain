@@ -66,7 +66,7 @@ async def get_chat_service_direct():
     This is a temporary solution to avoid circular imports.
     """
     from backend.services.chat_service import ChatService
-    from backend.services.graph_brain_service import GraphBrainService
+    from backend.services.optimized_brain_service import OptimizedBrainService
     from backend.config.config import get_config
     from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
     import os

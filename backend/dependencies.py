@@ -12,8 +12,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.database.db import get_db
 from backend.services.chat_service import ChatService
 from backend.services.telemetry_service import TelemetryService
-# LangGraphBrainService was removed in favor of GraphBrainService
-from backend.services.graph_brain_service import GraphBrainService
+# Now using OptimizedBrainService as the primary brain service
+from backend.services.optimized_brain_service import OptimizedBrainService
 from backend.config.config import get_config, Config
 from backend.repositories.agent_repository import AgentRepository
 
@@ -22,8 +22,8 @@ logger = logging.getLogger("staples_brain")
 
 # Service factory for better testability
 _service_factory: Dict[str, Callable] = {
-    "brain_service": GraphBrainService,  # Use the native Graph brain service
-    "graph_brain_service": GraphBrainService,
+    "brain_service": OptimizedBrainService,  # Use the optimized brain service
+    "graph_brain_service": OptimizedBrainService,  # For backward compatibility
     "chat_service": ChatService,
     "telemetry_service": TelemetryService
 }
@@ -60,7 +60,7 @@ def get_app_config() -> Config:
 async def get_brain_service(
     db: AsyncSession = Depends(get_db),
     config: Config = Depends(get_app_config)
-) -> GraphBrainService:
+) -> OptimizedBrainService:
     """
     Get or create a brain service instance.
     Uses a singleton pattern to ensure only one instance exists.
@@ -70,7 +70,7 @@ async def get_brain_service(
         config: Application configuration
         
     Returns:
-        GraphBrainService instance
+        OptimizedBrainService instance
     
     Raises:
         HTTPException: If the brain service cannot be initialized
@@ -79,7 +79,7 @@ async def get_brain_service(
     
     try:
         if _brain_service is None:
-            logger.info("Initializing GraphBrainService")
+            logger.info("Initializing OptimizedBrainService")
             factory = _service_factory["brain_service"]
             
             # Create LangGraph agent factory
@@ -102,11 +102,11 @@ async def get_brain_service(
             if hasattr(_brain_service, 'initialize') and callable(getattr(_brain_service, 'initialize')):
                 await _brain_service.initialize()
             
-            logger.info("GraphBrainService initialization complete")
+            logger.info("OptimizedBrainService initialization complete")
         
         return _brain_service
     except Exception as e:
-        logger.error(f"Failed to initialize GraphBrainService: {str(e)}", exc_info=True)
+        logger.error(f"Failed to initialize OptimizedBrainService: {str(e)}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Brain service initialization failed"
@@ -148,7 +148,7 @@ async def get_telemetry_service(
 
 async def get_chat_service(
     db: AsyncSession = Depends(get_db),
-    brain_service: GraphBrainService = Depends(get_brain_service),
+    brain_service: OptimizedBrainService = Depends(get_brain_service),
     telemetry_service: TelemetryService = Depends(get_telemetry_service),
     config: Config = Depends(get_app_config)
 ) -> AsyncGenerator[ChatService, None]:

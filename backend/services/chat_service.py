@@ -14,10 +14,10 @@ from backend.repositories.conversation_repository import ConversationRepository
 from backend.services.telemetry_service import TelemetryService
 from backend.database.models import Conversation, Message
 from backend.config.config import Config
-from backend.services.graph_brain_service import GraphBrainService
+from backend.services.optimized_brain_service import OptimizedBrainService
 
 # Define a type alias for brain services
-BrainServiceType = GraphBrainService
+BrainServiceType = OptimizedBrainService
 
 # Set up logging
 logger = logging.getLogger("staples_brain")
