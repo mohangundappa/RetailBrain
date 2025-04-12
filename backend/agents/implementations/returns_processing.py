@@ -5,7 +5,7 @@ This agent helps customers process returns for their Staples orders.
 import logging
 from typing import Dict, Any, Optional, List
 
-from backend.agents.base_agent import BaseAgent
+from backend.agents.framework.base import BaseAgent
 from backend.config.agent_constants import RETURNS_PROCESSING_AGENT
 
 logger = logging.getLogger(__name__)

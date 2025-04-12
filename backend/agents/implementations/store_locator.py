@@ -9,7 +9,7 @@ import requests
 from langchain_core.prompts import ChatPromptTemplate, PromptTemplate
 from langchain_core.runnables import RunnableSequence
 from langchain_core.output_parsers import StrOutputParser
-from backend.agents.base_agent import BaseAgent, EntityDefinition
+from backend.agents.framework.base import BaseAgent, EntityDefinition
 from backend.api_services.store_api import StoreApiClient
 
 logger = logging.getLogger(__name__)

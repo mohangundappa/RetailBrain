@@ -60,7 +60,7 @@ class ProductInfoAgent(BaseAgent):
         self._formatting_chain = self._create_formatting_chain()
         
         # Setup entity collection
-        from backend.agents.base_agent import EntityDefinition
+        from backend.agents.framework.base import EntityDefinition
         
         # Set up entity definitions
         product_name = EntityDefinition(
