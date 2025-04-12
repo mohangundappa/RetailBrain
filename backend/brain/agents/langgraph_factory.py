@@ -8,10 +8,17 @@ from agent definitions stored in the database.
 import logging
 import json
 from typing import Dict, Any, List, Optional, Union
+
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 
 from backend.brain.agents.langgraph_agent import LangGraphAgent
 from backend.repositories.agent_repository import AgentRepository
+from backend.database.agent_schema import (
+    AgentDefinition, AgentDeployment, AgentComposition,
+    LlmAgentConfiguration, RuleAgentConfiguration, RetrievalAgentConfiguration,
+    AgentPattern, AgentPatternEmbedding, AgentTool, AgentResponseTemplate
+)
 
 logger = logging.getLogger(__name__)
 
@@ -204,6 +211,106 @@ class LangGraphAgentFactory:
         
         logger.info("Initialized LangGraph agent factory")
     
+    def _agent_model_to_dict(self, agent: AgentDefinition) -> Dict[str, Any]:
+        """
+        Convert an agent database model to a dictionary for agent creation.
+        
+        Args:
+            agent: AgentDefinition instance from the database
+            
+        Returns:
+            Dictionary representation of the agent
+        """
+        # Start with the base fields
+        result = {
+            "id": str(agent.id),
+            "name": agent.name,
+            "description": agent.description or f"Agent {agent.name}",
+            "agent_type": agent.agent_type,
+            "status": agent.status,
+            "version": agent.version,
+            "is_system": agent.is_system,
+            "created_at": agent.created_at.isoformat() if agent.created_at else None,
+            "updated_at": agent.updated_at.isoformat() if agent.updated_at else None,
+            "created_by": agent.created_by,
+            "patterns": [],
+            "tools": [],
+            "response_templates": {},
+            "entity_mappings": []
+        }
+        
+        # Add patterns if available
+        if hasattr(agent, 'patterns') and agent.patterns:
+            result["patterns"] = [
+                {
+                    "id": str(pattern.id),
+                    "pattern": pattern.pattern,
+                    "confidence": pattern.confidence,
+                    "embedding": pattern.embedding.embedding if hasattr(pattern, 'embedding') and pattern.embedding else None
+                }
+                for pattern in agent.patterns
+            ]
+        
+        # Add tools if available
+        if hasattr(agent, 'tools') and agent.tools:
+            result["tools"] = [
+                {
+                    "id": str(tool.id),
+                    "name": tool.name,
+                    "description": tool.description,
+                    "parameters": tool.parameters,
+                    "required": tool.required,
+                    "tool_type": tool.tool_type
+                }
+                for tool in agent.tools
+            ]
+            
+        # Add response templates if available
+        if hasattr(agent, 'response_templates') and agent.response_templates:
+            for template in agent.response_templates:
+                result["response_templates"][template.template_key] = {
+                    "content": template.content,
+                    "parameters": template.parameters,
+                    "description": template.description
+                }
+        
+        # Add entity mappings if available
+        if hasattr(agent, 'entity_mappings') and agent.entity_mappings:
+            result["entity_mappings"] = [
+                {
+                    "id": str(mapping.id),
+                    "entity_id": str(mapping.entity_id),
+                    "entity_name": mapping.entity.name if hasattr(mapping, 'entity') and mapping.entity else None,
+                    "is_required": mapping.is_required,
+                    "prompt_for_value": mapping.prompt_for_value,
+                    "prompt_message": mapping.prompt_message
+                }
+                for mapping in agent.entity_mappings
+            ]
+            
+        # Add type-specific configuration
+        if agent.agent_type == "LLM" and hasattr(agent, 'llm_configuration') and agent.llm_configuration:
+            result["llm_config"] = {
+                "model": agent.llm_configuration.model,
+                "temperature": agent.llm_configuration.temperature,
+                "max_tokens": agent.llm_configuration.max_tokens,
+                "system_prompt": agent.llm_configuration.system_prompt,
+                "prompt_template": agent.llm_configuration.prompt_template
+            }
+        elif agent.agent_type == "RULE" and hasattr(agent, 'rule_configuration') and agent.rule_configuration:
+            result["rule_config"] = {
+                "rules": agent.rule_configuration.rules,
+                "default_response": agent.rule_configuration.default_response
+            }
+        elif agent.agent_type == "RETRIEVAL" and hasattr(agent, 'retrieval_configuration') and agent.retrieval_configuration:
+            result["retrieval_config"] = {
+                "datasource_id": agent.retrieval_configuration.datasource_id,
+                "max_results": agent.retrieval_configuration.max_results,
+                "similarity_threshold": agent.retrieval_configuration.similarity_threshold
+            }
+            
+        return result
+            
     async def get_all_active_agents(self) -> List[LangGraphAgent]:
         """
         Get all active agents from the database.
@@ -213,21 +320,22 @@ class LangGraphAgentFactory:
         """
         try:
             # Get agent definitions from repository
-            agent_definitions = await self.agent_repository.list_agents(
-                status="active",  # Only active agents
-                with_details=True  # Include all agent details
-            )
+            agent_definitions = await self.agent_repository.get_all_active_agents()
             
             agents = []
             for agent_def in agent_definitions:
                 try:
-                    agent = await self.create_agent_from_definition(agent_def)
+                    # Convert the model to a dictionary
+                    agent_dict = self._agent_model_to_dict(agent_def)
+                    
+                    # Create agent from definition
+                    agent = await self.create_agent_from_definition(agent_dict)
                     if agent:
                         agents.append(agent)
                         # Cache the agent
-                        self.agents[agent.id] = agent
+                        self.agents[agent.get_id()] = agent
                 except Exception as e:
-                    logger.error(f"Error creating agent {agent_def.get('id', 'unknown')}: {str(e)}", exc_info=True)
+                    logger.error(f"Error creating agent {getattr(agent_def, 'id', 'unknown')}: {str(e)}", exc_info=True)
             
             # If no agents were created, create a default agent
             if not agents:
@@ -238,7 +346,7 @@ class LangGraphAgentFactory:
                     description="A default agent that responds to all requests"
                 )
                 agents.append(default_agent)
-                self.agents[default_agent.id] = default_agent
+                self.agents[default_agent.get_id()] = default_agent
             
             logger.info(f"Loaded {len(agents)} agents from database")
             return agents
@@ -251,7 +359,7 @@ class LangGraphAgentFactory:
                 name="Default Agent (Error Recovery)",
                 description="A default agent created due to an error loading agents"
             )
-            self.agents[default_agent.id] = default_agent
+            self.agents[default_agent.get_id()] = default_agent
             return [default_agent]
     
     async def create_agent_from_definition(self, agent_def: Dict[str, Any]) -> Optional[LangGraphAgent]:
@@ -306,14 +414,17 @@ class LangGraphAgentFactory:
         
         try:
             # Get agent definition from repository
-            agent_def = await self.agent_repository.get_agent_by_id(agent_id)
+            agent_def = await self.agent_repository.get_agent_definition(agent_id, load_related=True)
             
             if not agent_def:
                 logger.warning(f"Agent with ID {agent_id} not found")
                 return None
             
+            # Convert the model to a dictionary
+            agent_dict = self._agent_model_to_dict(agent_def)
+            
             # Create agent from definition
-            agent = await self.create_agent_from_definition(agent_def)
+            agent = await self.create_agent_from_definition(agent_dict)
             
             # Cache the agent if created successfully
             if agent:
@@ -336,25 +447,33 @@ class LangGraphAgentFactory:
             LangGraphAgent instance or None if not found
         """
         try:
-            # Get agent definition from repository
-            agent_def = await self.agent_repository.get_agent_by_name(agent_name)
+            # First find any cached agent with this name
+            for agent_id, agent in self.agents.items():
+                if agent.get_name() == agent_name:
+                    return agent
+            
+            # If not found in cache, query the database
+            # Using a query to find agent by name
+            query = select(AgentDefinition).where(AgentDefinition.name == agent_name)
+            result = await self.agent_repository.session.execute(query)
+            agent_def = result.scalar_one_or_none()
             
             if not agent_def:
                 logger.warning(f"Agent with name {agent_name} not found")
                 return None
             
-            agent_id = agent_def.get("id")
+            # Get the full definition with all relations
+            agent_def = await self.agent_repository.get_agent_definition(str(agent_def.id), load_related=True)
             
-            # Check cache first
-            if agent_id and agent_id in self.agents:
-                return self.agents[agent_id]
+            # Convert the model to a dictionary
+            agent_dict = self._agent_model_to_dict(agent_def)
             
             # Create agent from definition
-            agent = await self.create_agent_from_definition(agent_def)
+            agent = await self.create_agent_from_definition(agent_dict)
             
             # Cache the agent if created successfully
-            if agent and agent_id:
-                self.agents[agent_id] = agent
+            if agent:
+                self.agents[agent.get_id()] = agent
             
             return agent
             
