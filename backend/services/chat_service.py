@@ -6,7 +6,7 @@ import uuid
 import json
 import logging
 from datetime import datetime
-from typing import Dict, List, Any, Optional, Tuple, Protocol
+from typing import Dict, List, Any, Optional, Tuple, Protocol, Union, TypeVar
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -15,6 +15,17 @@ from backend.services.langgraph_brain_service import LangGraphBrainService
 from backend.services.telemetry_service import TelemetryService
 from backend.database.models import Conversation, Message
 from backend.config.config import Config
+
+# Import the new brain service
+try:
+    from backend.services.graph_brain_service import GraphBrainService
+except ImportError:
+    # If the new brain service is not available, create a dummy type
+    class GraphBrainService:
+        pass
+
+# Define a type alias for brain services
+BrainServiceType = Union[LangGraphBrainService, GraphBrainService]
 
 # Set up logging
 logger = logging.getLogger("staples_brain")
@@ -70,7 +81,7 @@ class ChatService:
     def __init__(
         self, 
         db: AsyncSession,
-        brain_service: LangGraphBrainService,
+        brain_service: BrainServiceType,
         telemetry_service: Optional[TelemetryService] = None,
         config: Optional[Config] = None
     ):
@@ -79,7 +90,7 @@ class ChatService:
         
         Args:
             db: Database session
-            brain_service: LangGraphBrainService instance
+            brain_service: Brain service instance (LangGraphBrainService or GraphBrainService)
             telemetry_service: Optional telemetry service instance
             config: Application configuration
         """

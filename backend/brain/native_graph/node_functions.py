@@ -218,9 +218,15 @@ JSON Output:
     try:
         result = special_case_chain.invoke({"message": user_message})
         
-        # Parse the result as JSON
-        special_case_data = json.loads(result)
-        
+        # Parse the result as JSON with error handling
+        try:
+            special_case_data = json.loads(result)
+        except json.JSONDecodeError as e:
+            logger.error(f"Error parsing special case JSON: {str(e)}")
+            logger.debug(f"Raw result: {result}")
+            # Return the original state without modification if JSON parsing fails
+            return new_state
+            
         category = special_case_data.get("category", "none")
         confidence = float(special_case_data.get("confidence", 0.0))
         response = special_case_data.get("response")

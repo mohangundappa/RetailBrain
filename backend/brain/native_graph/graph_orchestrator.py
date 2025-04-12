@@ -228,13 +228,19 @@ class GraphOrchestrator:
         # Process the message through the graph
         try:
             # Execute the graph with the initial state
-            for event in self.compiled_graph.stream(state):
-                # This loop will execute for each step in the graph
-                # We could log or track these events if needed
-                pass
+            events = list(self.compiled_graph.stream(state))
             
-            # Get the final state
-            final_state = event.state
+            # Get the final state from the last event
+            if events:
+                final_state = events[-1].values()
+            else:
+                # Return default response if no events were generated
+                return {
+                    "response": "I'm unable to process your request at this time. No agents are available.",
+                    "agent": "error",
+                    "confidence": 0.0,
+                    "error": "No events generated during processing"
+                }
             
             # Extract the response information
             conversation = final_state.get("conversation", {})
