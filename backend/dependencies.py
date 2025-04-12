@@ -10,11 +10,9 @@ from fastapi import Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.database.db import get_db
-from backend.services.brain_service import BrainService
 from backend.services.chat_service import ChatService
 from backend.services.telemetry_service import TelemetryService
 from backend.services.langgraph_brain_service import LangGraphBrainService
-from backend.services.hybrid_brain_service import HybridBrainService
 from backend.config.config import get_config, Config
 from backend.repositories.agent_repository import AgentRepository
 
@@ -23,8 +21,7 @@ logger = logging.getLogger("staples_brain")
 
 # Service factory for better testability
 _service_factory: Dict[str, Callable] = {
-    "brain_service": HybridBrainService,  # Use the hybrid brain service by default
-    "legacy_brain_service": BrainService,
+    "brain_service": LangGraphBrainService,  # Use the LangGraph brain service
     "langgraph_brain_service": LangGraphBrainService,
     "chat_service": ChatService,
     "telemetry_service": TelemetryService
@@ -62,7 +59,7 @@ def get_app_config() -> Config:
 async def get_brain_service(
     db: AsyncSession = Depends(get_db),
     config: Config = Depends(get_app_config)
-) -> HybridBrainService:
+) -> LangGraphBrainService:
     """
     Get or create a brain service instance.
     Uses a singleton pattern to ensure only one instance exists.
@@ -84,13 +81,13 @@ async def get_brain_service(
             logger.info("Initializing BrainService")
             factory = _service_factory["brain_service"]
             
-            # Create agent factory if needed
+            # Create LangGraph agent factory
             try:
-                from backend.brain.factory import AgentFactory
-                agent_factory = AgentFactory(db)
-                logger.debug("Created agent factory for brain service")
+                from backend.brain.agents.langgraph_factory import LangGraphAgentFactory
+                agent_factory = LangGraphAgentFactory(db)
+                logger.debug("Created LangGraph agent factory for brain service")
             except ImportError:
-                logger.warning("Could not import AgentFactory, continuing without database-driven agents")
+                logger.warning("Could not import LangGraphAgentFactory, continuing without database-driven agents")
                 agent_factory = None
             
             # Initialize brain service with database session and agent factory
@@ -150,7 +147,7 @@ async def get_telemetry_service(
 
 async def get_chat_service(
     db: AsyncSession = Depends(get_db),
-    brain_service: HybridBrainService = Depends(get_brain_service),
+    brain_service: LangGraphBrainService = Depends(get_brain_service),
     telemetry_service: TelemetryService = Depends(get_telemetry_service),
     config: Config = Depends(get_app_config)
 ) -> AsyncGenerator[ChatService, None]:
