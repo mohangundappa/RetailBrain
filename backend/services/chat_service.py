@@ -145,26 +145,27 @@ class ChatService:
         conversation = None
         
         try:
-            # Step 1: Get or create conversation
-            # Using a fresh transaction explicitly
+            # Step 1: Get or create conversation with explicit transaction control
             conversation = None
             user_message = None
             assistant_message = None
             
-            # Get conversation
-            conversation = await self.conversation_repo.get_conversation_by_session_id(session_id)
-            
-            # Create conversation if it doesn't exist
-            if not conversation:
-                logger.debug(f"Creating new conversation for session: {session_id}")
-                conversation = await self.conversation_repo.create_conversation(session_id)
-            
-            # Store user message
-            user_message = await self.conversation_repo.add_message(
-                conversation_id=conversation.id,
-                role="user",
-                content=message
-            )
+            # Start a transaction for conversation operations
+            async with self.db.begin():
+                # Get conversation
+                conversation = await self.conversation_repo.get_conversation_by_session_id(session_id)
+                
+                # Create conversation if it doesn't exist
+                if not conversation:
+                    logger.debug(f"Creating new conversation for session: {session_id}")
+                    conversation = await self.conversation_repo.create_conversation(session_id)
+                
+                # Store user message
+                user_message = await self.conversation_repo.add_message(
+                    conversation_id=conversation.id,
+                    role="user",
+                    content=message
+                )
             
             # Step 2: Process with brain outside of transaction
             brain_response = await self.brain_service.process_request(
@@ -173,13 +174,14 @@ class ChatService:
                 context=context
             )
             
-            # Step 3: Store the assistant response
-            assistant_message = await self.conversation_repo.add_message(
-                conversation_id=conversation.id,
-                role="assistant",
-                content=brain_response["response"],
-                metadata=brain_response["metadata"]
-            )
+            # Step 3: Store the assistant response in a separate transaction
+            async with self.db.begin():
+                assistant_message = await self.conversation_repo.add_message(
+                    conversation_id=conversation.id,
+                    role="assistant",
+                    content=brain_response["response"],
+                    metadata=brain_response["metadata"]
+                )
             
             # Step 4: Record telemetry if needed
             await self.telemetry_service.record_conversation(
@@ -205,14 +207,15 @@ class ChatService:
             
             # Make sure we have a valid conversation before attempting to store error
             if conversation:
-                # Store system error message
+                # Store system error message in a separate transaction
                 try:
-                    await self.conversation_repo.add_message(
-                        conversation_id=conversation.id,
-                        role="system",
-                        content=f"Error: {str(e)}",
-                        metadata={"error": True}
-                    )
+                    async with self.db.begin():
+                        await self.conversation_repo.add_message(
+                            conversation_id=conversation.id,
+                            role="system",
+                            content=f"Error: {str(e)}",
+                            metadata={"error": True}
+                        )
                 except Exception as inner_error:
                     logger.error(f"Error storing error message: {str(inner_error)}", exc_info=True)
             
@@ -240,16 +243,20 @@ class ChatService:
         Returns:
             Tuple of (conversation, messages)
         """
-        # Implementation would be added to repository layer
-        # For now, simulate with two separate queries
-        conversation = await self.conversation_repo.get_conversation_by_session_id(session_id)
-        if not conversation:
-            return None, []
-            
-        messages = await self.conversation_repo.get_conversation_messages(
-            conversation_id=conversation.id,
-            limit=limit or self.default_limit
-        )
+        # Implementation with explicit transaction control
+        conversation = None
+        messages = []
+        
+        # Use a transaction to ensure consistent read
+        async with self.db.begin():
+            conversation = await self.conversation_repo.get_conversation_by_session_id(session_id)
+            if not conversation:
+                return None, []
+                
+            messages = await self.conversation_repo.get_conversation_messages(
+                conversation_id=conversation.id,
+                limit=limit or self.default_limit
+            )
         
         return conversation, messages
     
@@ -301,9 +308,12 @@ class ChatService:
                 "metadata": msg.metadata
             })
         
-        total_messages = await self.conversation_repo.count_conversation_messages(
-            conversation_id=conversation.id
-        )
+        # Get total message count in a transaction
+        total_messages = 0
+        async with self.db.begin():
+            total_messages = await self.conversation_repo.count_conversation_messages(
+                conversation_id=conversation.id
+            )
         
         return {
             "success": True,
@@ -319,6 +329,82 @@ class ChatService:
                 "has_more": total_messages > (offset + len(formatted_messages))
             }
         }
+    
+    async def list_sessions(
+        self,
+        limit: int = 20,
+        offset: int = 0
+    ) -> Dict[str, Any]:
+        """
+        List active sessions/conversations.
+        
+        Args:
+            limit: Maximum number of sessions to return
+            offset: Offset for pagination
+            
+        Returns:
+            Dictionary with session information
+        """
+        try:
+            # Fetch recent conversations with explicit transaction control
+            conversations = []
+            async with self.db.begin():
+                # Get conversations from repository
+                conversations = await self.conversation_repo.get_recent_conversations(
+                    days=30,  # Last 30 days
+                    limit=limit,
+                    offset=offset
+                )
+            
+            # Format sessions for the response
+            sessions = []
+            for conv in conversations:
+                sessions.append({
+                    "id": str(conv.id),
+                    "session_id": conv.session_id,
+                    "created_at": conv.created_at.isoformat() if conv.created_at else None,
+                    "updated_at": conv.updated_at.isoformat() if conv.updated_at else None,
+                    "user_id": conv.user_id,
+                    "metadata": conv.meta_data or {}
+                })
+            
+            return {
+                "success": True,
+                "sessions": sessions,
+                "metadata": {
+                    "limit": limit,
+                    "offset": offset,
+                    "total": len(sessions)  # For full count, would need another query
+                }
+            }
+        except Exception as e:
+            logger.error(f"Error listing sessions: {str(e)}", exc_info=True)
+            return {
+                "success": False,
+                "error": f"Error listing sessions: {str(e)}",
+                "sessions": []
+            }
+    
+    async def get_session_messages(
+        self,
+        session_id: str,
+        limit: int = 50
+    ) -> Dict[str, Any]:
+        """
+        Get all messages for a specific session.
+        
+        Args:
+            session_id: Session identifier
+            limit: Maximum number of messages to return
+            
+        Returns:
+            Dictionary with messages
+        """
+        # This is just a wrapper around get_conversation_history for API consistency
+        return await self.get_conversation_history(
+            session_id=session_id,
+            limit=limit
+        )
     
     async def list_agents(self) -> Dict[str, Any]:
         """

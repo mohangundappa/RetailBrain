@@ -58,12 +58,11 @@ def get_chat_service_direct():
         echo=False,
     )
     
-    # Create session maker with autocommit mode to avoid transaction issues
+    # Create session maker with standard settings
     session_factory = async_sessionmaker(
         engine,
         expire_on_commit=False,
-        class_=AsyncSession,
-        autocommit=True  # Important: enables autocommit mode to avoid transaction conflicts
+        class_=AsyncSession
     )
     
     # Create session
@@ -74,7 +73,7 @@ def get_chat_service_direct():
     config = get_config()
     brain_service = LangGraphBrainService(db_session=db, config=config)
     
-    # Return properly initialized ChatService with autocommit session
+    # Return properly initialized ChatService with the session
     return ChatService(db=db, brain_service=brain_service)
 
 # Set up router
