@@ -337,6 +337,32 @@ class GraphOrchestrator:
                                 logger.info(f"Created checkpoint '{checkpoint_name}' for session {session_id}")
                     except Exception as persist_error:
                         logger.warning(f"Error persisting state: {str(persist_error)}", exc_info=True)
+                        
+                        # Check database connectivity
+                        try:
+                            from backend.brain.native_graph.state_recovery import check_db_connection
+                            is_connected = await check_db_connection(db_session)
+                            if not is_connected:
+                                logger.error("Database connection is unavailable for state persistence")
+                            else:
+                                # Add to final state that there was a persistence error
+                                execution = final_state.get("execution", {})
+                                errors = execution.get("errors", [])
+                                
+                                # Add database error
+                                from backend.brain.native_graph.error_handling import classify_error, ErrorType
+                                error_type = classify_error(persist_error)
+                                
+                                errors.append({
+                                    "node": "state_persistence",
+                                    "error": str(persist_error),
+                                    "error_type": error_type,
+                                    "timestamp": datetime.now().isoformat()
+                                })
+                                execution["errors"] = errors
+                                final_state["execution"] = execution
+                        except Exception as check_error:
+                            logger.error(f"Error checking database connection: {str(check_error)}", exc_info=True)
                 
                 # Check for errors in execution state
                 errors = execution.get("errors", [])
@@ -426,6 +452,19 @@ class GraphOrchestrator:
                 user_message = "Your request is too complex for me to process right now. Could you try with a shorter message?"
             elif error_type == ErrorType.LLM_API_ERROR:
                 user_message = "I'm having trouble connecting to my knowledge base. Please try again shortly."
+            elif error_type == ErrorType.DATABASE_ERROR:
+                user_message = "I'm having trouble accessing my memory at the moment. Please try again shortly."
+                
+                # Try to recover by checking database connection
+                if db_session:
+                    try:
+                        from backend.brain.native_graph.state_recovery import check_db_connection
+                        is_connected = await check_db_connection(db_session)
+                        if not is_connected:
+                            logger.warning("Database connection is down during request processing")
+                            user_message = "I'm experiencing a temporary issue with my memory system. Please try again in a moment."
+                    except Exception as db_error:
+                        logger.error(f"Error checking database connection: {str(db_error)}", exc_info=True)
             
             return {
                 "response": user_message,
