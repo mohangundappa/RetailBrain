@@ -1,6 +1,9 @@
 """
 Optimized Brain Service for Staples Brain.
 This service uses the optimized agent selection components for improved performance.
+
+This implementation replaces GraphBrainService and maintains API compatibility 
+while providing optimized performance.
 """
 import logging
 from typing import Dict, List, Optional, Any, Tuple, Union
