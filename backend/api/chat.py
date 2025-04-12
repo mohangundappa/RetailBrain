@@ -121,7 +121,7 @@ class MessageListResponse(BaseModel):
 
 
 # Endpoints
-@router.post("/messages", response_model=MessageResponse)
+@router.post("/messages")
 async def send_message(
     request: MessageRequest,
     chat_service: ChatService = Depends(get_chat_service_direct)
@@ -137,6 +137,7 @@ async def send_message(
         MessageResponse: Response from Staples Brain
     """
     try:
+        # Remove response_model to avoid serialization issues
         result = await chat_service.process_message(
             message=request.content,
             session_id=request.session_id,
@@ -145,16 +146,30 @@ async def send_message(
                 "metadata": request.metadata or {}
             }
         )
-        return result
+        
+        # Return the result directly without FastAPI validation/serialization
+        from fastapi.responses import JSONResponse
+        return JSONResponse(content=result)
         
     except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Error processing message: {str(e)}"
-        )
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Error processing message: {str(e)}", exc_info=True)
+        
+        # Return a structured error response
+        error_response = {
+            "success": False,
+            "message_id": f"error-{id(e)}",
+            "content": f"Error processing message: {str(e)}",
+            "session_id": request.session_id or "unknown",
+            "error": str(e)
+        }
+        
+        from fastapi.responses import JSONResponse
+        return JSONResponse(content=error_response, status_code=200)
 
 
-@router.get("/sessions", response_model=SessionResponse)
+@router.get("/sessions")
 async def list_sessions(
     limit: int = 20,
     offset: int = 0,
@@ -172,17 +187,30 @@ async def list_sessions(
         SessionResponse: List of sessions
     """
     try:
+        # Remove response_model to avoid serialization issues with SQLAlchemy objects
         result = await chat_service.list_sessions(limit=limit, offset=offset)
-        return result
+        
+        # Return the result directly without FastAPI validation/serialization
+        from fastapi.responses import JSONResponse
+        return JSONResponse(content=result)
         
     except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Error listing sessions: {str(e)}"
-        )
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Error listing sessions: {str(e)}", exc_info=True)
+        
+        # Return a structured error response instead of raising an exception
+        error_response = {
+            "success": False,
+            "error": f"Error listing sessions: {str(e)}",
+            "sessions": []
+        }
+        
+        from fastapi.responses import JSONResponse
+        return JSONResponse(content=error_response)
 
 
-@router.get("/sessions/{session_id}/messages", response_model=MessageListResponse)
+@router.get("/sessions/{session_id}/messages")
 async def get_session_messages(
     session_id: str,
     limit: int = 50,
@@ -200,11 +228,15 @@ async def get_session_messages(
         MessageListResponse: List of messages in the session
     """
     try:
+        # Remove response_model to avoid serialization issues with SQLAlchemy objects
         result = await chat_service.get_session_messages(
             session_id=session_id,
             limit=limit
         )
-        return result
+        
+        # Return the result directly without FastAPI validation/serialization
+        from fastapi.responses import JSONResponse
+        return JSONResponse(content=result)
         
     except Exception as e:
         import logging
@@ -213,9 +245,12 @@ async def get_session_messages(
         
         # Return a structured error response instead of raising an exception
         # This makes it easier for clients to handle errors
-        return {
+        error_response = {
             "success": False,
             "messages": [],
             "error": f"Error retrieving messages: {str(e)}",
             "session_id": session_id
         }
+        
+        from fastapi.responses import JSONResponse
+        return JSONResponse(content=error_response)

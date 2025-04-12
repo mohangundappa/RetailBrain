@@ -296,73 +296,97 @@ class ChatService:
         Returns:
             Dictionary containing messages and metadata
         """
-        # Apply limit constraints
-        if limit is None:
-            limit = self.default_limit
-        elif limit > self.max_limit:
-            limit = self.max_limit
-        
-        # Use the optimized method to get conversation and messages
-        conversation, messages = await self.get_conversation_with_messages(
-            session_id=session_id,
-            limit=limit
-        )
-        
-        if not conversation:
+        try:
+            # Apply limit constraints
+            if limit is None:
+                limit = self.default_limit
+            elif limit > self.max_limit:
+                limit = self.max_limit
+            
+            # Use the optimized method to get conversation and messages
+            conversation, messages = await self.get_conversation_with_messages(
+                session_id=session_id,
+                limit=limit
+            )
+            
+            if not conversation:
+                return {
+                    "success": False,
+                    "error": "Conversation not found",
+                    "session_id": session_id,
+                    "messages": []
+                }
+            
+            # Format messages with safe timestamp handling
+            formatted_messages = []
+            for msg in messages:
+                # Handle possibly None timestamp
+                timestamp = None
+                if msg.created_at:
+                    timestamp = msg.created_at.isoformat()
+                
+                # Convert metadata to a safe dictionary
+                safe_metadata = {}
+                if msg.metadata:
+                    try:
+                        # Only include JSON serializable data
+                        import json
+                        # First convert to JSON string then back to dict to strip non-serializable items
+                        safe_metadata = json.loads(json.dumps(msg.metadata))
+                    except (TypeError, json.JSONDecodeError):
+                        # If metadata has non-serializable items, fall back to basic dict
+                        # Extract primitive types that should be serializable
+                        for k, v in msg.metadata.items():
+                            if isinstance(v, (str, int, float, bool, type(None))):
+                                safe_metadata[k] = v
+                
+                formatted_messages.append({
+                    "id": str(msg.id),
+                    "role": msg.role,
+                    "content": msg.content,
+                    "timestamp": timestamp,
+                    "metadata": safe_metadata  # Use safely processed metadata
+                })
+            
+            # Get total message count in a transaction
+            total_messages = 0
+            async with self.db.begin():
+                total_messages = await self.conversation_repo.count_conversation_messages(
+                    conversation_id=conversation.id
+                )
+            
+            # Safely handle dates that might be None
+            created_at = None
+            updated_at = None
+            
+            if conversation.created_at:
+                created_at = conversation.created_at.isoformat()
+            
+            if conversation.updated_at:
+                updated_at = conversation.updated_at.isoformat()
+                
+            return {
+                "success": True,
+                "session_id": session_id,
+                "messages": formatted_messages,
+                "conversation_id": str(conversation.id),
+                "created_at": created_at,
+                "updated_at": updated_at,
+                "pagination": {
+                    "limit": limit,
+                    "offset": offset,
+                    "total": total_messages,
+                    "has_more": total_messages > (offset + len(formatted_messages))
+                }
+            }
+        except Exception as e:
+            logger.error(f"Error getting conversation history: {str(e)}", exc_info=True)
             return {
                 "success": False,
-                "error": "Conversation not found",
+                "error": f"Error getting conversation history: {str(e)}",
                 "session_id": session_id,
                 "messages": []
             }
-        
-        # Format messages with safe timestamp handling
-        formatted_messages = []
-        for msg in messages:
-            # Handle possibly None timestamp
-            timestamp = None
-            if msg.created_at:
-                timestamp = msg.created_at.isoformat()
-                
-            formatted_messages.append({
-                "id": str(msg.id),
-                "role": msg.role,
-                "content": msg.content,
-                "timestamp": timestamp,
-                "metadata": msg.metadata or {}  # Ensure metadata is never None
-            })
-        
-        # Get total message count in a transaction
-        total_messages = 0
-        async with self.db.begin():
-            total_messages = await self.conversation_repo.count_conversation_messages(
-                conversation_id=conversation.id
-            )
-        
-        # Safely handle dates that might be None
-        created_at = None
-        updated_at = None
-        
-        if conversation.created_at:
-            created_at = conversation.created_at.isoformat()
-        
-        if conversation.updated_at:
-            updated_at = conversation.updated_at.isoformat()
-            
-        return {
-            "success": True,
-            "session_id": session_id,
-            "messages": formatted_messages,
-            "conversation_id": str(conversation.id),
-            "created_at": created_at,
-            "updated_at": updated_at,
-            "pagination": {
-                "limit": limit,
-                "offset": offset,
-                "total": total_messages,
-                "has_more": total_messages > (offset + len(formatted_messages))
-            }
-        }
     
     async def list_sessions(
         self,
@@ -403,13 +427,28 @@ class ChatService:
                 if conv.updated_at:
                     updated_at = conv.updated_at.isoformat()
                 
+                # Convert metadata to a safe dictionary
+                safe_metadata = {}
+                if conv.meta_data:
+                    try:
+                        # Only include JSON serializable data
+                        import json
+                        # First convert to JSON string then back to dict to strip non-serializable items
+                        safe_metadata = json.loads(json.dumps(conv.meta_data))
+                    except (TypeError, json.JSONDecodeError):
+                        # If metadata has non-serializable items, fall back to basic dict
+                        # Extract primitive types that should be serializable
+                        for k, v in conv.meta_data.items():
+                            if isinstance(v, (str, int, float, bool, type(None))):
+                                safe_metadata[k] = v
+                
                 sessions.append({
                     "id": str(conv.id),
                     "session_id": conv.session_id,
                     "created_at": created_at,
                     "updated_at": updated_at,
                     "user_id": conv.user_id,
-                    "metadata": conv.meta_data or {}
+                    "metadata": safe_metadata
                 })
             
             return {
