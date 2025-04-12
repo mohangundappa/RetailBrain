@@ -1834,6 +1834,19 @@ wheels = [
 ]
 
 [[package]]
+name = "spark-parser"
+version = "1.8.9"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "click" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/d4/ec/eb81227524ce6991cb2ea0e5570804b569c118e6ceb58d205059b6777fda/spark_parser-1.8.9.tar.gz", hash = "sha256:a7bb97b97953fb8bf0cd8158d820b6467ef1e7f747738e82248ae4c824f1e25a", size = 118345 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/e1/c3/745adc57618998882a6e120cedebfba6ebf76aa9052c8b89e49c0fe47c2e/spark_parser-1.8.9-py3-none-any.whl", hash = "sha256:e4d366116268010100f054ebda99b3b880c64e4b0aa3d58629ec79e6d033b077", size = 17985 },
+    { url = "https://files.pythonhosted.org/packages/49/14/d2e92845c424583a14a2ddd44d46dd0ca176e7a8cacd06095e5c0877d0cd/spark_parser-1.8.9-py38-none-any.whl", hash = "sha256:0a96852dacfbe3a267bba6c9ebc1fcab8904158a5045107267e310e8d18919e5", size = 18048 },
+]
+
+[[package]]
 name = "sqlalchemy"
 version = "2.0.40"
 source = { registry = "https://pypi.org/simple" }
@@ -1906,6 +1919,7 @@ dependencies = [
     { name = "sqlalchemy" },
     { name = "trafilatura" },
     { name = "twilio" },
+    { name = "uncompyle6" },
     { name = "uvicorn" },
     { name = "werkzeug" },
 ]
@@ -1943,6 +1957,7 @@ requires-dist = [
     { name = "sqlalchemy", specifier = ">=2.0.40" },
     { name = "trafilatura", specifier = ">=2.0.0" },
     { name = "twilio", specifier = ">=9.5.2" },
+    { name = "uncompyle6", specifier = ">=3.9.2" },
     { name = "uvicorn", specifier = ">=0.34.0" },
     { name = "werkzeug", specifier = ">=3.1.3" },
 ]
@@ -2114,6 +2129,20 @@ wheels = [
 ]
 
 [[package]]
+name = "uncompyle6"
+version = "3.9.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "click" },
+    { name = "spark-parser" },
+    { name = "xdis" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/87/e0/5833832d47492e53bdc04de69c924c01a30144ce1277363e318aa0f0ce7d/uncompyle6-3.9.2.tar.gz", hash = "sha256:6f70980ffe08a64b114b6871832fd02d86c99035f8976a8f1f8121dad6fca425", size = 2500020 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/91/a9/5b42f33c1d39dc5e1c9197ec1046cbe6d98efb74947b70be833099a30c62/uncompyle6-3.9.2-py3-none-any.whl", hash = "sha256:cf699888b7198b896fbd33208cc3dbc81cdc59018fede7b90694d6a3cd30fd59", size = 358789 },
+]
+
+[[package]]
 name = "urllib3"
 version = "2.3.0"
 source = { registry = "https://pypi.org/simple" }
@@ -2145,6 +2174,24 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/9f/69/83029f1f6300c5fb2471d621ab06f6ec6b3324685a2ce0f9777fd4a8b71e/werkzeug-3.1.3.tar.gz", hash = "sha256:60723ce945c19328679790e3282cc758aa4a6040e4bb330f53d30fa546d44746", size = 806925 }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/52/24/ab44c871b0f07f491e5d2ad12c9bd7358e527510618cb1b803a88e986db1/werkzeug-3.1.3-py3-none-any.whl", hash = "sha256:54b78bf3716d19a65be4fceccc0d1d7b89e608834989dfae50ea87564639213e", size = 224498 },
+]
+
+[[package]]
+name = "xdis"
+version = "6.1.3"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "click" },
+    { name = "six" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/66/eb/60217c9ef49001a65dd2039b639421a659125a10a6af95548d54b7b7125e/xdis-6.1.3.tar.gz", hash = "sha256:0faa662e7a84da6d8d8fe08b3a294039c2ac655768db9760a866bb4dd36b2ef9", size = 436490 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/7e/4f/cf762c66ed5a4e124c044a19c7a1e6d80e07dade2755482b7e7ca847df5f/xdis-6.1.3-py310-none-any.whl", hash = "sha256:f7749bdd4da77aba8144b72c7a31e55a24b8fa353b6b11f829487f4853cba43e", size = 223827 },
+    { url = "https://files.pythonhosted.org/packages/70/fb/0b70d3a1433e0802bb06a3458d550009e354e440f6db84113f3fe54c61f3/xdis-6.1.3-py312-none-any.whl", hash = "sha256:b1b25331547206a3cf28b5ac274fc5966353cebd81e14357f53abb3ee1853215", size = 188033 },
+    { url = "https://files.pythonhosted.org/packages/79/40/39016116af1ae7b647592c331f62b3da2cf95c8e96ec6bd34f26ecf3b07f/xdis-6.1.3-py36-none-any.whl", hash = "sha256:880d763fd8258332d98e19d665050e280f102246aeffa107424639ddabe18829", size = 223850 },
+    { url = "https://files.pythonhosted.org/packages/e7/4c/f087fbef702420bdd4406ab2af727f4106f285e1c1d9feeddef3eaed4747/xdis-6.1.3-py37-none-any.whl", hash = "sha256:3dcfbdca383190082e504af8d41a44a85fa89a5169f3315f0e83cfece036433d", size = 223824 },
+    { url = "https://files.pythonhosted.org/packages/e4/39/ff70647e5848c9aeb868aa142914c40e3b5b8ff36164ed751029881317d0/xdis-6.1.3-py38-none-any.whl", hash = "sha256:355583f310a4e8549ac2522c843e4bec926fba5e998e68087c679e7592ca9954", size = 223829 },
+    { url = "https://files.pythonhosted.org/packages/26/64/534565fa6c36b2ac165094093b18195e0e9482c5872effdc2453329fd7d9/xdis-6.1.3-py39-none-any.whl", hash = "sha256:c525d3be0c55f8eeb7eb0908a31ff4a4e5cfffd77eeeee68ff2ae966b377d6d7", size = 223846 },
 ]
 
 [[package]]
