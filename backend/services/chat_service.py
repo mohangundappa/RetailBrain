@@ -174,32 +174,37 @@ class ChatService:
                 context=context
             )
             
+            # Safely extract metadata values with defaults
+            metadata = brain_response.get("metadata", {})
+            
             # Step 3: Store the assistant response in a separate transaction
             async with self.db.begin():
                 assistant_message = await self.conversation_repo.add_message(
                     conversation_id=conversation.id,
                     role="assistant",
                     content=brain_response["response"],
-                    metadata=brain_response["metadata"]
+                    metadata=metadata  # Using the safely extracted metadata
                 )
             
             # Step 4: Record telemetry if needed
+            
             await self.telemetry_service.record_conversation(
                 session_id=session_id,
                 user_input=message,
                 response=brain_response["response"],
-                selected_agent=brain_response["metadata"]["agent"],
-                confidence=brain_response["metadata"]["confidence"],
-                processing_time=brain_response["metadata"]["processing_time"]
+                selected_agent=metadata.get("agent", "unknown"),
+                confidence=metadata.get("confidence", 0.0),
+                processing_time=metadata.get("processing_time", 0.0)
             )
             
+            # Construct response with safe metadata access
             return {
                 "success": True,
                 "message_id": str(assistant_message.id),
                 "content": brain_response["response"],
                 "session_id": session_id,
-                "agent_type": brain_response["metadata"].get("agent", "default"),
-                "metadata": brain_response["metadata"]
+                "agent_type": metadata.get("agent", "default"),
+                "metadata": metadata
             }
             
         except Exception as e:
@@ -315,13 +320,23 @@ class ChatService:
                 conversation_id=conversation.id
             )
         
+        # Safely handle dates that might be None
+        created_at = None
+        updated_at = None
+        
+        if conversation.created_at:
+            created_at = conversation.created_at.isoformat()
+        
+        if conversation.updated_at:
+            updated_at = conversation.updated_at.isoformat()
+            
         return {
             "success": True,
             "session_id": session_id,
             "messages": formatted_messages,
             "conversation_id": str(conversation.id),
-            "created_at": conversation.created_at.isoformat() if conversation.created_at else None,
-            "updated_at": conversation.updated_at.isoformat() if conversation.updated_at else None,
+            "created_at": created_at,
+            "updated_at": updated_at,
             "pagination": {
                 "limit": limit,
                 "offset": offset,
