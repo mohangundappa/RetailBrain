@@ -18,6 +18,13 @@ from langchain_core.output_parsers import StrOutputParser
 
 from backend.brain.native_graph.state_definitions import OrchestrationState
 from backend.brain.agents.langgraph_agent import LangGraphAgent
+from backend.brain.native_graph.error_handling import (
+    with_error_handling, 
+    parse_json_with_recovery, 
+    record_error,
+    retry_on_error,
+    ErrorType
+)
 
 logger = logging.getLogger(__name__)
 
@@ -163,6 +170,7 @@ def record_execution_step(state: OrchestrationState, node_name: str) -> Orchestr
     return new_state
 
 
+@with_error_handling("handle_special_cases")
 def handle_special_cases(state: OrchestrationState) -> OrchestrationState:
     """
     Handle special cases like greetings, goodbyes, and human requests.
@@ -218,44 +226,36 @@ JSON Output:
     # Create and invoke the chain
     special_case_chain = special_case_prompt | llm | StrOutputParser()
     
-    try:
-        result = special_case_chain.invoke({"message": user_message})
-        
-        # Parse the result as JSON with error handling
-        try:
-            special_case_data = json.loads(result)
-        except json.JSONDecodeError as e:
-            logger.error(f"Error parsing special case JSON: {str(e)}")
-            logger.debug(f"Raw result: {result}")
-            # Return the original state without modification if JSON parsing fails
-            return new_state
-            
-        category = special_case_data.get("category", "none")
-        confidence = float(special_case_data.get("confidence", 0.0))
-        response = special_case_data.get("response")
-        
-        if category != "none" and confidence > 0.7:
-            # Update agent state to indicate special case
-            agent_state = {**new_state.get("agent", {})}
-            agent_state["special_case_detected"] = True
-            agent_state["special_case_type"] = category
-            agent_state["special_case_response"] = response
-            new_state["agent"] = agent_state
-        
-        logger.info(f"Special case detection: {category}, confidence: {confidence}")
-        
-    except Exception as e:
-        logger.error(f"Error checking special cases: {str(e)}", exc_info=True)
-        # Record error in execution state
-        execution = {**new_state.get("execution", {})}
-        errors = execution.get("errors", [])
-        errors.append({
-            "node": "handle_special_cases",
-            "error": str(e),
-            "timestamp": datetime.now().isoformat()
-        })
-        execution["errors"] = errors
-        new_state["execution"] = execution
+    # Use retry_on_error for LLM API calls in a synchronous context
+    @retry_on_error(
+        max_retries=3,
+        retry_on=[ErrorType.LLM_RATE_LIMIT, ErrorType.LLM_API_ERROR]
+    )
+    def invoke_special_case_detection(message: str) -> str:
+        return special_case_chain.invoke({"message": message})
+    
+    # Invoke the chain with retry logic
+    result = invoke_special_case_detection(user_message)
+    
+    # Parse the result as JSON with robust error recovery
+    special_case_data = parse_json_with_recovery(
+        result,
+        default_value={"category": "none", "confidence": 0.0, "response": None}
+    )
+    
+    category = special_case_data.get("category", "none")
+    confidence = float(special_case_data.get("confidence", 0.0))
+    response = special_case_data.get("response")
+    
+    if category != "none" and confidence > 0.7:
+        # Update agent state to indicate special case
+        agent_state = {**new_state.get("agent", {})}
+        agent_state["special_case_detected"] = True
+        agent_state["special_case_type"] = category
+        agent_state["special_case_response"] = response
+        new_state["agent"] = agent_state
+    
+    logger.info(f"Special case detection: {category}, confidence: {confidence}")
     
     return new_state
 
