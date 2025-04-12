@@ -45,6 +45,12 @@ def parse_args():
     )
     
     parser.add_argument(
+        "-e", "--error-handling",
+        action="store_true",
+        help="Run error handling and state persistence tests"
+    )
+    
+    parser.add_argument(
         "-v", "--verbose",
         action="store_true",
         help="Show verbose output"
