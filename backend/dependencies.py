@@ -55,11 +55,18 @@ def get_app_config() -> Config:
     return get_config()
 
 
-async def get_brain_service() -> BrainService:
+async def get_brain_service(
+    db: AsyncSession = Depends(get_db),
+    config: Config = Depends(get_app_config)
+) -> BrainService:
     """
     Get or create a brain service instance.
     Uses a singleton pattern to ensure only one instance exists.
     
+    Args:
+        db: Database session
+        config: Application configuration
+        
     Returns:
         BrainService instance
     
@@ -72,7 +79,27 @@ async def get_brain_service() -> BrainService:
         if _brain_service is None:
             logger.info("Initializing BrainService")
             factory = _service_factory["brain_service"]
-            _brain_service = factory()
+            
+            # Create agent factory if needed
+            try:
+                from backend.brain.factory import AgentFactory
+                agent_factory = AgentFactory(db)
+                logger.debug("Created agent factory for brain service")
+            except ImportError:
+                logger.warning("Could not import AgentFactory, continuing without database-driven agents")
+                agent_factory = None
+            
+            # Initialize brain service with database session and agent factory
+            _brain_service = factory(
+                db_session=db,
+                config=config,
+                agent_factory=agent_factory
+            )
+            
+            # Initialize agents from database if possible
+            if hasattr(_brain_service, 'initialize') and callable(getattr(_brain_service, 'initialize')):
+                await _brain_service.initialize()
+            
             logger.info("BrainService initialization complete")
         
         return _brain_service

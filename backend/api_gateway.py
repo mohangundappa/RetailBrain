@@ -21,13 +21,14 @@ from backend.api.telemetry_fastapi import telemetry_router
 from backend.api.routes_fastapi import api_router
 from backend.database.db import get_db
 # Direct dependency functions to avoid circular imports
-def get_chat_service_direct():
+async def get_chat_service_direct():
     """
     Get a ChatService instance directly.
     This is a temporary solution to avoid circular imports.
     """
     from backend.services.chat_service import ChatService
     from backend.services.brain_service import BrainService
+    from backend.config.config import get_config
     from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
     import os
     
@@ -36,8 +37,28 @@ def get_chat_service_direct():
     engine = create_async_engine(db_url)
     db = AsyncSession(engine)
     
-    # Create minimal brain service for dependency
-    brain_service = BrainService()
+    # Get configuration
+    config = get_config()
+    
+    # Try to create agent factory
+    try:
+        from backend.brain.factory import AgentFactory
+        agent_factory = AgentFactory(db)
+        logger.debug("Created agent factory for brain service (API direct)")
+    except ImportError:
+        logger.warning("Could not import AgentFactory, continuing without database-driven agents")
+        agent_factory = None
+    
+    # Create brain service with database session and agent factory
+    brain_service = BrainService(
+        db_session=db,
+        config=config,
+        agent_factory=agent_factory
+    )
+    
+    # Initialize agents from database if possible
+    if hasattr(brain_service, 'initialize') and callable(getattr(brain_service, 'initialize')):
+        await brain_service.initialize()
     
     # Return properly initialized ChatService
     return ChatService(db=db, brain_service=brain_service)
@@ -164,7 +185,7 @@ async def health_check(db: AsyncSession = Depends(get_db)):
 
 @app.get(f"{API_PREFIX}/agents", response_model=AgentListResponse)
 async def list_agents(
-    chat_service: ChatService = Depends(get_chat_service_direct)
+    chat_service=Depends(get_chat_service_direct)
 ):
     """List all available agents"""
     try:
@@ -175,13 +196,15 @@ async def list_agents(
             result = create_success_response(
                 data=result,
                 metadata={
-                    "api_version": API_VERSION
+                    "api_version": API_VERSION,
+                    "db_agents": True  # Indicate these agents are from the database
                 }
             )
             
         return result
         
     except Exception as e:
+        logger.error(f"Error listing agents: {str(e)}", exc_info=True)
         return create_error_response(
             error_message=f"Error listing agents: {str(e)}",
             data={"agents": []},
@@ -270,7 +293,7 @@ async def get_session_events(
 @app.get(f"{API_PREFIX}/stats")
 async def get_system_stats(
     days: int = 7,
-    chat_service: ChatService = Depends(get_chat_service_direct)
+    chat_service=Depends(get_chat_service_direct)
 ):
     """Get system statistics"""
     try:
@@ -285,13 +308,15 @@ async def get_system_stats(
                 },
                 metadata={
                     "days": days,
-                    "api_version": API_VERSION
+                    "api_version": API_VERSION,
+                    "db_agents": True  # Indicate these agents are from the database
                 }
             )
             
         return result
         
     except Exception as e:
+        logger.error(f"Error getting system stats: {str(e)}", exc_info=True)
         return create_error_response(
             error_message=f"Error getting system stats: {str(e)}",
             data={
@@ -346,6 +371,53 @@ async def global_exception_handler(request, exc):
         )
     )
 
+
+# Test endpoint for checking database-driven agents
+@app.get(f"{API_PREFIX}/agent-db-test")
+async def test_database_agents():
+    """Test database-driven agent loading"""
+    try:
+        from backend.database.agent_schema import AgentDefinition
+        from sqlalchemy import select
+        from backend.database.db import get_async_session
+
+        # Create a session
+        async_session = get_async_session()
+        async with async_session() as session:
+            # Query all agent definitions
+            query = select(AgentDefinition)
+            result = await session.execute(query)
+            agents = result.scalars().all()
+            
+            # Format agent information
+            formatted_agents = []
+            for agent in agents:
+                formatted_agents.append({
+                    "id": str(agent.id),
+                    "name": agent.name,
+                    "agent_type": agent.agent_type,
+                    "description": agent.description,
+                    "status": agent.status,
+                    "patterns_count": len(agent.patterns) if agent.patterns else 0,
+                    "tools_count": len(agent.tools) if agent.tools else 0,
+                    "response_templates_count": len(agent.response_templates) if agent.response_templates else 0,
+                })
+            
+            return create_success_response(
+                data={"database_agents": formatted_agents},
+                metadata={
+                    "count": len(formatted_agents),
+                    "api_version": API_VERSION,
+                    "db_driven": True
+                }
+            )
+    except Exception as e:
+        logger.error(f"Error testing database agents: {str(e)}", exc_info=True)
+        return create_error_response(
+            error_message=f"Error testing database agents: {str(e)}",
+            data={"database_agents": []},
+            log_error=True
+        )
 
 # Startup and shutdown events
 @app.on_event("startup")
