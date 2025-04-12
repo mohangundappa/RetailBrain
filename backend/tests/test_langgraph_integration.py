@@ -17,7 +17,7 @@ from sqlalchemy.orm import sessionmaker
 from backend.config.config import Config
 from backend.database.db import get_db
 from backend.brain.agents import LangGraphAgent, LangGraphAgentFactory, LangGraphOrchestrator
-from backend.services.langgraph_brain_service import LangGraphBrainService
+from backend.services.graph_brain_service import GraphBrainService
 
 
 class TestLangGraphIntegration(unittest.TestCase):
@@ -57,15 +57,15 @@ class TestLangGraphIntegration(unittest.TestCase):
         self.assertEqual(agent.name, "Test Agent")
         self.assertEqual(agent.description, "A test agent")
 
-    @patch('backend.services.langgraph_brain_service.ChatOpenAI')
+    @patch('backend.services.graph_brain_service.ChatOpenAI')
     def test_create_brain_service(self, mock_chat_openai):
-        """Test creating a LangGraph brain service."""
+        """Test creating a Graph brain service."""
         # Mock the LLM
         mock_llm = MagicMock()
         mock_chat_openai.return_value = mock_llm
 
         # Create the brain service
-        service = LangGraphBrainService(db_session=self.mock_session)
+        service = GraphBrainService(db_session=self.mock_session)
 
         # Assert the service was created
         self.assertIsNotNone(service)
