@@ -1,98 +1,78 @@
 """
-State definitions for the LangGraph-based orchestration system.
+Type definitions for LangGraph state objects.
 
-This module defines the TypedDict classes that represent the state used in the LangGraph
-orchestration flow. These state definitions provide a structured way to manage information
-throughout the graph execution.
+This module provides TypedDict definitions for the various state objects used in
+the LangGraph orchestration system, enabling better type checking and documentation.
 """
 
-from typing import TypedDict, List, Dict, Any, Optional, Union
-from pydantic import BaseModel, Field
-from datetime import datetime
+from typing import Dict, List, Any, Optional, TypedDict, Union
 
-
-class Message(BaseModel):
-    """A single message in a conversation."""
-    role: str = Field(..., description="Role of the message sender (user or assistant)")
-    content: str = Field(..., description="Content of the message")
-    timestamp: datetime = Field(default_factory=datetime.now, description="Timestamp of the message")
-    agent: Optional[str] = Field(None, description="Agent that generated the message (for assistant messages)")
-    
-    class Config:
-        arbitrary_types_allowed = True
-
-
-class EntityInfo(BaseModel):
-    """Information about an extracted entity."""
-    name: str = Field(..., description="Name of the entity")
-    value: Any = Field(..., description="Value of the entity")
-    confidence: float = Field(1.0, description="Confidence score for the entity extraction")
-    source: str = Field("direct", description="Source of the entity (direct, inferred, etc.)")
-    timestamp: datetime = Field(default_factory=datetime.now, description="When the entity was extracted")
-
-
-class AgentSelectionInfo(BaseModel):
-    """Information about an agent selection decision."""
-    agent_id: str = Field(..., description="ID of the selected agent")
-    agent_name: str = Field(..., description="Name of the selected agent")
-    confidence: float = Field(..., description="Confidence score for the selection")
-    reason: str = Field(..., description="Reason for selecting this agent")
-
-
+# Basic state components
 class ConversationState(TypedDict, total=False):
-    """State tracking for a conversation."""
+    """Conversation state including messages and metadata."""
     session_id: str
-    messages: List[Dict[str, Any]]  # List of Message objects as dicts
+    messages: List[Dict[str, Any]]
     last_user_message: str
-    last_assistant_message: Optional[str]
-    last_agent: Optional[str]
-
-
-class EntityState(TypedDict, total=False):
-    """State tracking for entities."""
-    entities: Dict[str, Any]  # EntityInfo objects by entity name
-    extracted_this_turn: List[str]  # Entity names extracted in current turn
-    validated: Dict[str, bool]  # Validation status by entity name
-
-
-class AgentState(TypedDict, total=False):
-    """State tracking for agent selection and execution."""
-    available_agents: List[str]  # List of available agent IDs
-    selected_agent: Optional[str]  # Currently selected agent ID
-    selection_info: Optional[Dict[str, Any]]  # AgentSelectionInfo as dict
-    confidence: float  # Confidence in the current selection
-    continue_with_same_agent: bool  # Whether to continue with the same agent
-    special_case_detected: bool  # Whether a special case was detected
-    special_case_type: Optional[str]  # Type of special case
-    special_case_response: Optional[str]  # Response for special case
-    agent_configs: Dict[str, Dict[str, Any]]  # Configuration for each agent
+    last_assistant_message: str
+    context: Dict[str, Any]
+    user_info: Dict[str, Any]
 
 
 class MemoryState(TypedDict, total=False):
-    """State tracking for memory operations."""
-    working_memory_ids: List[str]  # IDs of items in working memory
-    episodic_memory_ids: List[str]  # IDs of items in episodic memory
-    relevant_memory_ids: List[str]  # IDs of relevant memories for current turn
-    agent_memory_ids: Dict[str, List[str]]  # IDs of memories by agent
-    memory_last_updated: datetime  # When memory was last updated
+    """Memory state for conversation history and context."""
+    memory_last_updated: str
+    working_memory: Dict[str, Any]
+    episodic_memory: List[Dict[str, Any]]
+    entity_memory: Dict[str, Any]
+    memory_ids: Dict[str, str]
+
+
+class AgentState(TypedDict, total=False):
+    """State related to agent selection and execution."""
+    selected_agent: str
+    available_agents: List[str]
+    special_case_detected: bool
+    special_case_type: str
+    special_case_response: str
+    confidence_scores: Dict[str, float]
+    last_agent_response: Dict[str, Any]
+    execution_id: str
+
+
+class ErrorState(TypedDict, total=False):
+    """Error tracking information."""
+    node: str
+    error: str
+    error_type: str
+    timestamp: str
+    traceback: str
+    additional_info: Dict[str, Any]
 
 
 class ExecutionState(TypedDict, total=False):
-    """State tracking for graph execution."""
-    current_node: str  # Name of the current node
-    previous_node: Optional[str]  # Name of the previous node
-    execution_path: List[str]  # Names of nodes visited in order
-    errors: List[Dict[str, Any]]  # Errors encountered during execution
-    request_start_time: datetime  # When request processing started
-    latencies: Dict[str, float]  # Latency by node name
-    tools_used: List[str]  # Tools used during processing
+    """Execution metadata and tracking."""
+    current_step: str
+    execution_path: List[str]
+    start_time: str
+    last_updated: str
+    errors: List[ErrorState]
+    performance: Dict[str, float]
+    last_persisted_state_id: str
+    last_persisted_at: str
+    checkpoints: Dict[str, Dict[str, Any]]
 
 
+# Main orchestration state
 class OrchestrationState(TypedDict, total=False):
-    """Complete state for orchestration."""
+    """
+    Complete orchestration state for the LangGraph system.
+    
+    This represents the full state object passed between node functions.
+    """
     conversation: ConversationState
-    entities: EntityState
-    agent: AgentState
     memory: MemoryState
+    agent: AgentState
     execution: ExecutionState
-    metadata: Dict[str, Any]  # Additional metadata
+    
+    # Catch-all for additional keys
+    __extra__: Dict[str, Any]

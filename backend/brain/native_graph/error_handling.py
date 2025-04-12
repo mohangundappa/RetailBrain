@@ -42,6 +42,7 @@ class ErrorType:
     DATABASE_ERROR = "database_error"
     MEMORY_ERROR = "memory_error"
     ORCHESTRATION_ERROR = "orchestration_error"
+    STATE_PERSISTENCE_ERROR = "state_persistence_error"
     
     # Unknown errors
     UNKNOWN = "unknown"
@@ -77,6 +78,14 @@ def classify_error(error: Exception) -> str:
     # Check for database errors
     elif "database" in error_str.lower() or "sql" in error_class.lower():
         error_type = ErrorType.DATABASE_ERROR
+    
+    # Check for state persistence errors
+    elif "state" in error_str.lower() and "persist" in error_str.lower():
+        error_type = ErrorType.STATE_PERSISTENCE_ERROR
+    elif "orchestration_state" in error_str.lower():
+        error_type = ErrorType.STATE_PERSISTENCE_ERROR
+    elif "checkpoint" in error_str.lower() and ("save" in error_str.lower() or "load" in error_str.lower()):
+        error_type = ErrorType.STATE_PERSISTENCE_ERROR
     
     # Check for agent errors
     elif "agent not found" in error_str.lower():
@@ -191,6 +200,12 @@ def get_error_recovery_response(
     
     elif error_type == ErrorType.AGENT_EXECUTION_ERROR:
         return "I ran into an issue processing your request. Could you provide more details or try a different approach?"
+    
+    elif error_type == ErrorType.STATE_PERSISTENCE_ERROR:
+        return "I'm having trouble saving our conversation. Your request was processed, but we might need to repeat some information if we continue."
+    
+    elif error_type == ErrorType.DATABASE_ERROR:
+        return "I'm experiencing a technical issue with my memory. Let's continue, but I might need you to repeat information you've shared before."
     
     # Default generic error message
     return "I apologize, but I encountered an issue while processing your request. Could you try again or rephrase your question?"
@@ -310,13 +325,13 @@ def retry_on_error(
         max_retries: Maximum number of retry attempts
         delay: Initial delay between retries (seconds)
         backoff_factor: Factor to increase delay on each retry
-        retry_on: List of error types to retry on (default: rate limits)
+        retry_on: List of error types to retry on (default: rate limits and state persistence)
         
     Returns:
         Decorated function
     """
     if retry_on is None:
-        retry_on = [ErrorType.LLM_RATE_LIMIT]
+        retry_on = [ErrorType.LLM_RATE_LIMIT, ErrorType.STATE_PERSISTENCE_ERROR]
         
     def decorator(func):
         @wraps(func)

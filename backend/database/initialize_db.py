@@ -23,6 +23,15 @@ try:
 except ImportError:
     logger.warning("Memory schema module not found, skipping memory schema creation")
 
+# Try to import state persistence schema, but don't fail if it doesn't exist
+create_state_persistence_schema = None
+has_state_persistence_schema = False
+try:
+    from backend.database.init_state_db import create_state_persistence_schema
+    has_state_persistence_schema = True
+except ImportError:
+    logger.warning("State persistence schema module not found, skipping state persistence schema creation")
+
 
 async def initialize_database(engine: Optional[AsyncEngine] = None) -> None:
     """
@@ -49,6 +58,16 @@ async def initialize_database(engine: Optional[AsyncEngine] = None) -> None:
                 logger.warning(f"Failed to create memory schema: {str(mem_err)}")
         else:
             logger.info("Memory schema creation function not available")
+        
+        # Create state persistence schema if available
+        if has_state_persistence_schema and create_state_persistence_schema is not None:
+            try:
+                await create_state_persistence_schema(engine)
+                logger.info("State persistence schema created successfully")
+            except Exception as state_err:
+                logger.warning(f"Failed to create state persistence schema: {str(state_err)}")
+        else:
+            logger.info("State persistence schema creation function not available")
         
         # Seed agent data
         await seed_all_agents(engine)
