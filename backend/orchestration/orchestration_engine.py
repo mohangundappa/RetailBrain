@@ -18,8 +18,8 @@ import importlib
 from typing import Dict, Any, List, Optional, Union, Tuple
 
 from backend.config.config import Config
-from backend.orchestration.router import AgentRouter
-from backend.orchestration.factory import AgentFactory
+from backend.orchestration.router import OptimizedAgentRouter as AgentRouter
+from backend.orchestration.factory import OptimizedAgentFactory as AgentFactory
 from backend.orchestration.telemetry import TelemetryManager
 from backend.orchestration.state.persistence import StatePersistenceManager
 
@@ -33,21 +33,40 @@ class OrchestrationEngine:
     providing intelligent routing, state management, and agent coordination capabilities.
     """
     
-    def __init__(self, config: Optional[Config] = None):
+    def __init__(self, config: Optional[Config] = None, db_session=None):
         """
         Initialize the Orchestration Engine with configuration.
         
         Args:
             config: Optional configuration object. If None, uses default configuration.
+            db_session: Database session
         """
         self.config = config or Config()
         logger.info("Initializing Orchestration Engine with config: %s", self.config)
         
         # Initialize components
+        from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+        from backend.database.db import get_db
+        from backend.api_gateway import get_sanitized_db_url
+        
+        if db_session is None:
+            # Create a database session if none is provided
+            db_url = get_sanitized_db_url()
+            engine = create_async_engine(db_url)
+            db_session = AsyncSession(engine)
+        
+        # Initialize services
+        from backend.orchestration.embedding_service import EmbeddingService
+        from backend.orchestration.vector_store import AgentVectorStore
+        from backend.orchestration.telemetry import TelemetryManager
+        
+        embedding_service = EmbeddingService()
+        agent_vector_store = AgentVectorStore(embedding_service)
+        
         self.telemetry = TelemetryManager()
-        self.factory = AgentFactory(config=self.config)
-        self.router = AgentRouter(config=self.config)
-        self.state_manager = StatePersistenceManager()
+        self.factory = AgentFactory(db_session=db_session)
+        self.router = AgentRouter(agent_vector_store=agent_vector_store, embedding_service=embedding_service)
+        self.state_manager = StatePersistenceManager(db_session=db_session)
         
         # Agent registry
         self.agents = {}
