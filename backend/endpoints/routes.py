@@ -109,7 +109,7 @@ async def health_check():
     """
     try:
         brain = get_brain()
-        agent_names = brain.get_agent_names()
+        agent_names = brain.list_agents()
         return {
             "status": "healthy",
             "message": "Staples Brain is running",
@@ -166,7 +166,7 @@ async def list_agents():
     """
     try:
         brain = get_brain()
-        agent_names = brain.get_agent_names()
+        agent_names = brain.list_agents()
         
         return {
             "success": True,
