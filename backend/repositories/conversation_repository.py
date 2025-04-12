@@ -194,3 +194,25 @@ class ConversationRepository:
         
         result = await self.db.execute(query)
         return list(result.scalars().all())
+        
+    async def count_conversation_messages(
+        self,
+        conversation_id: str
+    ) -> int:
+        """
+        Count the total number of messages in a conversation.
+        
+        Args:
+            conversation_id: Conversation UUID
+            
+        Returns:
+            Total number of messages
+        """
+        query = (
+            select(func.count())
+            .select_from(Message)
+            .where(Message.conversation_id == conversation_id)
+        )
+        
+        result = await self.db.execute(query)
+        return result.scalar_one()
