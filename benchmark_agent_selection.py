@@ -12,7 +12,7 @@ import csv
 from datetime import datetime
 
 # Base URL for API
-BASE_URL = "http://localhost:8000/api/v1"
+BASE_URL = "http://localhost:5000/api/v1"
 ORIGINAL_CHAT_URL = f"{BASE_URL}/chat"
 OPTIMIZED_CHAT_URL = f"{BASE_URL}/optimized/chat"
 
