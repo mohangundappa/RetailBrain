@@ -78,7 +78,7 @@ class ConversationRepository:
     
     async def add_message(
         self,
-        conversation_id: str,
+        conversation_id: int,
         role: str,
         content: str,
         embedding: Optional[List[float]] = None,
@@ -110,7 +110,7 @@ class ConversationRepository:
     
     async def get_conversation_messages(
         self, 
-        conversation_id: str,
+        conversation_id: int,
         limit: int = 50
     ) -> List[Message]:
         """
@@ -197,7 +197,7 @@ class ConversationRepository:
         
     async def count_conversation_messages(
         self,
-        conversation_id: str
+        conversation_id: int
     ) -> int:
         """
         Count the total number of messages in a conversation.

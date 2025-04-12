@@ -155,7 +155,7 @@ class ChatService:
                 
                 # Store user message
                 user_message = await self.conversation_repo.add_message(
-                    conversation_id=str(conversation.id),
+                    conversation_id=conversation.id,
                     role="user",
                     content=message
                 )
@@ -169,7 +169,7 @@ class ChatService:
                 
                 # Store assistant response
                 assistant_message = await self.conversation_repo.add_message(
-                    conversation_id=str(conversation.id),
+                    conversation_id=conversation.id,
                     role="assistant",
                     content=brain_response["response"],
                     metadata=brain_response["metadata"]
@@ -203,7 +203,7 @@ class ChatService:
                     # Store system error message in a new transaction
                     async with self.db.begin():
                         await self.conversation_repo.add_message(
-                            conversation_id=str(conversation.id),
+                            conversation_id=conversation.id,
                             role="system",
                             content=f"Error: {str(e)}",
                             metadata={"error": True}
@@ -237,7 +237,7 @@ class ChatService:
             return None, []
             
         messages = await self.conversation_repo.get_conversation_messages(
-            conversation_id=str(conversation.id),
+            conversation_id=conversation.id,
             limit=limit or self.default_limit
         )
         
