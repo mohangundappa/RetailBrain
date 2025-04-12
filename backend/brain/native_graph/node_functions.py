@@ -204,10 +204,13 @@ First categorize the message as one of: greeting, goodbye, human_request, or non
 Then provide a confidence score between 0.0 and 1.0 for your categorization.
 For greetings and goodbyes, also provide an appropriate response.
 
-Output as JSON with these fields:
-- category: the category name
+Output as JSON and ONLY JSON with these fields:
+- category: the category name as string
 - confidence: a number between 0.0 and 1.0
 - response: an appropriate response if category is greeting or goodbye, otherwise null
+
+IMPORTANT: Format your response EXACTLY like this JSON example, with no additional text before or after:
+{{"category": "none", "confidence": 0.0, "response": null}}
 
 JSON Output:
 """)
@@ -372,6 +375,10 @@ Output a JSON object with:
 - confidence: number between 0.0 and 1.0
 - reasoning: brief explanation of your decision
 
+IMPORTANT: Format your response EXACTLY as a valid JSON object with no additional text before or after.
+For example:
+{{"continue_with_same_agent": true, "confidence": 0.8, "reasoning": "The user is asking for more information about the same topic."}}
+
 JSON Output:
 """)
         
@@ -449,6 +456,10 @@ For each agent, provide a relevance score between 0.0 and 1.0 indicating how wel
 
 Output as a JSON object with agent names as keys and scores as values.
 Sort in descending order of scores.
+
+IMPORTANT: Format your response EXACTLY as a valid JSON object with no additional text before or after.
+For example, if there are two agents "package_tracking" and "store_locator", output should look like:
+{{"package_tracking": 0.9, "store_locator": 0.1}}
 
 JSON Output:
 """)
