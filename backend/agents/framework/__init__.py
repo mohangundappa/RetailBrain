@@ -1,7 +1,5 @@
 """
-Agent framework module.
+Framework module for Staples Brain agents.
 
-This module contains the base classes and utilities for agent implementation.
+This module contains the base agent classes and framework components.
 """
-
-from backend.agents.framework.base import BaseAgent, EntityDefinition

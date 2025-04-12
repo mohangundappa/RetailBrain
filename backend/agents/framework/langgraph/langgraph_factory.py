@@ -12,7 +12,7 @@ from typing import Dict, Any, List, Optional, Union
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
-from backend.brain.agents.langgraph_agent import LangGraphAgent
+from backend.agents.framework.langgraph.langgraph_agent import LangGraphAgent
 from backend.repositories.agent_repository import AgentRepository
 from backend.database.agent_schema import (
     AgentDefinition, AgentDeployment, AgentComposition,

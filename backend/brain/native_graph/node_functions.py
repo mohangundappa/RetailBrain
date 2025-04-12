@@ -17,7 +17,7 @@ from langchain_core.prompts import PromptTemplate, ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 
 from backend.brain.native_graph.state_definitions import OrchestrationState
-from backend.brain.agents.langgraph_agent import LangGraphAgent
+from backend.agents.framework.langgraph.langgraph_agent import LangGraphAgent
 from backend.brain.native_graph.error_handling import (
     with_error_handling, 
     parse_json_with_recovery, 

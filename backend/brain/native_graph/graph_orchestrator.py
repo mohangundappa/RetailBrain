@@ -25,7 +25,7 @@ from backend.brain.native_graph.node_functions import (
     process_with_agent,
     update_memory,
 )
-from backend.brain.agents.langgraph_agent import LangGraphAgent
+from backend.agents.framework.langgraph.langgraph_agent import LangGraphAgent
 
 logger = logging.getLogger(__name__)
 

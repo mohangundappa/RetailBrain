@@ -13,7 +13,7 @@ from langchain_core.prompts import PromptTemplate, ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from langchain_openai import ChatOpenAI
 
-from backend.brain.agents.langgraph_agent import LangGraphAgent
+from backend.agents.framework.langgraph.langgraph_agent import LangGraphAgent
 
 logger = logging.getLogger(__name__)
 
