@@ -22,7 +22,7 @@ _optimized_brain_service: Optional[OptimizedBrainService] = None
 async def get_optimized_brain_service(
     db: AsyncSession = Depends(get_db),
     config: Config = Depends(get_app_config)
-) -> AsyncGenerator[OptimizedBrainService, None]:
+) -> OptimizedBrainService:
     """
     Get or create an optimized brain service instance.
     
@@ -30,7 +30,7 @@ async def get_optimized_brain_service(
         db: Database session
         config: Application configuration
         
-    Yields:
+    Returns:
         OptimizedBrainService instance
     
     Raises:
@@ -59,8 +59,8 @@ async def get_optimized_brain_service(
                 
             logger.info("OptimizedBrainService initialized successfully")
             
-        # Yield the service instance
-        yield _optimized_brain_service
+        # Return the service instance
+        return _optimized_brain_service
     except Exception as e:
         logger.error(f"Error in get_optimized_brain_service: {str(e)}", exc_info=True)
         raise HTTPException(

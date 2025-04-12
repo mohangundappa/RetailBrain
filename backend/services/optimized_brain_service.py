@@ -194,6 +194,11 @@ class OptimizedBrainService:
             execution_result["optimized_selection"] = True
             execution_result["selection_confidence"] = confidence
             
+            # Make sure we include the agent name if an agent was found
+            if agent and not execution_result.get("agent_name"):
+                execution_result["agent_name"] = agent.name
+                execution_result["agent_id"] = agent.id
+            
             # Update memory if available
             if self.memory_service:
                 await self._update_memory(session_id, message, agent, execution_result)
