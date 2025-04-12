@@ -248,9 +248,18 @@ class OptimizedAgentRouter:
             Tuple of (agent, confidence, prepared_context)
         """
         # Route to best agent
+        logger.info(f"Starting route_and_prepare for query: {query[:50]}...")
+        
+        # Log the available agents in the vector store
+        agent_count = len(self.agent_vector_store.agent_data) if self.agent_vector_store else 0
+        logger.info(f"Vector store contains {agent_count} agents")
+        if agent_count > 0:
+            logger.info(f"Available agent IDs: {list(self.agent_vector_store.agent_data.keys())}")
+        
         agent, confidence, route_context = await self.route(query, session_id, context)
         
         if not agent:
+            logger.warning(f"No agent found for query: {query[:50]}...")
             return None, 0.0, route_context
             
         # Extract entities for the selected agent

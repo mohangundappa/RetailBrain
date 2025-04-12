@@ -69,37 +69,52 @@ def test_optimized_route():
     }
     
     try:
+        print(f"Sending request to {OPTIMIZED_CHAT_URL} with payload: {payload}")
+        
         # Use timeout to avoid waiting too long
         response = requests.post(OPTIMIZED_CHAT_URL, json=payload, timeout=30)
-        response.raise_for_status()
-        result = response.json()
+        print(f"Response status code: {response.status_code}")
         
-        # Extract relevant information
-        success = result.get("success", False)
-        agent_name = result.get("agent")
-        confidence = result.get("confidence")
-        response_text = result.get("response", "")
-        metadata = result.get("metadata", {})
-        selection_time = metadata.get("selection_time", 0) if metadata else 0
-        embedding_stats = metadata.get("embedding_stats", {}) if metadata else {}
-        
-        # Print results
-        print(f"Success: {success}")
-        print(f"Selected Agent: {agent_name if agent_name is not None else 'None'}")
-        print(f"Confidence: {confidence if confidence is not None else 'None'}")
-        print(f"Response: {response_text[:100]}..." if len(response_text) > 100 else f"Response: {response_text}")
-        print(f"Selection time: {selection_time if selection_time is not None else 0:.2f} seconds")
-        
-        # Show embedding stats if available
-        if embedding_stats:
-            print("\nEmbedding Stats:")
-            print(f"API calls: {embedding_stats.get('api_calls', 'N/A')}")
-            print(f"Cache hits: {embedding_stats.get('cache_hits', 'N/A')}")
-            print(f"Cache hit rate: {embedding_stats.get('cache_hit_rate', 0) * 100:.2f}%")
+        try:
+            response.raise_for_status()
+            result = response.json()
+            print(f"Full response: {result}")
             
-        print(f"Total time: {time.time() - start_time:.2f} seconds")
-        
-        return result
+            # Extract relevant information
+            success = result.get("success", False)
+            agent_name = result.get("agent")
+            confidence = result.get("confidence")
+            response_text = result.get("response", "")
+            metadata = result.get("metadata", {})
+            selection_time = metadata.get("selection_time", 0) if metadata else 0
+            embedding_stats = metadata.get("embedding_stats", {}) if metadata else {}
+            error = result.get("error")
+            
+            # Print results
+            print(f"Success: {success}")
+            print(f"Selected Agent: {agent_name if agent_name is not None else 'None'}")
+            print(f"Confidence: {confidence if confidence is not None else 'None'}")
+            print(f"Response: {response_text[:100]}..." if len(response_text) > 100 else f"Response: {response_text}")
+            print(f"Selection time: {selection_time if selection_time is not None else 0:.2f} seconds")
+            
+            # Show embedding stats if available
+            if embedding_stats:
+                print("\nEmbedding Stats:")
+                print(f"API calls: {embedding_stats.get('api_calls', 'N/A')}")
+                print(f"Cache hits: {embedding_stats.get('cache_hits', 'N/A')}")
+                print(f"Cache hit rate: {embedding_stats.get('cache_hit_rate', 0) * 100:.2f}%")
+                
+            # Show error if present
+            if error:
+                print(f"Error: {error}")
+                
+            print(f"Total time: {time.time() - start_time:.2f} seconds")
+            
+            return result
+        except ValueError as json_error:
+            print(f"Failed to parse JSON response: {str(json_error)}")
+            print(f"Raw response: {response.text}")
+            return None
     except requests.exceptions.Timeout:
         print(f"Timeout testing optimized route after {time.time() - start_time:.2f} seconds")
         return None
