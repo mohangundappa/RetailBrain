@@ -10,24 +10,7 @@ import logging
 # Set up logger
 logger = logging.getLogger(__name__)
 
-# Direct exports from module files
-from backend.orchestration.agent_definition import (
-    AgentDefinition
-)
-
-from backend.orchestration.router import (
-    OptimizedAgentRouter
-)
-
-from backend.orchestration.factory import (
-    OptimizedAgentFactory
-)
-
-from backend.orchestration.state import (
-    create_db_tables
-)
-
-# Export key components
+# Export key components - Use string literals to avoid circular imports
 __all__ = [
     # Agent definition
     'AgentDefinition',
@@ -41,3 +24,9 @@ __all__ = [
     # State persistence
     'create_db_tables',
 ]
+
+# Direct exports from module files
+from backend.orchestration.agent_definition import AgentDefinition
+from backend.orchestration.state import create_db_tables
+
+# These should be imported at usage time to avoid circular dependencies

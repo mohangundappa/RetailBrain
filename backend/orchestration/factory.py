@@ -8,9 +8,9 @@ from typing import Dict, List, Optional, Any, Union
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.orchestration.agent_definition import AgentDefinition
-from backend.brain.optimized.agent_definition import PatternCapability, AgentTool, EntityDefinition as OptEntityDefinition
-from backend.brain.optimized.embedding_service import EmbeddingService
-from backend.brain.optimized.vector_store import AgentVectorStore
+from backend.orchestration.agent_definition import PatternCapability, AgentTool, EntityDefinition as OptEntityDefinition
+from backend.orchestration.embedding_service import EmbeddingService
+from backend.orchestration.vector_store import AgentVectorStore
 from backend.orchestration.router import OptimizedAgentRouter
 
 logger = logging.getLogger(__name__)
