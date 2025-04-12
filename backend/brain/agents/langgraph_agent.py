@@ -70,6 +70,24 @@ class LangGraphAgent(ABC):
         """
         pass
     
+    def get_id(self) -> str:
+        """
+        Get the unique identifier for this agent.
+        
+        Returns:
+            Agent ID
+        """
+        return self.id
+        
+    def get_name(self) -> str:
+        """
+        Get the display name of this agent.
+        
+        Returns:
+            Agent name
+        """
+        return self.name
+        
     def get_description(self) -> str:
         """
         Get the agent description.

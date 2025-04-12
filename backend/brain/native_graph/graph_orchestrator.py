@@ -143,18 +143,24 @@ class GraphOrchestrator:
         Returns:
             True if registration was successful, False otherwise
         """
-        # Check if agent is already registered
-        for existing_agent in self.agents:
-            if existing_agent.name == agent.name:
-                logger.info(f"Agent {agent.name} already registered with orchestrator")
-                return True
-        
-        # Add the agent to the list
-        self.agents.append(agent)
-        
-        # Update the agent configs in the initial state
-        logger.info(f"Registered agent {agent.name} with orchestrator")
-        return True
+        try:
+            # Check if agent is already registered
+            for existing_agent in self.agents:
+                if existing_agent.get_id() == agent.get_id():
+                    logger.info(f"Agent {agent.get_name()} already registered with orchestrator")
+                    return True
+            
+            # Add the agent to the list
+            self.agents.append(agent)
+            
+            # We don't need to update the state here as initialize_state is called
+            # each time process_message is invoked
+            
+            logger.info(f"Registered agent {agent.get_name()} with orchestrator")
+            return True
+        except Exception as e:
+            logger.error(f"Error registering agent: {str(e)}", exc_info=True)
+            return False
     
     def list_agents(self) -> List[str]:
         """
@@ -206,15 +212,25 @@ class GraphOrchestrator:
         
         # Add available agents and their configs to the state
         agent_state = state.get("agent", {})
-        agent_state["available_agents"] = [agent.name for agent in self.agents]
+        
+        # Store agent instances directly in the state for node functions to access
+        available_agents = {}
+        for agent in self.agents:
+            agent_id = agent.get_id()
+            available_agents[agent_id] = agent
+        agent_state["available_agents"] = available_agents
+        
+        # Add agent IDs for reference
+        agent_state["agent_ids"] = [agent.get_id() for agent in self.agents]
         
         # Add agent configs
         agent_configs = {}
         for agent in self.agents:
-            agent_configs[agent.name] = {
-                "name": agent.name,
-                "description": agent.description,
-                "id": agent.id
+            agent_id = agent.get_id()
+            agent_configs[agent_id] = {
+                "name": agent.get_name(),
+                "description": agent.get_description(),
+                "id": agent_id
             }
         agent_state["agent_configs"] = agent_configs
         state["agent"] = agent_state

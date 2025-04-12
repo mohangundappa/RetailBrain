@@ -37,47 +37,92 @@ class DefaultLangGraphAgent(LangGraphAgent):
         self.id = id
         self.name = name
         self.description = description
-        self._tools = []
-        
-    async def process(self, message: str, history: List[Dict[str, Any]] = None) -> Dict[str, Any]:
+        self.config = config or {}
+        self._tools = [] if not hasattr(self, '_tools') else self._tools
+        self._metrics = {
+            "total_calls": 0,
+            "successful_calls": 0,
+            "failed_calls": 0,
+            "avg_response_time": 0
+        }
+    
+    async def process(
+        self, 
+        message: str, 
+        context: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, Any]:
         """
-        Process a message with this agent.
+        Process a message and generate an appropriate response.
         
         Args:
-            message: The user message to process
-            history: Optional conversation history
+            message: User input message
+            context: Additional context information
             
         Returns:
-            Response dict containing the agent's output
+            Dictionary containing the response and metadata
         """
-        # For testing, just return a canned response based on the agent type
+        import time
+        start_time = time.time()
+        
+        # For testing, generate a contextual response based on the agent type and message
         if "package" in self.id or "package" in message.lower():
-            response = (
+            response_text = (
                 "I'll help you track your package. To get started, I'll need your tracking number. "
                 "You can find this in your order confirmation email or on your receipt."
             )
-        elif "password" in self.id or "password" in message.lower():
-            response = (
+        elif "password" in self.id or "reset" in message.lower():
+            response_text = (
                 "I can help you reset your password. To protect your account, "
                 "I'll need to verify your identity first. Please provide your email address."
             )
-        elif "store" in self.id or "store" in message.lower():
-            response = (
+        elif "store" in self.id or "location" in message.lower():
+            response_text = (
                 "I can help you find the nearest Staples store. "
                 "Could you please share your zip code or city and state?"
             )
         else:
-            response = (
+            response_text = (
                 f"I'm the {self.name}. {self.description} "
                 "How can I assist you today?"
             )
-            
-        return {
-            "content": response,
-            "source_documents": [],
-            "intermediate_steps": [],
-            "metadata": {}
+        
+        # Format the response as expected by the orchestrator
+        response = {
+            "response": response_text,
+            "agent": self.name,
+            "confidence": 0.9,  # High confidence for demo purposes
+            "metadata": {
+                "agent_id": self.id,
+                "agent_name": self.name,
+                "agent_type": "default",
+                "processed_at": time.time()
+            }
         }
+        
+        # Update metrics
+        elapsed_time = time.time() - start_time
+        self.update_metrics(success=True, response_time=elapsed_time)
+        
+        return response
+    
+    def update_metrics(self, success: bool, response_time: float) -> None:
+        """
+        Update agent metrics.
+        
+        Args:
+            success: Whether the processing was successful
+            response_time: Time taken to generate the response
+        """
+        self._metrics["total_calls"] += 1
+        if success:
+            self._metrics["successful_calls"] += 1
+        else:
+            self._metrics["failed_calls"] += 1
+            
+        # Update average response time
+        avg_time = self._metrics["avg_response_time"]
+        total_calls = self._metrics["total_calls"]
+        self._metrics["avg_response_time"] = (avg_time * (total_calls - 1) + response_time) / total_calls
         
     def get_id(self) -> str:
         """
@@ -114,48 +159,6 @@ class DefaultLangGraphAgent(LangGraphAgent):
             List of tool configurations
         """
         return self._tools
-    """
-    Default implementation of LangGraphAgent for testing and fallback.
-    
-    This agent returns a templated response for all inputs.
-    """
-    
-    async def process(
-        self, 
-        message: str, 
-        context: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
-        """
-        Process a message and generate a templated response.
-        
-        Args:
-            message: User input message
-            context: Additional context information
-            
-        Returns:
-            Dictionary containing the response and metadata
-        """
-        import time
-        start_time = time.time()
-        
-        # Generate a simple response
-        response = {
-            "response": f"This is a default response from {self.name} agent. Your message was: '{message}'.",
-            "agent": self.name,
-            "confidence": 1.0,
-            "metadata": {
-                "agent_id": self.id,
-                "agent_name": self.name,
-                "agent_type": "default",
-                "processed_at": time.time()
-            }
-        }
-        
-        # Update metrics
-        elapsed_time = time.time() - start_time
-        self.update_metrics(success=True, response_time=elapsed_time)
-        
-        return response
 
 
 class LangGraphAgentFactory:

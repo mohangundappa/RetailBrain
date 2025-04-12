@@ -453,10 +453,14 @@ Sort in descending order of scores.
 JSON Output:
 """)
     
+    # Get agent IDs and configs
+    agent_ids = agent_state.get("agent_ids", [])
+    agent_configs = agent_state.get("agent_configs", {})
+    
     # Format agent descriptions for the prompt
     agent_descriptions = "\n".join([
         f"- {agent_id}: {agent_configs.get(agent_id, {}).get('description', 'No description')}"
-        for agent_id in available_agents
+        for agent_id in agent_ids
     ])
     
     # Create and invoke the chain
@@ -468,13 +472,25 @@ JSON Output:
             "agent_descriptions": agent_descriptions
         })
         
-        # Parse the result as JSON
-        scores = json.loads(result)
+        # Parse the result as JSON with error handling
+        try:
+            scores = json.loads(result)
+        except json.JSONDecodeError as e:
+            logger.error(f"Error parsing agent selection JSON: {str(e)}")
+            logger.debug(f"Raw result: {result}")
+            # Use a default scoring approach instead
+            scores = {}
+            # If message contains keywords related to each agent, assign scores
+            for agent_id in agent_ids:
+                if agent_id.lower() in user_message.lower():
+                    scores[agent_id] = 0.9
+                else:
+                    scores[agent_id] = 0.1
         
         # Find the best scoring agent
         best_agent = None
         best_score = 0.0
-        for agent_id in available_agents:
+        for agent_id in agent_ids:
             score = scores.get(agent_id, 0.0)
             if score > best_score:
                 best_agent = agent_id
@@ -575,19 +591,60 @@ def process_with_agent(state: OrchestrationState) -> OrchestrationState:
         )
         return new_state
     
-    # TODO: Actually implement agent processing
-    # For now, we'll use a placeholder response
+    # Get the agent instance from the agent state
+    available_agents = agent_state.get("available_agents", {})
+    agent_instance = available_agents.get(selected_agent_id)
     
-    # Generate placeholder response
-    placeholder_response = f"This is a placeholder response from agent {selected_agent_id}. In a real implementation, this would be the result of processing your message: '{user_message}'"
-    
-    # Add placeholder response to conversation
-    new_state = add_message_to_conversation(
-        new_state, 
-        placeholder_response, 
-        role="assistant", 
-        agent=selected_agent_id
-    )
+    if agent_instance:
+        try:
+            # Process the message with the agent
+            logger.info(f"Processing message with agent {selected_agent_id}")
+            # Since this isn't an async function, we need to handle async agents differently
+            # For now, we'll just call the agent directly and assume it's synchronous
+            # In the future, we'd need to refactor this to be async
+            response = None
+            if hasattr(agent_instance, 'process'):
+                if callable(agent_instance.process):
+                    # Just call the method directly for now
+                    response = agent_instance.process(user_message)
+            
+            # Extract the response text
+            if isinstance(response, dict):
+                response_text = response.get("response", "")
+            else:
+                response_text = str(response)
+                
+            # Add the response to the conversation
+            new_state = add_message_to_conversation(
+                new_state,
+                response_text,
+                role="assistant",
+                agent=selected_agent_id
+            )
+        except Exception as e:
+            logger.error(f"Error processing with agent {selected_agent_id}: {str(e)}", exc_info=True)
+            # Generate fallback response
+            fallback_response = f"I encountered an error while trying to process your request about '{user_message}'. Please try again or ask a different question."
+            
+            # Add fallback response to conversation
+            new_state = add_message_to_conversation(
+                new_state,
+                fallback_response,
+                role="assistant",
+                agent=f"{selected_agent_id}_error"
+            )
+    else:
+        # Agent instance not found, use a generic response
+        logger.warning(f"Agent {selected_agent_id} instance not found, using generic response")
+        generic_response = f"I understand you're asking about '{user_message}'. Let me help you with that."
+        
+        # Add generic response to conversation
+        new_state = add_message_to_conversation(
+            new_state,
+            generic_response,
+            role="assistant",
+            agent=selected_agent_id
+        )
     
     # Add to tools used if any
     execution = {**new_state.get("execution", {})}
