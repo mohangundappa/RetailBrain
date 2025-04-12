@@ -266,3 +266,28 @@ class OptimizedAgentFactory:
             return self.vector_store.agent_data[agent_id]
             
         return None
+            
+    def list_available_agents(self) -> List[Dict[str, Any]]:
+        """
+        Get a list of all available agents in the vector store.
+        
+        Returns:
+            List of agent information dictionaries
+        """
+        if not self.vector_store:
+            logger.error("Vector store not initialized")
+            return []
+            
+        agents = []
+        for agent_id, agent in self.vector_store.agent_data.items():
+            agents.append({
+                "id": agent_id,
+                "name": agent.name,
+                "description": agent.description,
+                "status": agent.status,
+                "version": agent.version,
+                "is_system": agent.is_system,
+                "type": getattr(agent, "agent_type", "standard")
+            })
+            
+        return agents
