@@ -13,9 +13,20 @@ from backend.config.agent_constants import (
     HIGH_CONFIDENCE_THRESHOLD,
     CONTINUITY_BONUS,
     CONTEXT_WINDOW,
-    AGENT_TIMEOUTS
+    AGENT_TIMEOUTS,
+    # Dynamic threshold parameters
+    MIN_CONFIDENCE_THRESHOLD,
+    MAX_CONFIDENCE_THRESHOLD,
+    NEGATIVE_FEEDBACK_PENALTY,
+    TOPIC_SWITCH_THRESHOLD,
+    SEMANTIC_RELEVANCE_WEIGHT,
+    # Special case thresholds
+    GREETING_CONFIDENCE,
+    HUMAN_TRANSFER_CONFIDENCE,
+    CONVERSATION_END_CONFIDENCE
 )
 from backend.utils.memory import ConversationMemory
+from backend.utils.semantic_utils import semantic_analyzer
 
 logger = logging.getLogger(__name__)
 
@@ -92,6 +103,112 @@ class Orchestrator:
             }
         ]
     
+    def _check_special_cases(self, user_input: str) -> Tuple[Optional[str], float, Optional[str]]:
+        """
+        Check for special case scenarios like greetings, conversation ends, and human transfer requests.
+        
+        Args:
+            user_input: The user's message
+            
+        Returns:
+            Tuple of (special_case_type, confidence, response)
+        """
+        # Check for greeting
+        greeting_confidence = semantic_analyzer.detect_greeting(user_input)
+        if greeting_confidence >= GREETING_CONFIDENCE:
+            logger.debug(f"Detected greeting with confidence {greeting_confidence:.2f}")
+            return "greeting", greeting_confidence, "Hello! I'm your Staples virtual assistant. How can I help you today?"
+        
+        # Check for conversation end
+        end_confidence = semantic_analyzer.detect_conversation_end(user_input)
+        if end_confidence >= CONVERSATION_END_CONFIDENCE:
+            logger.debug(f"Detected conversation end with confidence {end_confidence:.2f}")
+            return "conversation_end", end_confidence, "Thank you for contacting Staples! Is there anything else I can help you with?"
+        
+        # Check for human transfer request
+        transfer_confidence = semantic_analyzer.detect_human_transfer_request(user_input)
+        if transfer_confidence >= HUMAN_TRANSFER_CONFIDENCE:
+            logger.debug(f"Detected human transfer request with confidence {transfer_confidence:.2f}")
+            return "human_transfer", transfer_confidence, "I understand you'd like to speak with a human agent. I'll transfer you to a customer service representative who can assist you further."
+        
+        return None, 0.0, None
+    
+    def _check_negative_feedback(self, user_input: str, memory: ConversationMemory) -> bool:
+        """
+        Check if the user's input contains negative feedback.
+        
+        Args:
+            user_input: The user's message
+            memory: Conversation memory
+            
+        Returns:
+            True if negative feedback detected, False otherwise
+        """
+        # Detect negative feedback
+        negative_feedback_confidence = semantic_analyzer.detect_negative_feedback(user_input)
+        if negative_feedback_confidence > 0.7:
+            logger.debug(f"Detected negative feedback with confidence {negative_feedback_confidence:.2f}")
+            
+            # Store negative feedback in memory for threshold adjustment
+            memory.update_working_memory('negative_feedback_detected', True)
+            memory.update_working_memory('negative_feedback_confidence', negative_feedback_confidence)
+            
+            return True
+        
+        return False
+    
+    def _get_dynamic_threshold(self, memory: ConversationMemory) -> float:
+        """
+        Determine the confidence threshold dynamically based on conversation state.
+        
+        Args:
+            memory: Conversation memory
+            
+        Returns:
+            Dynamic confidence threshold
+        """
+        # Start with default threshold
+        threshold = DEFAULT_CONFIDENCE_THRESHOLD
+        
+        # Lower threshold if negative feedback was detected in the previous turn
+        if memory.get_from_working_memory('negative_feedback_detected', False):
+            # Apply penalty to make it easier to switch agents after negative feedback
+            threshold -= NEGATIVE_FEEDBACK_PENALTY
+            logger.debug(f"Lowering confidence threshold due to negative feedback: {threshold:.2f}")
+            
+            # Reset negative feedback flag
+            memory.update_working_memory('negative_feedback_detected', False)
+        
+        # Ensure threshold stays within reasonable bounds
+        threshold = max(MIN_CONFIDENCE_THRESHOLD, min(MAX_CONFIDENCE_THRESHOLD, threshold))
+        
+        return threshold
+
+    def _detect_topic_switch(self, user_input: str, memory: ConversationMemory) -> bool:
+        """
+        Detect if the current input represents a topic switch.
+        
+        Args:
+            user_input: The user's message
+            memory: Conversation memory
+            
+        Returns:
+            True if topic switch detected, False otherwise
+        """
+        # Get the last topic summary if available
+        last_topic = memory.get_from_working_memory('current_topic')
+        if not last_topic:
+            return False
+            
+        # Check if current input is semantically different from the last topic
+        is_interruption, confidence = semantic_analyzer.detect_conversation_interruption(last_topic, user_input)
+        
+        if is_interruption and confidence > 0.7:
+            logger.debug(f"Detected topic switch with confidence {confidence:.2f}")
+            return True
+            
+        return False
+        
     def _select_agent(self, user_input: str, context: Dict[str, Any]) -> Tuple[Any, float, bool]:
         """
         Select the most appropriate agent for the user input.
@@ -109,6 +226,43 @@ class Orchestrator:
         session_id = context.get('session_id', 'default_session')
         memory = context.get('conversation_memory') or self.get_memory(session_id)
         
+        # Check for special cases first (greetings, conversation end, human transfer)
+        special_case, special_confidence, special_response = self._check_special_cases(user_input)
+        if special_case:
+            if special_case == "greeting":
+                # For greetings, we'll continue with normal agent selection but store the greeting response
+                context['greeting_response'] = special_response
+            elif special_case == "conversation_end":
+                # For conversation end, return a general agent
+                for agent in self.agents:
+                    if agent.name == "general" or "general" in agent.name.lower():
+                        return agent, special_confidence, True
+                # If no general agent, use the first one
+                if self.agents:
+                    return self.agents[0], special_confidence, True
+            elif special_case == "human_transfer":
+                # Store human transfer request in memory
+                memory.update_working_memory('human_transfer_requested', True)
+                # Also store the response to use
+                context['human_transfer_response'] = special_response
+                # Return a customer service agent if available
+                for agent in self.agents:
+                    if "customer_service" in agent.name or "support" in agent.name:
+                        return agent, special_confidence, True
+                # If no customer service agent, use the first one
+                if self.agents:
+                    return self.agents[0], special_confidence, True
+        
+        # Check for negative feedback that might affect agent selection
+        negative_feedback = self._check_negative_feedback(user_input, memory)
+        
+        # Check for topic switch
+        topic_switch = self._detect_topic_switch(user_input, memory)
+        if topic_switch:
+            # If topic switched, don't apply continuity bonus
+            memory.update_working_memory('continue_with_same_agent', False)
+            logger.debug("Topic switch detected, disabling continuity bonus")
+        
         # Check for explicit intent in context
         intent = context.get('intent')
         intent_confidence = context.get('intent_confidence', 0.0)
@@ -119,12 +273,15 @@ class Orchestrator:
         best_is_continuity = False
         used_context = False
         
+        # Get the conversation history for semantic analysis
+        history = memory.get_conversation_history(limit=CONTEXT_WINDOW)
+        
         # Apply continuity logic for multi-turn conversations
         continuity_bonus = 0.0
         last_agent_name = memory.get_from_working_memory('last_selected_agent')
         continue_with_same_agent = memory.get_from_working_memory('continue_with_same_agent', False)
         
-        if last_agent_name and continue_with_same_agent:
+        if last_agent_name and continue_with_same_agent and not topic_switch and not negative_feedback:
             continuity_bonus = CONTINUITY_BONUS
             logger.debug(f"Applying continuity bonus of {continuity_bonus} for agent {last_agent_name}")
             
@@ -154,21 +311,47 @@ class Orchestrator:
                                 succeeded=True
                             )
                         return agent, intent_confidence, True
-                        
-        # Otherwise, use confidence-based routing
+        
+        # Otherwise, use enhanced confidence-based routing with semantic relevance
         for agent in self.agents:
             # Apply continuity bonus if this is the same agent as before
             agent_bonus = 0.0
             is_continuity = False
+            semantic_bonus = 0.0
             
-            if agent.name == last_agent_name and continue_with_same_agent:
+            if agent.name == last_agent_name and continue_with_same_agent and not topic_switch and not negative_feedback:
                 agent_bonus = continuity_bonus
                 is_continuity = True
             
             # Get base confidence score from agent
             try:
                 base_confidence = agent.can_handle(user_input, context)
-                adjusted_confidence = base_confidence + agent_bonus
+                
+                # Calculate semantic relevance to agent's previous interactions if available
+                if history and len(history) > 0:
+                    # Get messages specific to this agent
+                    agent_history = [msg for msg in history if 
+                                    msg.get('metadata', {}).get('agent') == agent.name]
+                    
+                    if agent_history:
+                        # Extract content from agent history
+                        agent_history_content = [msg.get('content', '') for msg in agent_history]
+                        
+                        # Calculate relevance between current input and agent's history
+                        relevance_scores = []
+                        for content in agent_history_content:
+                            if content:
+                                relevance = semantic_analyzer.calculate_similarity(user_input, content)
+                                relevance_scores.append(relevance)
+                        
+                        # Use maximum relevance score as semantic bonus
+                        if relevance_scores:
+                            max_relevance = max(relevance_scores)
+                            semantic_bonus = max_relevance * SEMANTIC_RELEVANCE_WEIGHT
+                            logger.debug(f"Semantic relevance for {agent.name}: {max_relevance:.2f}, bonus: {semantic_bonus:.2f}")
+                
+                # Apply all bonuses
+                adjusted_confidence = base_confidence + agent_bonus + semantic_bonus
                 
                 # Track confidence score in telemetry if available
                 if self.telemetry:
@@ -180,7 +363,7 @@ class Orchestrator:
                         context_used=bool(context)
                     )
                     
-                logger.debug(f"Agent {agent.name}: base={base_confidence:.2f}, adjusted={adjusted_confidence:.2f}")
+                logger.debug(f"Agent {agent.name}: base={base_confidence:.2f}, continuity={agent_bonus:.2f}, semantic={semantic_bonus:.2f}, adjusted={adjusted_confidence:.2f}")
                 
                 # Update best agent if this has higher confidence
                 if adjusted_confidence > best_confidence:
@@ -195,14 +378,17 @@ class Orchestrator:
         if continue_with_same_agent:
             memory.update_working_memory('continue_with_same_agent', False)
         
-        # Check if confidence meets the threshold
-        if best_confidence < DEFAULT_CONFIDENCE_THRESHOLD:
-            logger.debug(f"No agent exceeded confidence threshold. Best was {best_agent.name if best_agent else 'None'} with {best_confidence:.2f}")
+        # Get dynamic confidence threshold
+        dynamic_threshold = self._get_dynamic_threshold(memory)
+        
+        # Check if confidence meets the dynamic threshold
+        if best_confidence < dynamic_threshold:
+            logger.debug(f"No agent exceeded dynamic threshold {dynamic_threshold:.2f}. Best was {best_agent.name if best_agent else 'None'} with {best_confidence:.2f}")
             # Fall back to default behavior or general agent
             # For demo purposes, just use the first agent if none hit the threshold
             if not best_agent and self.agents:
                 best_agent = self.agents[0]
-                best_confidence = DEFAULT_CONFIDENCE_THRESHOLD
+                best_confidence = dynamic_threshold
                 
         # Track final selection in telemetry if available
         if self.telemetry and best_agent:
@@ -213,6 +399,9 @@ class Orchestrator:
                 confidence=best_confidence,
                 selection_method=selection_method
             )
+        
+        # Update the current topic in memory
+        memory.update_working_memory('current_topic', user_input)
                 
         return best_agent, best_confidence, used_context
     
@@ -244,8 +433,66 @@ class Orchestrator:
         context['conversation_memory'] = memory
         
         try:
+            # Check if human transfer was requested in previous turn
+            if memory.get_from_working_memory('human_transfer_requested', False):
+                logger.info("Processing human transfer request")
+                # Reset the flag
+                memory.update_working_memory('human_transfer_requested', False)
+                
+                # Return human transfer response
+                return {
+                    'success': True,
+                    'response': "You're being transferred to a human agent. Please wait a moment while we connect you.",
+                    'agent': 'human_transfer',
+                    'confidence': 1.0,
+                    'processing_time': time.time() - start_time,
+                    'metadata': {
+                        'human_transfer': True
+                    }
+                }
+            
             # Select the best agent for this message
             best_agent, confidence, context_used = self._select_agent(message, context)
+            
+            # Check if we have special responses to use from agent selection
+            if 'human_transfer_response' in context:
+                logger.info("Using human transfer response")
+                return {
+                    'success': True,
+                    'response': context['human_transfer_response'],
+                    'agent': best_agent.name if best_agent else 'human_transfer',
+                    'confidence': confidence,
+                    'processing_time': time.time() - start_time,
+                    'metadata': {
+                        'human_transfer': True
+                    }
+                }
+            
+            # Check if this was a greeting with special response
+            if 'greeting_response' in context:
+                logger.info("Using greeting response")
+                if best_agent:
+                    # Update memory with selected agent
+                    memory.update_working_memory('last_selected_agent', best_agent.name)
+                    
+                    # Combine greeting with agent capabilities description
+                    agent_description = f"\n\nI can help you with {best_agent.description or best_agent.name}. What would you like to know?"
+                    return {
+                        'success': True,
+                        'response': context['greeting_response'] + agent_description,
+                        'agent': best_agent.name,
+                        'confidence': confidence,
+                        'processing_time': time.time() - start_time
+                    }
+                else:
+                    # Just use greeting response if no agent was selected
+                    return {
+                        'success': True,
+                        'response': context['greeting_response'],
+                        'agent': 'greeting',
+                        'confidence': confidence,
+                        'processing_time': time.time() - start_time
+                    }
             
             if not best_agent:
                 logger.warning("No suitable agent found for the message")

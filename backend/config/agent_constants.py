@@ -26,6 +26,18 @@ DEFAULT_CONFIDENCE_THRESHOLD = 0.65  # Minimum confidence to consider an intent 
 HIGH_CONFIDENCE_THRESHOLD = 0.85    # Threshold for "high confidence" intents
 CONTINUITY_BONUS = 0.15             # Bonus applied to continue with the same agent
 
+# Dynamic threshold adjustment parameters
+MIN_CONFIDENCE_THRESHOLD = 0.4     # Lower bound for dynamically adjusted threshold
+MAX_CONFIDENCE_THRESHOLD = 0.9     # Upper bound for dynamically adjusted threshold
+NEGATIVE_FEEDBACK_PENALTY = 0.2    # Reduce threshold after negative feedback
+TOPIC_SWITCH_THRESHOLD = 0.3       # Similarity threshold to detect topic switches
+SEMANTIC_RELEVANCE_WEIGHT = 0.1    # Weight of semantic relevance in confidence scoring
+
+# Special case confidence thresholds
+GREETING_CONFIDENCE = 0.85         # Confidence for greeting detection
+HUMAN_TRANSFER_CONFIDENCE = 0.75   # Confidence for human transfer requests
+CONVERSATION_END_CONFIDENCE = 0.8  # Confidence for conversation end detection
+
 # Number of turns to look back for context
 CONTEXT_WINDOW = 5
 
