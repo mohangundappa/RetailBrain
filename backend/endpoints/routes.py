@@ -32,7 +32,7 @@ def get_brain():
     global _brain
     if _brain is None:
         # Import here to avoid circular imports
-        from backend.brain.staples_brain import initialize_staples_brain
+        from backend.orchestration.staples_brain import initialize_staples_brain
         _brain = initialize_staples_brain()
     return _brain
 
