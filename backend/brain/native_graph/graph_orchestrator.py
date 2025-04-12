@@ -232,7 +232,8 @@ class GraphOrchestrator:
             
             # Get the final state from the last event
             if events:
-                final_state = events[-1].values()
+                # Convert dict_values to a dictionary
+                final_state = dict(zip(events[-1].keys(), events[-1].values()))
             else:
                 # Return default response if no events were generated
                 return {

@@ -20,6 +20,103 @@ class DefaultLangGraphAgent(LangGraphAgent):
     """
     Default implementation of LangGraphAgent for testing and fallback.
     
+    This agent provides basic functionality for the orchestration system
+    and returns specialized responses based on its type and input.
+    """
+    
+    def __init__(self, id: str, name: str, description: str, config: Optional[Dict[str, Any]] = None):
+        """
+        Initialize a default LangGraph agent.
+        
+        Args:
+            id: Unique identifier for the agent
+            name: Display name of the agent
+            description: Description of the agent's purpose
+            config: Optional configuration parameters
+        """
+        self.id = id
+        self.name = name
+        self.description = description
+        self._tools = []
+        
+    async def process(self, message: str, history: List[Dict[str, Any]] = None) -> Dict[str, Any]:
+        """
+        Process a message with this agent.
+        
+        Args:
+            message: The user message to process
+            history: Optional conversation history
+            
+        Returns:
+            Response dict containing the agent's output
+        """
+        # For testing, just return a canned response based on the agent type
+        if "package" in self.id or "package" in message.lower():
+            response = (
+                "I'll help you track your package. To get started, I'll need your tracking number. "
+                "You can find this in your order confirmation email or on your receipt."
+            )
+        elif "password" in self.id or "password" in message.lower():
+            response = (
+                "I can help you reset your password. To protect your account, "
+                "I'll need to verify your identity first. Please provide your email address."
+            )
+        elif "store" in self.id or "store" in message.lower():
+            response = (
+                "I can help you find the nearest Staples store. "
+                "Could you please share your zip code or city and state?"
+            )
+        else:
+            response = (
+                f"I'm the {self.name}. {self.description} "
+                "How can I assist you today?"
+            )
+            
+        return {
+            "content": response,
+            "source_documents": [],
+            "intermediate_steps": [],
+            "metadata": {}
+        }
+        
+    def get_id(self) -> str:
+        """
+        Get the unique identifier for this agent.
+        
+        Returns:
+            Agent ID
+        """
+        return self.id
+        
+    def get_name(self) -> str:
+        """
+        Get the display name of this agent.
+        
+        Returns:
+            Agent name
+        """
+        return self.name
+        
+    def get_description(self) -> str:
+        """
+        Get the description of this agent.
+        
+        Returns:
+            Agent description
+        """
+        return self.description
+        
+    def get_tools(self) -> List[Dict[str, Any]]:
+        """
+        Get the tools available to this agent.
+        
+        Returns:
+            List of tool configurations
+        """
+        return self._tools
+    """
+    Default implementation of LangGraphAgent for testing and fallback.
+    
     This agent returns a templated response for all inputs.
     """
     

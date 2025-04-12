@@ -57,6 +57,15 @@ class GraphBrainService:
         # Initialize orchestrator if not provided
         self.orchestrator = orchestrator or GraphOrchestrator(llm=self.llm)
         
+        # Register a default agent for testing
+        from backend.brain.agents.langgraph_factory import DefaultLangGraphAgent
+        default_agent = DefaultLangGraphAgent(
+            id="package_tracking",
+            name="Package Tracking Agent",
+            description="Helps track packages and provide shipping updates"
+        )
+        self.orchestrator.register_agent(default_agent)
+        
         logger.info("Initialized GraphBrainService")
     
     def _initialize_llm(self) -> ChatOpenAI:
