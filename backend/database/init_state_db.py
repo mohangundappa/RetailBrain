@@ -25,8 +25,9 @@ async def create_state_persistence_schema(engine: Optional[AsyncEngine] = None) 
     logger.info("Creating state persistence schema...")
     
     try:
-        # Create the orchestration state table for storing state data
+        # Execute statements individually to avoid asyncpg issues with multiple commands
         async with engine.begin() as conn:
+            # Create the main table
             await conn.execute(text("""
             CREATE TABLE IF NOT EXISTS orchestration_state (
                 id VARCHAR(36) PRIMARY KEY,
@@ -35,12 +36,26 @@ async def create_state_persistence_schema(engine: Optional[AsyncEngine] = None) 
                 checkpoint_name VARCHAR(255) NULL,
                 created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 is_checkpoint BOOLEAN NOT NULL DEFAULT FALSE
-            );
+            )
+            """))
             
-            -- Create indexes for efficient querying
-            CREATE INDEX IF NOT EXISTS orchestration_state_session_id_idx ON orchestration_state(session_id);
-            CREATE INDEX IF NOT EXISTS orchestration_state_checkpoint_idx ON orchestration_state(session_id, is_checkpoint) WHERE is_checkpoint = TRUE;
-            CREATE INDEX IF NOT EXISTS orchestration_state_created_at_idx ON orchestration_state(created_at);
+            # Create index for session_id
+            await conn.execute(text("""
+            CREATE INDEX IF NOT EXISTS orchestration_state_session_id_idx 
+            ON orchestration_state(session_id)
+            """))
+            
+            # Create index for checkpoints
+            await conn.execute(text("""
+            CREATE INDEX IF NOT EXISTS orchestration_state_checkpoint_idx 
+            ON orchestration_state(session_id, is_checkpoint) 
+            WHERE is_checkpoint = TRUE
+            """))
+            
+            # Create index for timestamps
+            await conn.execute(text("""
+            CREATE INDEX IF NOT EXISTS orchestration_state_created_at_idx 
+            ON orchestration_state(created_at)
             """))
         
         logger.info("State persistence schema created successfully")

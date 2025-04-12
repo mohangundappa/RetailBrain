@@ -373,7 +373,7 @@ async def test_database_agents(db: AsyncSession = Depends(get_db)):
 async def startup_db_client():
     """Initialize database on startup."""
     from sqlalchemy.ext.asyncio import AsyncEngine
-    from backend.database.db import engine, Base
+    from backend.database.db import engine, Base, get_db
     from backend.database.models import (
         Conversation, Message, TelemetrySession, 
         TelemetryEvent, CustomAgent, AgentComponent,
@@ -386,6 +386,19 @@ async def startup_db_client():
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
         logger.info("Database tables initialized successfully")
+        
+        # Initialize state persistence tables
+        try:
+            from backend.brain.native_graph.state_persistence import create_db_tables
+            # Get a database session
+            db = await anext(get_db())
+            # Create state persistence tables
+            await create_db_tables(db)
+            logger.info("State persistence tables initialized successfully")
+        except ImportError:
+            logger.warning("State persistence module not available, skipping initialization")
+        except Exception as state_err:
+            logger.warning(f"Error initializing state persistence tables: {str(state_err)}")
     except Exception as e:
         logger.error(f"Error initializing database tables: {str(e)}")
         # Don't raise the exception to allow the application to start

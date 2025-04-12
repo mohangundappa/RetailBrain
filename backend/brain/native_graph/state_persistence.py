@@ -94,7 +94,7 @@ class StatePersistenceManager:
                 text("""
                 INSERT INTO orchestration_state 
                 (id, session_id, state_data, checkpoint_name, created_at, is_checkpoint)
-                VALUES (:id, :session_id, :state_data, :checkpoint_name, :created_at, :is_checkpoint)
+                VALUES (:id, :session_id, :state_data::jsonb, :checkpoint_name, :created_at, :is_checkpoint)
                 """),
                 {
                     "id": state_id,
@@ -607,8 +607,10 @@ async def create_db_tables(db: AsyncSession) -> None:
         db: Database session
     """
     try:
-        # Execute raw SQL to create the state table if it doesn't exist
-        query = """
+        # Execute statements individually to avoid asyncpg issues with multiple commands
+        
+        # Create the main table
+        await db.execute(text("""
         CREATE TABLE IF NOT EXISTS orchestration_state (
             id VARCHAR(36) PRIMARY KEY,
             session_id VARCHAR(36) NOT NULL,
@@ -616,15 +618,28 @@ async def create_db_tables(db: AsyncSession) -> None:
             checkpoint_name VARCHAR(255) NULL,
             created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
             is_checkpoint BOOLEAN NOT NULL DEFAULT FALSE
-        );
+        )
+        """))
         
-        -- Create indexes for efficient querying
-        CREATE INDEX IF NOT EXISTS orchestration_state_session_id_idx ON orchestration_state(session_id);
-        CREATE INDEX IF NOT EXISTS orchestration_state_checkpoint_idx ON orchestration_state(session_id, is_checkpoint) WHERE is_checkpoint = TRUE;
-        CREATE INDEX IF NOT EXISTS orchestration_state_created_at_idx ON orchestration_state(created_at);
-        """
+        # Create index for session_id
+        await db.execute(text("""
+        CREATE INDEX IF NOT EXISTS orchestration_state_session_id_idx 
+        ON orchestration_state(session_id)
+        """))
         
-        await db.execute(text(query))
+        # Create index for checkpoints
+        await db.execute(text("""
+        CREATE INDEX IF NOT EXISTS orchestration_state_checkpoint_idx 
+        ON orchestration_state(session_id, is_checkpoint) 
+        WHERE is_checkpoint = TRUE
+        """))
+        
+        # Create index for timestamps
+        await db.execute(text("""
+        CREATE INDEX IF NOT EXISTS orchestration_state_created_at_idx 
+        ON orchestration_state(created_at)
+        """))
+        
         await db.commit()
         
         logger.info("Created orchestration_state table")
