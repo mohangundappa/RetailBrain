@@ -231,6 +231,6 @@ def save_results_to_csv(results):
 
 if __name__ == "__main__":
     print("Starting benchmark...")
-    results = run_benchmark(num_iterations=3)  # 3 iterations per query type
+    results = run_benchmark(num_iterations=1)  # 1 iteration per query type for faster testing
     print_results(results)
     save_results_to_csv(results)
