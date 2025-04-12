@@ -19,6 +19,7 @@ from backend.api.agent_builder_fastapi import agent_builder_router
 from backend.api.circuit_breaker_fastapi import circuit_breaker_router
 from backend.api.telemetry_fastapi import telemetry_router
 from backend.api.routes_fastapi import api_router
+from backend.api.db_agent_chat import router as db_agent_router
 from backend.database.db import get_db
 # Direct dependency functions to avoid circular imports
 async def get_chat_service_direct():
@@ -148,6 +149,7 @@ app.include_router(chat_router, prefix=API_PREFIX)
 app.include_router(agent_builder_router, prefix=f"{API_PREFIX}/agent-builder")
 app.include_router(circuit_breaker_router, prefix=f"{API_PREFIX}/circuit-breakers")
 app.include_router(telemetry_router, prefix=f"{API_PREFIX}/telemetry")
+app.include_router(db_agent_router)  # Already includes the prefix
 app.include_router(api_router, prefix=API_PREFIX)
 
 # Mount static directories
