@@ -93,10 +93,12 @@ async def send_message(
     """
     try:
         result = await chat_service.process_message(
-            content=request.content,
+            message=request.content,
             session_id=request.session_id,
-            user_id=request.user_id,
-            metadata=request.metadata or {}
+            context={
+                "user_id": request.user_id, 
+                "metadata": request.metadata or {}
+            }
         )
         return result
         

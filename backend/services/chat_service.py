@@ -141,6 +141,9 @@ class ChatService:
             session_id = str(uuid.uuid4())
             logger.debug(f"Generated new session ID: {session_id}")
         
+        # Initialize conversation variable outside the try block
+        conversation = None
+        
         # Use transaction context manager
         async with self.db.begin() as transaction:
             try:
