@@ -13,6 +13,7 @@ from backend.database.db import get_db
 from backend.services.brain_service import BrainService
 from backend.services.chat_service import ChatService
 from backend.services.telemetry_service import TelemetryService
+from backend.services.langgraph_brain_service import LangGraphBrainService
 from backend.config.config import get_config, Config
 from backend.repositories.agent_repository import AgentRepository
 
