@@ -3,6 +3,7 @@ Chat service for Staples Brain.
 Manages conversations and integration with the brain service.
 """
 import uuid
+import json
 import logging
 from datetime import datetime
 from typing import Dict, List, Any, Optional, Tuple, Protocol
@@ -329,16 +330,24 @@ class ChatService:
                 safe_metadata = {}
                 if msg.metadata:
                     try:
-                        # Only include JSON serializable data
-                        import json
-                        # First convert to JSON string then back to dict to strip non-serializable items
-                        safe_metadata = json.loads(json.dumps(msg.metadata))
-                    except (TypeError, json.JSONDecodeError):
-                        # If metadata has non-serializable items, fall back to basic dict
-                        # Extract primitive types that should be serializable
-                        for k, v in msg.metadata.items():
-                            if isinstance(v, (str, int, float, bool, type(None))):
-                                safe_metadata[k] = v
+                        # Handle potentially non-dict metadata
+                        if hasattr(msg.metadata, 'items') and callable(msg.metadata.items):
+                            # If metadata is a dict-like object, try to convert keys/values
+                            for k, v in msg.metadata.items():
+                                if isinstance(v, (str, int, float, bool, type(None))):
+                                    safe_metadata[str(k)] = v
+                        elif hasattr(msg.metadata, '__dict__'):
+                            # If metadata is an object with __dict__, use its attributes
+                            for k, v in msg.metadata.__dict__.items():
+                                if not k.startswith('_') and isinstance(v, (str, int, float, bool, type(None))):
+                                    safe_metadata[k] = v
+                        else:
+                            # Last resort, try string representation
+                            safe_metadata = {"value": str(msg.metadata)}
+                    except Exception as e:
+                        # If all else fails, include minimal information
+                        logger.warning(f"Failed to convert metadata to dict: {str(e)}")
+                        safe_metadata = {"metadata_type": type(msg.metadata).__name__}
                 
                 formatted_messages.append({
                     "id": str(msg.id),
@@ -431,16 +440,24 @@ class ChatService:
                 safe_metadata = {}
                 if conv.meta_data:
                     try:
-                        # Only include JSON serializable data
-                        import json
-                        # First convert to JSON string then back to dict to strip non-serializable items
-                        safe_metadata = json.loads(json.dumps(conv.meta_data))
-                    except (TypeError, json.JSONDecodeError):
-                        # If metadata has non-serializable items, fall back to basic dict
-                        # Extract primitive types that should be serializable
-                        for k, v in conv.meta_data.items():
-                            if isinstance(v, (str, int, float, bool, type(None))):
-                                safe_metadata[k] = v
+                        # Handle potentially non-dict metadata
+                        if hasattr(conv.meta_data, 'items') and callable(conv.meta_data.items):
+                            # If metadata is a dict-like object, try to convert keys/values
+                            for k, v in conv.meta_data.items():
+                                if isinstance(v, (str, int, float, bool, type(None))):
+                                    safe_metadata[str(k)] = v
+                        elif hasattr(conv.meta_data, '__dict__'):
+                            # If metadata is an object with __dict__, use its attributes
+                            for k, v in conv.meta_data.__dict__.items():
+                                if not k.startswith('_') and isinstance(v, (str, int, float, bool, type(None))):
+                                    safe_metadata[k] = v
+                        else:
+                            # Last resort, try string representation
+                            safe_metadata = {"value": str(conv.meta_data)}
+                    except Exception as e:
+                        # If all else fails, include minimal information
+                        logger.warning(f"Failed to convert metadata to dict: {str(e)}")
+                        safe_metadata = {"metadata_type": type(conv.meta_data).__name__}
                 
                 sessions.append({
                     "id": str(conv.id),
