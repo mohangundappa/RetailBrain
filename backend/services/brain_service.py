@@ -9,6 +9,7 @@ import asyncio
 from typing import Dict, List, Any, Optional, Tuple, Type
 from functools import wraps
 
+from sqlalchemy.ext.asyncio import AsyncSession
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import JsonOutputParser
@@ -70,7 +71,9 @@ class BrainService:
         self,
         orchestrator: Optional[Orchestrator] = None,
         llm: Optional[BaseChatModel] = None,
-        config: Optional[Config] = None
+        config: Optional[Config] = None,
+        agent_factory: Optional[Any] = None,
+        db_session: Optional[AsyncSession] = None
     ):
         """
         Initialize the brain service with dependencies.
@@ -79,6 +82,8 @@ class BrainService:
             orchestrator: Optional orchestrator instance
             llm: Optional language model instance
             config: Optional configuration instance
+            agent_factory: Optional agent factory instance
+            db_session: Optional database session
         """
         # Set up configuration
         self.config = config or Config()
@@ -103,10 +108,48 @@ class BrainService:
         # Initialize the orchestrator
         self.orchestrator = orchestrator or Orchestrator()
         
+        # Store the database session for later use
+        self.db_session = db_session
+        
+        # Store agent factory if provided (will be used during initialization)
+        self.agent_factory = agent_factory
+        
         # Set service timeout from config
         self.timeout = getattr(self.config, 'SERVICE_TIMEOUT', 30)
         
         logger.info(f"Brain service initialized with model {model_name}")
+    
+    async def initialize(self):
+        """
+        Initialize the brain service by loading agents from the database.
+        This method should be called after the service is created but before it's used.
+        """
+        logger.info("Initializing brain service...")
+        
+        # If we have a database session and agent factory, use them to load agents
+        if self.db_session and self.agent_factory:
+            try:
+                # Import here to avoid circular imports
+                from backend.brain.factory import AgentFactory
+                
+                # Create agent factory if not provided
+                if not self.agent_factory:
+                    self.agent_factory = AgentFactory(self.db_session)
+                
+                # Register all active agents with the orchestrator
+                registered_count = await self.agent_factory.register_all_agents_with_orchestrator(self.orchestrator)
+                logger.info(f"Loaded {registered_count} agents from database into orchestrator")
+                
+                return True
+            except ImportError as ie:
+                logger.warning(f"Could not import AgentFactory: {str(ie)}")
+                return False
+            except Exception as e:
+                logger.error(f"Error initializing agents from database: {str(e)}", exc_info=True)
+                return False
+        else:
+            logger.info("No database session or agent factory provided, skipping agent loading")
+            return False
     
     async def cleanup(self):
         """
