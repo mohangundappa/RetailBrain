@@ -178,6 +178,65 @@ class CircuitBreaker:
             logger.info(f"Circuit breaker '{self.name}' recorded success "
                        f"({self.success_count}/{self.success_threshold}) in HALF_OPEN state")
     
+    async def execute(self, func: Callable[..., T], fallback: Optional[Callable[..., T]] = None) -> T:
+        """
+        Execute a function with circuit breaker protection.
+        
+        Args:
+            func: The function to execute with circuit breaker protection
+            fallback: Optional fallback function to call if the circuit is open
+            
+        Returns:
+            The result of the function call or fallback
+            
+        Raises:
+            CircuitBreakerOpenException: If the circuit is open and no fallback is provided
+            CircuitBreakerTimeoutError: If the function times out
+            CircuitBreakerError: If the function fails and no fallback is provided
+        """
+        # Check and potentially update circuit state
+        async with self._lock:
+            await self._update_state()
+            
+            if self.state == CircuitState.OPEN:
+                logger.warning(f"Circuit breaker '{self.name}' is OPEN, failing fast")
+                if fallback:
+                    try:
+                        return fallback()
+                    except Exception as e:
+                        logger.error(f"Fallback for circuit '{self.name}' also failed: {str(e)}")
+                        raise CircuitBreakerError(f"Service '{self.name}' is unavailable and "
+                                                 f"fallback failed: {str(e)}")
+                raise CircuitBreakerOpenException(f"Service '{self.name}' is unavailable")
+        
+        # Execute the function
+        try:
+            result = func()
+            
+            # Record the success
+            async with self._lock:
+                await self._record_success()
+                await self._update_state()
+            
+            return result
+            
+        except Exception as e:
+            # Record the failure
+            logger.warning(f"Circuit breaker '{self.name}' - operation failed with error: {str(e)}")
+            async with self._lock:
+                await self._record_failure()
+                await self._update_state()
+            
+            # Try fallback if available
+            if fallback:
+                try:
+                    logger.info(f"Circuit breaker '{self.name}' - using fallback after error")
+                    return fallback()
+                except Exception as fallback_error:
+                    logger.error(f"Fallback for circuit '{self.name}' failed: {str(fallback_error)}")
+            
+            raise CircuitBreakerError(f"Operation in '{self.name}' failed: {str(e)}") from e
+
     def __call__(self, func: Callable[..., Awaitable[T]]) -> Callable[..., Awaitable[T]]:
         """
         Decorator for functions to apply the circuit breaker pattern.
@@ -277,6 +336,10 @@ class CircuitBreakerRegistry:
     def get(self, name: str) -> Optional[CircuitBreaker]:
         """Get a circuit breaker by name."""
         return _circuit_registry.get(name)
+        
+    def register(self, circuit: CircuitBreaker) -> None:
+        """Register a circuit breaker."""
+        _circuit_registry[circuit.name] = circuit
     
     def get_all_circuit_states(self) -> List[Dict[str, Any]]:
         """Get states of all circuit breakers."""
