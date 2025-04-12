@@ -68,8 +68,8 @@ async def get_chat_service_direct():
     from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
     import os
     
-    # Create minimal db engine for dependency
-    db_url = os.environ.get("DATABASE_URL", "").replace("postgresql://", "postgresql+asyncpg://")
+    # Create minimal db engine for dependency using sanitized URL
+    db_url = get_sanitized_db_url()
     engine = create_async_engine(db_url)
     db = AsyncSession(engine)
     
@@ -108,8 +108,8 @@ def get_telemetry_service_direct():
     from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
     import os
     
-    # Create minimal db engine for dependency
-    db_url = os.environ.get("DATABASE_URL", "").replace("postgresql://", "postgresql+asyncpg://")
+    # Create minimal db engine for dependency using sanitized URL
+    db_url = get_sanitized_db_url()
     engine = create_async_engine(db_url)
     db = AsyncSession(engine)
     
