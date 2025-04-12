@@ -78,7 +78,7 @@ class OptimizedAgentFactory:
             # Import the necessary models
             from backend.database.agent_schema import AgentDefinition as DbAgentDefinition
             from backend.database.agent_schema import AgentPattern, AgentTool as DbAgentTool
-            from backend.database.agent_schema import EntityDefinition as DbEntityDefinition
+            from backend.database.entity_schema import EntityDefinition as DbEntityDefinition
             from sqlalchemy import select
             from sqlalchemy.orm import selectinload
             
@@ -89,7 +89,7 @@ class OptimizedAgentFactory:
                 .options(
                     selectinload(DbAgentDefinition.patterns),
                     selectinload(DbAgentDefinition.tools),
-                    selectinload(DbAgentDefinition.entity_definitions)
+                    selectinload(DbAgentDefinition.entity_mappings).selectinload("entity")
                 )
             )
             
@@ -158,8 +158,9 @@ class OptimizedAgentFactory:
                 )
                 agent.add_tool(tool)
                 
-            # Add entity definitions
-            for db_entity in db_agent.entity_definitions:
+            # Add entity definitions via entity mappings
+            for mapping in db_agent.entity_mappings:
+                db_entity = mapping.entity
                 entity = OptEntityDefinition(
                     name=db_entity.name,
                     entity_type=db_entity.entity_type,
