@@ -51,7 +51,10 @@ class TestErrorClassification(unittest.TestCase):
     
     def test_classify_llm_context_limit(self):
         """Test classification of LLM context limit errors."""
-        error = Exception("This model's maximum context length is 16385 tokens. However, your messages resulted in 16586 tokens")
+        class OpenAIContextLimitError(Exception):
+            pass
+        
+        error = OpenAIContextLimitError("This model's maximum context length is 16385 tokens. However, your messages resulted in 16586 tokens")
         error_type = classify_error(error)
         
         self.assertEqual(error_type, ErrorType.LLM_CONTEXT_LIMIT)
@@ -400,10 +403,9 @@ class TestRetryDecorator(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(mock_func.call_count, 1)
 
 
-class TestUtilsRetryAsync:
+class TestUtilsRetryAsync(unittest.IsolatedAsyncioTestCase):
     """Tests for the retry_async decorator in utils.retry."""
     
-    @pytest.mark.asyncio
     async def test_retry_async_success_first_attempt(self):
         """Test successful execution on the first attempt."""
         # Arrange
@@ -416,10 +418,9 @@ class TestUtilsRetryAsync:
         result = await decorated_func()
         
         # Assert
-        assert result == "success"
-        assert mock_func.call_count == 1
+        self.assertEqual(result, "success")
+        self.assertEqual(mock_func.call_count, 1)
     
-    @pytest.mark.asyncio
     async def test_retry_async_success_after_retries(self):
         """Test successful execution after several retries."""
         # Arrange
@@ -441,10 +442,9 @@ class TestUtilsRetryAsync:
         result = await decorated_func()
         
         # Assert
-        assert result == "success"
-        assert mock_func.call_count == 3
+        self.assertEqual(result, "success")
+        self.assertEqual(mock_func.call_count, 3)
     
-    @pytest.mark.asyncio
     async def test_retry_async_all_attempts_fail(self):
         """Test behavior when all retry attempts fail."""
         # Arrange
@@ -460,13 +460,13 @@ class TestUtilsRetryAsync:
         )(mock_func)
         
         # Act/Assert
-        with pytest.raises(Exception) as excinfo:
+        with self.assertRaises(Exception) as context:
             await decorated_func()
         
         # Verify that the original error is propagated
-        assert str(excinfo.value) == str(original_error)
-        assert mock_func.call_count == 2
+        self.assertEqual(str(context.exception), str(original_error))
+        self.assertEqual(mock_func.call_count, 2)
 
 
 if __name__ == "__main__":
-    pytest.main(["-xvs", __file__])
+    unittest.main()
