@@ -116,6 +116,26 @@ class OptimizedBrainService:
                 
         return self._traditional_service
             
+    async def process_request(
+        self,
+        message: str,
+        session_id: str,
+        context: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, Any]:
+        """
+        Process a user request (alias to process_message).
+        This method is called by the ChatService and ensures API compatibility.
+        
+        Args:
+            message: User message
+            session_id: Session ID
+            context: Optional context
+            
+        Returns:
+            Response dictionary
+        """
+        return await self.process_message(message, session_id, context)
+        
     async def process_message(
         self,
         message: str,
