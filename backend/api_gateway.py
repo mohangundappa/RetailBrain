@@ -17,10 +17,8 @@ from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 # Import only the routers we need
-from backend.endpoints.optimized_chat import router as chat_router  # Single, clean router for all chat functionality
 from backend.endpoints.state_management import state_router
 from backend.endpoints.routes import api_router
-from backend.endpoints.chat import router as context_chat_router
 from backend.endpoints.graph_chat import router as graph_chat_router  # LangGraph-based chat functionality
 from backend.database.db import get_db
 
@@ -71,9 +69,10 @@ async def get_chat_service_direct():
     This is a temporary solution to avoid circular imports.
     """
     from backend.services.chat_service import ChatService
-    from backend.services.optimized_brain_service import OptimizedBrainService
+    from backend.services.graph_brain_service import GraphBrainService
     from backend.config.config import get_config
     from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+    from backend.memory.factory import get_mem0
     import os
     
     # Create minimal db engine for dependency using sanitized URL
@@ -84,20 +83,23 @@ async def get_chat_service_direct():
     # Get configuration
     config = get_config()
     
+    # Get memory service (mem0)
+    memory_service = await get_mem0("default")
+    
     # Try to create LangGraph agent factory
     try:
-        # Import from agents/models instead of brain/agents
-        from backend.agents.models import LangGraphAgentFactory
+        from backend.agents.framework.langgraph.langgraph_factory import LangGraphAgentFactory
         agent_factory = LangGraphAgentFactory(db)
         logger.debug("Created LangGraph agent factory for brain service (API direct)")
     except ImportError:
         logger.warning("Could not import LangGraphAgentFactory, continuing without database-driven agents")
         agent_factory = None
     
-    # Create optimized brain service with database session and agent factory
-    brain_service = OptimizedBrainService(
-        db_session=db,
+    # Create graph brain service with database session and agent factory
+    brain_service = GraphBrainService(
+        db=db,
         config=config,
+        memory_service=memory_service,
         agent_factory=agent_factory
     )
     
@@ -189,10 +191,8 @@ class AgentListResponse(BaseModel):
 
 
 # Include only essential routers
-app.include_router(chat_router, prefix=API_PREFIX)
 app.include_router(state_router, prefix=API_PREFIX)
 app.include_router(api_router, prefix=API_PREFIX)
-app.include_router(context_chat_router, prefix=API_PREFIX)
 app.include_router(graph_chat_router, prefix=API_PREFIX)  # LangGraph-based chat functionality
 
 # API Documentation is available at /api/v1/docs
@@ -295,7 +295,8 @@ async def startup_db_client():
             # Import individual functions directly from modules
             from backend.config.config import get_config
             from backend.memory.factory import get_mem0
-            from backend.services.optimized_brain_service import OptimizedBrainService
+            from backend.services.graph_brain_service import GraphBrainService
+            from backend.agents.framework.langgraph.langgraph_factory import LangGraphAgentFactory
             
             # Get configuration
             config = get_config()
@@ -306,21 +307,24 @@ async def startup_db_client():
             # Initialize the brain service directly
             db = await anext(get_db())
             
+            # Create agent factory for LangGraph
+            agent_factory = LangGraphAgentFactory(db)
+            
             # Create the brain service instance directly
-            brain_service = OptimizedBrainService(
+            brain_service = GraphBrainService(
                 db_session=db,
                 config=config,
-                memory_service=memory_service
+                memory_service=memory_service,
+                agent_factory=agent_factory
             )
             
             # Initialize the brain service
             await brain_service.initialize()
             
-            # Make sure vector store is populated with agents
-            if hasattr(brain_service, 'agent_factory') and brain_service.agent_factory:
-                logger.info("Pre-loading agents from database into vector store")
-                await brain_service.agent_factory.load_agents_from_database()
-                logger.info("Agents successfully pre-loaded at startup")
+            # Preload agents from database
+            logger.info("Pre-loading agents from database for LangGraph orchestration")
+            await agent_factory.load_agents_from_database()
+            logger.info("Agents successfully pre-loaded at startup")
                 
         except Exception as brain_err:
             logger.warning(f"Error pre-loading brain service: {str(brain_err)}", exc_info=True)

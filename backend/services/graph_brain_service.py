@@ -8,6 +8,7 @@ import logging
 import time
 import json
 from typing import Dict, List, Optional, Any, Tuple, Union
+from datetime import datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
@@ -714,3 +715,78 @@ class GraphBrainService:
             Response dictionary
         """
         return await self.process_message(message, session_id, context)
+    
+    async def list_agents(self) -> Dict[str, Any]:
+        """
+        Get a list of available agents.
+        
+        Returns:
+            Dictionary containing agent information
+        """
+        agent_list = []
+        try:
+            for agent_id, agent in self.agents.items():
+                # Extract relevant agent information
+                agent_detail = {
+                    "id": agent_id,
+                    "name": agent.name,
+                    "description": getattr(agent, "description", ""),
+                    "type": getattr(agent, "agent_type", "unknown"),
+                    "version": getattr(agent, "version", 1),
+                    "created_at": getattr(agent, "created_at", datetime.now().isoformat()),
+                    "db_driven": True,
+                    "loaded": True,
+                    "is_system": "guardrails" in agent.name.lower() or "general conversation" in agent.name.lower()
+                }
+                agent_list.append(agent_detail)
+            
+            return {
+                "success": True,
+                "agents": agent_list,
+                "count": len(agent_list)
+            }
+        except Exception as e:
+            logger.error(f"Error listing agents: {str(e)}", exc_info=True)
+            return {
+                "success": False,
+                "error": f"Failed to list agents: {str(e)}",
+                "agents": [],
+                "count": 0
+            }
+    
+    async def get_system_stats(self, days: int = 7) -> Dict[str, Any]:
+        """
+        Get system statistics.
+        
+        Args:
+            days: Number of days to look back
+            
+        Returns:
+            Dictionary containing system statistics
+        """
+        try:
+            # Get basic information about the system
+            stats = {
+                "agent_count": len(self.agents),
+                "agents": [agent.name for agent in self.agents.values()],
+                "general_agent": bool(self._get_general_agent()),
+                "guardrails_agent": bool(self._get_guardrails_agent()),
+                "graph_nodes": 3 if self.graph else 0,  # Router, Executor, PostProcessor
+                "days_analyzed": days,
+                "timestamp": datetime.now().isoformat()
+            }
+            
+            # If connected to a telemetry service, we could get more detailed stats here
+            # For now, return basic system information
+            
+            return {
+                "success": True,
+                "data": stats
+            }
+        except Exception as e:
+            logger.error(f"Error getting system stats: {str(e)}", exc_info=True)
+            return {
+                "success": False,
+                "error": f"Failed to get system statistics: {str(e)}",
+                "data": {}
+            }
