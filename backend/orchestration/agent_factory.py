@@ -67,6 +67,7 @@ class OptimizedAgentFactory:
     async def load_agents_from_database(self) -> int:
         """
         Load all active agents from the database and index them.
+        The database is the single source of truth for agent configurations.
         
         Returns:
             Number of agents loaded
@@ -76,11 +77,20 @@ class OptimizedAgentFactory:
             return 0
             
         try:
-            # First, create and load hardcoded test agents for backwards compatibility
-            hardcoded_count = await self._load_hardcoded_test_agents()
-            logger.info(f"Loaded {hardcoded_count} hardcoded agents for testing")
-            
-            # Now load agents from the database
+            # First, clear any existing agents from the vector store
+            if hasattr(self.vector_store, 'clear'):
+                self.vector_store.clear()
+                logger.info("Cleared vector store of existing agents")
+            else:
+                # If clear method isn't available, recreate the vector store
+                logger.info("Vector store doesn't have clear method, recreating empty store")
+                self.vector_store = AgentVectorStore(self.embedding_service)
+                
+                # Update router with new vector store reference
+                if self.router:
+                    self.router.agent_vector_store = self.vector_store
+                
+            # Load agents from the database
             from backend.repositories.agent_repository import AgentRepository
             agent_repository = AgentRepository(self.db_session)
             
@@ -108,11 +118,10 @@ class OptimizedAgentFactory:
                 except Exception as agent_error:
                     logger.error(f"Error loading agent {getattr(db_agent, 'name', 'unknown')}: {str(agent_error)}")
             
-            # Log combined results
-            total_count = hardcoded_count + db_count
-            logger.info(f"Loaded total of {total_count} agents ({hardcoded_count} hardcoded, {db_count} from database)")
+            # Log results
+            logger.info(f"Loaded {db_count} agents from database into vector store")
             
-            return total_count
+            return db_count
         except Exception as e:
             logger.error(f"Error loading agents from database: {str(e)}", exc_info=True)
             return 0

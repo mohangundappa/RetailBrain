@@ -41,6 +41,16 @@ class AgentVectorStore:
         
         logger.info("Initialized AgentVectorStore")
         
+    def clear(self) -> None:
+        """
+        Clear all agents and embeddings from the vector store.
+        This is useful when reloading agents from the database.
+        """
+        agent_count = len(self.agent_data)
+        self.agent_data.clear()
+        self.agent_embeddings.clear()
+        logger.info(f"Cleared {agent_count} agents from vector store")
+        
     async def index_agent(self, agent: AgentDefinition) -> bool:
         """
         Index an agent in the vector store.
