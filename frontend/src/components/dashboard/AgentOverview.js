@@ -24,26 +24,48 @@ const AgentOverview = () => {
       console.log('AgentOverview: Fetching agents from API...');
       setLoading(true);
       
-      // Force a direct API request without using cached data
-      const response = await api.get('/agents');
-      const responseData = response.data;
-      console.log('AgentOverview: API response:', responseData);
+      // ADD A DEBUG ALERT FOR IMMEDIATE FEEDBACK
+      console.log('DEBUG: Making API call to fetch agents at:', new Date().toISOString());
       
-      if (responseData.success && responseData.agents) {
-        console.log('AgentOverview: Setting agents:', responseData.agents);
-        // Find system agents for debugging
-        const systemAgents = responseData.agents.filter(a => a.is_system);
-        console.log('AgentOverview: System agents found:', systemAgents.length, systemAgents);
+      try {
+        // Force a direct API request without using cached data
+        const response = await api.get('/agents');
+        const responseData = response.data;
+        console.log('AgentOverview: API response:', responseData);
         
-        setAgents(responseData.agents);
-      } else {
-        throw new Error('Failed to fetch agents');
+        if (responseData.success && responseData.agents) {
+          console.log('AgentOverview: Setting agents:', responseData.agents);
+          // Find system agents for debugging
+          const systemAgents = responseData.agents.filter(a => a.is_system);
+          console.log('AgentOverview: System agents found:', systemAgents.length, systemAgents);
+          
+          setAgents(responseData.agents);
+          alert('Successfully loaded ' + responseData.agents.length + ' agents including ' + 
+                systemAgents.length + ' system agents');
+        } else {
+          throw new Error('Failed to fetch agents - success flag false');
+        }
+      } catch (networkError) {
+        console.error('Network error details:', networkError);
+        if (networkError.response) {
+          console.error('Response data:', networkError.response.data);
+          console.error('Response status:', networkError.response.status);
+          console.error('Response headers:', networkError.response.headers);
+        } else if (networkError.request) {
+          console.error('Request was made but no response was received');
+          console.error('Request details:', networkError.request);
+        } else {
+          console.error('Error setting up request:', networkError.message);
+        }
+        throw networkError;
       }
     } catch (error) {
       console.error('Error fetching agents:', error);
+      console.log('Error fetching agents stack:', error.stack);
+      alert('Error loading agents: ' + error.message);
       addNotification({
         title: 'Error',
-        message: 'Failed to load agents. Please try again later.',
+        message: 'Failed to load agents. Please try again later. Error: ' + error.message,
         type: 'error'
       });
     } finally {
