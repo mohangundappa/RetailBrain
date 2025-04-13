@@ -130,7 +130,7 @@ async def health_check():
         if _brain is None:
             _brain = await get_brain_async()
         
-        agent_names = _brain.list_agents()
+        agent_names = await _brain.list_agents()
         return {
             "status": "healthy",
             "message": "Orchestration Engine is running",
@@ -197,7 +197,7 @@ async def list_agents():
         if _brain is None:
             _brain = await get_brain_async()
             
-        agent_names = _brain.list_agents()
+        agent_names = await _brain.list_agents()
         
         return {
             "success": True,
