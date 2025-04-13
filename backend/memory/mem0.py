@@ -227,7 +227,7 @@ class MemoryEntry:
             agent_id=model.agent_id,
             role=model.role,
             importance=model.importance,
-            metadata=model.metadata,
+            metadata=model.meta_data,  # Use meta_data instead of metadata
             entry_id=str(model.id),
             created_at=model.created_at,
             expires_at=model.expires_at,
@@ -441,7 +441,7 @@ class Mem0:
                 relevance=1.0,  # Default
                 recency=1.0,    # Default
                 embedding=memory.embedding,
-                metadata=memory.metadata,
+                meta_data=memory.metadata,  # Use meta_data instead of metadata
                 created_at=memory.created_at,
                 expires_at=memory.expires_at
             )
