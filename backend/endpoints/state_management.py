@@ -10,6 +10,7 @@ from typing import Dict, List, Any, Optional, Union
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, Body
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import text
 
 from backend.database.db import get_db
 from backend.orchestration.state.recovery import (
@@ -118,11 +119,11 @@ async def list_sessions(
         manager = StatePersistenceManager(db)
         
         # Get active sessions from database
-        query = """
+        query = text("""
         SELECT DISTINCT session_id FROM orchestration_state
         ORDER BY MAX(created_at) DESC
         LIMIT :limit
-        """
+        """)
         
         result = await db.execute(query, {"limit": limit})
         sessions = [row[0] for row in result]
@@ -160,10 +161,10 @@ async def get_session_info(
         manager = StatePersistenceManager(db)
         
         # Get state count
-        state_count_query = """
+        state_count_query = text("""
         SELECT COUNT(*) FROM orchestration_state
         WHERE session_id = :session_id
-        """
+        """)
         state_count_result = await db.execute(state_count_query, {"session_id": session_id})
         state_count = state_count_result.scalar_one_or_none() or 0
         
