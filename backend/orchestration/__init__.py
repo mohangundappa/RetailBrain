@@ -29,5 +29,6 @@ __all__ = [
 from backend.orchestration.agent_definition import AgentDefinition
 from backend.orchestration.state import create_db_tables
 from backend.orchestration.agent_factory import OptimizedAgentFactory
+from backend.orchestration.agent_router import OptimizedAgentRouter
 
 # These should be imported at usage time to avoid circular dependencies
