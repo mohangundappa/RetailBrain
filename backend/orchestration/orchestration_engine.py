@@ -58,7 +58,7 @@ class OrchestrationEngine:
         
         # Initialize services
         from backend.orchestration.embedding_service import EmbeddingService
-        from backend.orchestration.vector_store import AgentVectorStore
+        from backend.orchestration.agent_vector_store import AgentVectorStore
         from backend.orchestration.telemetry import TelemetryManager
         
         embedding_service = EmbeddingService()
