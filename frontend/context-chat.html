@@ -1,0 +1,949 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Staples Brain - Context-Aware Chat</title>
+    <link href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            background-color: var(--bs-body-bg);
+        }
+        
+        .main-container {
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .content-container {
+            display: flex;
+            height: calc(100vh - 56px);
+            overflow: hidden;
+        }
+        
+        .chat-container {
+            flex: 0 0 50%;
+            display: flex;
+            flex-direction: column;
+            border-right: 1px solid var(--bs-border-color);
+        }
+        
+        .observability-container {
+            flex: 0 0 50%;
+            overflow-y: auto;
+            padding: 20px;
+        }
+        
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+        }
+        
+        .chat-input {
+            padding: 15px;
+            background-color: rgba(0, 0, 0, 0.1);
+            border-top: 1px solid var(--bs-border-color);
+        }
+        
+        .message {
+            margin-bottom: 15px;
+            animation: fadeIn 0.3s ease-in-out;
+        }
+        
+        .message-content {
+            padding: 12px 15px;
+            border-radius: 10px;
+            max-width: 80%;
+        }
+        
+        .user-message {
+            display: flex;
+            justify-content: flex-end;
+        }
+        
+        .user-message .message-content {
+            background-color: var(--bs-primary);
+            color: white;
+            border-radius: 18px 18px 0 18px;
+        }
+        
+        .agent-message {
+            display: flex;
+            justify-content: flex-start;
+        }
+        
+        .agent-message .message-content {
+            background-color: rgba(0, 0, 0, 0.2);
+            border-radius: 18px 18px 18px 0;
+        }
+        
+        .context-panel {
+            padding: 10px;
+            margin-bottom: 15px;
+        }
+        
+        .intents-chart-container {
+            position: relative;
+            height: 200px;
+            margin-bottom: 20px;
+        }
+        
+        .timeline-container {
+            margin-top: 30px;
+        }
+        
+        .timeline-item {
+            display: flex;
+            margin-bottom: 15px;
+            opacity: 0.7;
+        }
+        
+        .timeline-icon {
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            margin-right: 15px;
+            background-color: rgba(0, 0, 0, 0.2);
+        }
+        
+        .timeline-item.active {
+            opacity: 1;
+        }
+        
+        .timeline-item.active .timeline-icon {
+            background-color: var(--bs-primary);
+            color: white;
+        }
+        
+        .node-diagram {
+            display: flex;
+            justify-content: space-between;
+            margin: 20px 0;
+        }
+        
+        .node {
+            width: 100px;
+            height: 100px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            background-color: rgba(0, 0, 0, 0.2);
+            position: relative;
+        }
+        
+        .node.active {
+            background-color: var(--bs-primary);
+            color: white;
+        }
+        
+        .node:not(:last-child)::after {
+            content: "";
+            position: absolute;
+            top: 50%;
+            right: -50px;
+            width: 50px;
+            height: 2px;
+            background-color: var(--bs-secondary);
+        }
+        
+        .nav-tabs {
+            padding-top: 10px;
+            background-color: rgba(0, 0, 0, 0.05);
+        }
+        
+        .tab-content {
+            overflow-y: auto;
+            max-height: calc(100vh - 140px);
+        }
+        
+        .agent-status {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        
+        .status-active {
+            background-color: var(--bs-success);
+        }
+        
+        .status-inactive {
+            background-color: var(--bs-danger);
+        }
+        
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .thinking {
+            display: flex;
+            padding: 10px;
+        }
+        
+        .thinking span {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            margin: 0 2px;
+            border-radius: 50%;
+            background-color: var(--bs-secondary);
+            animation: thinking 1.4s infinite ease-in-out both;
+        }
+        
+        .thinking span:nth-child(1) {
+            animation-delay: -0.32s;
+        }
+        
+        .thinking span:nth-child(2) {
+            animation-delay: -0.16s;
+        }
+        
+        @keyframes thinking {
+            0%, 80%, 100% {
+                transform: scale(0);
+            }
+            40% {
+                transform: scale(1);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="main-container">
+        <nav class="navbar navbar-expand navbar-dark bg-dark">
+            <div class="container-fluid">
+                <a class="navbar-brand" href="#">
+                    <i data-feather="cpu"></i> Staples Brain
+                </a>
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/">
+                            <i data-feather="grid"></i> Dashboard
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="/chat">
+                            <i data-feather="message-square"></i> Chat
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </nav>
+        
+        <div class="content-container">
+            <!-- Chat Panel -->
+            <div class="chat-container">
+                <!-- Context Editor Panel -->
+                <div class="accordion" id="contextAccordion">
+                    <div class="accordion-item">
+                        <h2 class="accordion-header" id="headingOne">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne" aria-expanded="false" aria-controls="collapseOne">
+                                <i data-feather="sliders" class="me-2"></i> Context Editor
+                            </button>
+                        </h2>
+                        <div id="collapseOne" class="accordion-collapse collapse" aria-labelledby="headingOne" data-bs-parent="#contextAccordion">
+                            <div class="accordion-body">
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <div class="card">
+                                            <div class="card-header">
+                                                <h6 class="mb-0">Identity Context</h6>
+                                            </div>
+                                            <div class="card-body">
+                                                <div class="mb-3">
+                                                    <label for="visitorId" class="form-label">Visitor ID</label>
+                                                    <input type="text" class="form-control" id="visitorId" value="visitor_12345">
+                                                </div>
+                                                <div class="mb-3">
+                                                    <label for="customerId" class="form-label">Customer ID</label>
+                                                    <input type="text" class="form-control" id="customerId" value="cust_67890">
+                                                </div>
+                                                <div class="mb-3">
+                                                    <label for="sessionId" class="form-label">Session ID</label>
+                                                    <input type="text" class="form-control" id="sessionId" value="sess_abcdef">
+                                                </div>
+                                                <div class="mb-3">
+                                                    <label for="authLevel" class="form-label">Authentication Level</label>
+                                                    <select class="form-select" id="authLevel">
+                                                        <option value="none">None</option>
+                                                        <option value="low">Low</option>
+                                                        <option value="medium" selected>Medium</option>
+                                                        <option value="high">High</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <div class="card">
+                                            <div class="card-header">
+                                                <h6 class="mb-0">Customer Profile</h6>
+                                            </div>
+                                            <div class="card-body">
+                                                <div class="mb-3">
+                                                    <label for="customerEmail" class="form-label">Email</label>
+                                                    <input type="email" class="form-control" id="customerEmail" value="john.smith@example.com">
+                                                </div>
+                                                <div class="mb-3">
+                                                    <label for="customerPhone" class="form-label">Phone</label>
+                                                    <input type="text" class="form-control" id="customerPhone" value="+1-555-123-4567">
+                                                </div>
+                                                <div class="mb-3">
+                                                    <label for="customerType" class="form-label">Customer Type</label>
+                                                    <select class="form-select" id="customerType">
+                                                        <option value="retail" selected>Retail</option>
+                                                        <option value="business">Business</option>
+                                                        <option value="enterprise">Enterprise</option>
+                                                    </select>
+                                                </div>
+                                                <div class="mb-3">
+                                                    <label for="customerTier" class="form-label">Customer Tier</label>
+                                                    <select class="form-select" id="customerTier">
+                                                        <option value="standard">Standard</option>
+                                                        <option value="premier" selected>Premier</option>
+                                                        <option value="elite">Elite</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="d-flex justify-content-end">
+                                    <button class="btn btn-primary" id="applyContextBtn">
+                                        <i data-feather="check" class="me-1"></i> Apply Context
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Chat Messages -->
+                <div class="chat-messages" id="chatMessages">
+                    <div class="message agent-message">
+                        <div class="message-content">
+                            <p>Hello! I'm Staples Brain, your virtual assistant. How can I help you today?</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Chat Input -->
+                <div class="chat-input">
+                    <div class="input-group">
+                        <input type="text" class="form-control" id="messageInput" placeholder="Type your message here...">
+                        <button class="btn btn-primary" id="sendBtn">
+                            <i data-feather="send"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Observability Panel -->
+            <div class="observability-container">
+                <ul class="nav nav-tabs" id="observabilityTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="processing-tab" data-bs-toggle="tab" data-bs-target="#processing" type="button" role="tab" aria-controls="processing" aria-selected="true">
+                            <i data-feather="activity" class="me-1"></i> Processing Flow
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="context-tab" data-bs-toggle="tab" data-bs-target="#context" type="button" role="tab" aria-controls="context" aria-selected="false">
+                            <i data-feather="user" class="me-1"></i> Context Data
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="agents-tab" data-bs-toggle="tab" data-bs-target="#agents" type="button" role="tab" aria-controls="agents" aria-selected="false">
+                            <i data-feather="users" class="me-1"></i> Agent Selection
+                        </button>
+                    </li>
+                </ul>
+                <div class="tab-content" id="observabilityTabsContent">
+                    <!-- Processing Flow Tab -->
+                    <div class="tab-pane fade show active" id="processing" role="tabpanel" aria-labelledby="processing-tab">
+                        <div class="card mt-3">
+                            <div class="card-header">
+                                <h5>Processing Timeline</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="node-diagram">
+                                    <div class="node" id="intentNode">
+                                        <i data-feather="filter"></i>
+                                        <span>Intent</span>
+                                    </div>
+                                    <div class="node" id="entityNode">
+                                        <i data-feather="tag"></i>
+                                        <span>Entity</span>
+                                    </div>
+                                    <div class="node" id="agentNode">
+                                        <i data-feather="user"></i>
+                                        <span>Agent</span>
+                                    </div>
+                                    <div class="node" id="responseNode">
+                                        <i data-feather="message-square"></i>
+                                        <span>Response</span>
+                                    </div>
+                                </div>
+                                
+                                <div class="timeline-container">
+                                    <div class="timeline-item" id="intentTimeline">
+                                        <div class="timeline-icon">
+                                            <i data-feather="filter"></i>
+                                        </div>
+                                        <div class="timeline-content">
+                                            <h5>Intent Detection</h5>
+                                            <p>Analyzing user query to determine intent</p>
+                                            <span class="badge bg-secondary" id="intentBadge"></span>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="timeline-item" id="entityTimeline">
+                                        <div class="timeline-icon">
+                                            <i data-feather="tag"></i>
+                                        </div>
+                                        <div class="timeline-content">
+                                            <h5>Entity Extraction</h5>
+                                            <p>Identifying relevant entities from user query</p>
+                                            <div id="entityBadges"></div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="timeline-item" id="agentTimeline">
+                                        <div class="timeline-icon">
+                                            <i data-feather="user"></i>
+                                        </div>
+                                        <div class="timeline-content">
+                                            <h5>Agent Selection</h5>
+                                            <p>Choosing the most appropriate agent to handle the query</p>
+                                            <span class="badge bg-secondary" id="agentBadge"></span>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="timeline-item" id="responseTimeline">
+                                        <div class="timeline-icon">
+                                            <i data-feather="message-square"></i>
+                                        </div>
+                                        <div class="timeline-content">
+                                            <h5>Response Generation</h5>
+                                            <p>Creating response based on agent logic and context</p>
+                                            <span class="badge bg-secondary" id="responseTime"></span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="card mt-3">
+                            <div class="card-header">
+                                <h5>Intent Distribution</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="intents-chart-container">
+                                    <canvas id="intentsChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Context Data Tab -->
+                    <div class="tab-pane fade" id="context" role="tabpanel" aria-labelledby="context-tab">
+                        <div class="card mt-3">
+                            <div class="card-header">
+                                <h5>Active Context</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <h6>Identity Information</h6>
+                                        <div class="table-responsive">
+                                            <table class="table table-sm">
+                                                <tbody id="identityTable">
+                                                    <!-- Identity data will be populated here -->
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <h6>Customer Profile</h6>
+                                        <div class="table-responsive">
+                                            <table class="table table-sm">
+                                                <tbody id="profileTable">
+                                                    <!-- Profile data will be populated here -->
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="card mt-3">
+                            <div class="card-header">
+                                <h5>Context Influence</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="alert alert-info" id="contextInfluence">
+                                    <i data-feather="info" class="me-2"></i>
+                                    <span>Context influence will be shown here when a message is processed.</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Agent Selection Tab -->
+                    <div class="tab-pane fade" id="agents" role="tabpanel" aria-labelledby="agents-tab">
+                        <div class="card mt-3">
+                            <div class="card-header">
+                                <h5>Selected Agent</h5>
+                            </div>
+                            <div class="card-body" id="selectedAgentContainer">
+                                <div class="alert alert-info">
+                                    <i data-feather="info" class="me-2"></i>
+                                    <span>Agent selection will be shown here when a message is processed.</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="card mt-3">
+                            <div class="card-header">
+                                <h5>Available Agents</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table">
+                                        <thead>
+                                            <tr>
+                                                <th>Status</th>
+                                                <th>Name</th>
+                                                <th>Type</th>
+                                                <th>Version</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="agentsTableBody">
+                                            <!-- Agent list will be populated here -->
+                                            <tr>
+                                                <td><span class="agent-status status-active"></span> Active</td>
+                                                <td>Package Tracking</td>
+                                                <td>Customer Support</td>
+                                                <td>1.0</td>
+                                            </tr>
+                                            <tr>
+                                                <td><span class="agent-status status-active"></span> Active</td>
+                                                <td>Reset Password</td>
+                                                <td>Account Management</td>
+                                                <td>1.0</td>
+                                            </tr>
+                                            <tr>
+                                                <td><span class="agent-status status-active"></span> Active</td>
+                                                <td>Store Locator</td>
+                                                <td>Information</td>
+                                                <td>1.0</td>
+                                            </tr>
+                                            <tr>
+                                                <td><span class="agent-status status-inactive"></span> Inactive</td>
+                                                <td>Product Info</td>
+                                                <td>Product Support</td>
+                                                <td>1.0</td>
+                                            </tr>
+                                            <tr>
+                                                <td><span class="agent-status status-active"></span> Active</td>
+                                                <td>Returns Processing</td>
+                                                <td>Customer Support</td>
+                                                <td>1.0</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Initialize Feather icons
+        document.addEventListener('DOMContentLoaded', function() {
+            feather.replace();
+            
+            // Initialize the chart
+            initializeIntentsChart();
+            
+            // Update context tables
+            updateContextTables();
+        });
+        
+        // Global variables
+        let currentConversationId = null;
+        let intentsChart = null;
+        
+        // Initialize the intents chart
+        function initializeIntentsChart() {
+            const ctx = document.getElementById('intentsChart').getContext('2d');
+            intentsChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['No Intents Detected'],
+                    datasets: [{
+                        data: [100],
+                        backgroundColor: ['rgba(200, 200, 200, 0.2)'],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'right',
+                            labels: {
+                                color: 'white'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Update intents chart with new data
+        function updateIntentsChart(intents) {
+            if (!intents || intents.length === 0) return;
+            
+            const labels = intents.map(intent => intent.intent);
+            const data = intents.map(intent => intent.confidence * 100);
+            const backgroundColor = [
+                'rgba(54, 162, 235, 0.8)',
+                'rgba(255, 99, 132, 0.8)',
+                'rgba(255, 206, 86, 0.8)',
+                'rgba(75, 192, 192, 0.8)',
+                'rgba(153, 102, 255, 0.8)'
+            ];
+            
+            intentsChart.data.labels = labels;
+            intentsChart.data.datasets[0].data = data;
+            intentsChart.data.datasets[0].backgroundColor = backgroundColor.slice(0, intents.length);
+            intentsChart.update();
+        }
+        
+        // Event listener for Apply Context button
+        document.getElementById('applyContextBtn').addEventListener('click', function() {
+            updateContextTables();
+            // Close the accordion
+            bootstrap.Collapse.getInstance(document.getElementById('collapseOne')).hide();
+        });
+        
+        // Update context data tables
+        function updateContextTables() {
+            const identityTable = document.getElementById('identityTable');
+            const profileTable = document.getElementById('profileTable');
+            
+            // Clear existing tables
+            identityTable.innerHTML = '';
+            profileTable.innerHTML = '';
+            
+            // Identity data
+            const identityData = {
+                'Visitor ID': document.getElementById('visitorId').value,
+                'Customer ID': document.getElementById('customerId').value,
+                'Session ID': document.getElementById('sessionId').value,
+                'Authentication Level': document.getElementById('authLevel').value
+            };
+            
+            // Profile data
+            const profileData = {
+                'Email': document.getElementById('customerEmail').value,
+                'Phone': document.getElementById('customerPhone').value,
+                'Customer Type': document.getElementById('customerType').value,
+                'Customer Tier': document.getElementById('customerTier').value
+            };
+            
+            // Populate identity table
+            for (const [key, value] of Object.entries(identityData)) {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td><strong>${key}</strong></td>
+                    <td>${value}</td>
+                `;
+                identityTable.appendChild(row);
+            }
+            
+            // Populate profile table
+            for (const [key, value] of Object.entries(profileData)) {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td><strong>${key}</strong></td>
+                    <td>${value}</td>
+                `;
+                profileTable.appendChild(row);
+            }
+        }
+        
+        // Event listener for Send button
+        document.getElementById('sendBtn').addEventListener('click', sendMessage);
+        
+        // Event listener for Enter key in message input
+        document.getElementById('messageInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+        
+        // Send message function
+        function sendMessage() {
+            const messageInput = document.getElementById('messageInput');
+            const message = messageInput.value.trim();
+            
+            if (message === '') return;
+            
+            // Add user message to chat
+            addMessageToChat('user', message);
+            
+            // Clear input
+            messageInput.value = '';
+            
+            // Show thinking animation
+            const thinkingDiv = document.createElement('div');
+            thinkingDiv.id = 'thinkingAnimation';
+            thinkingDiv.className = 'message agent-message';
+            thinkingDiv.innerHTML = `
+                <div class="thinking">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </div>
+            `;
+            document.getElementById('chatMessages').appendChild(thinkingDiv);
+            scrollToBottom();
+            
+            // Prepare context data
+            const context = {
+                identity: {
+                    visitor_id: document.getElementById('visitorId').value,
+                    customer_id: document.getElementById('customerId').value,
+                    session_id: document.getElementById('sessionId').value,
+                    authentication_level: document.getElementById('authLevel').value
+                },
+                customer_profile: {
+                    email: document.getElementById('customerEmail').value,
+                    phone: document.getElementById('customerPhone').value,
+                    type: document.getElementById('customerType').value,
+                    tier: document.getElementById('customerTier').value
+                }
+            };
+            
+            // Send message to API
+            fetch('/api/v1/chat', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    message: message,
+                    conversation_id: currentConversationId,
+                    context: context
+                })
+            })
+            .then(response => response.json())
+            .then(responseData => {
+                if (responseData.success) {
+                    // Remove thinking animation
+                    const thinkingAnimation = document.getElementById('thinkingAnimation');
+                    if (thinkingAnimation) {
+                        thinkingAnimation.remove();
+                    }
+                    
+                    // Add agent response to chat
+                    addMessageToChat('agent', responseData.data.message);
+                    
+                    // Store conversation ID
+                    currentConversationId = responseData.data.conversation_id;
+                    
+                    // Update observability data
+                    fetchObservabilityData(currentConversationId);
+                } else {
+                    // Remove thinking animation
+                    const thinkingAnimation = document.getElementById('thinkingAnimation');
+                    if (thinkingAnimation) {
+                        thinkingAnimation.remove();
+                    }
+                    
+                    // Add error message
+                    addMessageToChat('agent', 'Sorry, there was an error processing your request. Please try again.');
+                    console.error('API error:', responseData.error);
+                }
+            })
+            .catch(error => {
+                // Remove thinking animation
+                const thinkingAnimation = document.getElementById('thinkingAnimation');
+                if (thinkingAnimation) {
+                    thinkingAnimation.remove();
+                }
+                
+                // Add error message
+                addMessageToChat('agent', 'Sorry, there was an error communicating with the server. Please try again.');
+                console.error('Fetch error:', error);
+            });
+        }
+        
+        // Add message to chat
+        function addMessageToChat(role, content) {
+            const chatMessages = document.getElementById('chatMessages');
+            const messageDiv = document.createElement('div');
+            
+            messageDiv.className = `message ${role}-message`;
+            messageDiv.innerHTML = `
+                <div class="message-content">
+                    <p>${content}</p>
+                </div>
+            `;
+            
+            chatMessages.appendChild(messageDiv);
+            scrollToBottom();
+        }
+        
+        // Scroll chat to bottom
+        function scrollToBottom() {
+            const chatMessages = document.getElementById('chatMessages');
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+        
+        // Fetch observability data
+        function fetchObservabilityData(conversationId) {
+            fetch(`/api/v1/chat/observability/${conversationId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        updateObservabilityData(data.data);
+                    } else {
+                        console.error('Error fetching observability data:', data.error);
+                    }
+                })
+                .catch(error => {
+                    console.error('Fetch error:', error);
+                });
+        }
+        
+        // Update observability data in the UI
+        function updateObservabilityData(data) {
+            // Reset timeline and nodes
+            document.querySelectorAll('.timeline-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            
+            document.querySelectorAll('.node').forEach(node => {
+                node.classList.remove('active');
+            });
+            
+            // Get the processing data
+            const processing = data.processing;
+            
+            // Update intents chart
+            if (processing.intent_detection && processing.intent_detection.intents) {
+                updateIntentsChart(processing.intent_detection.intents);
+                
+                // Update intent badge
+                document.getElementById('intentBadge').textContent = processing.intent_detection.selected_intent;
+                document.getElementById('intentBadge').className = 'badge bg-primary';
+                
+                // Activate timeline item and node
+                document.getElementById('intentTimeline').classList.add('active');
+                document.getElementById('intentNode').classList.add('active');
+            }
+            
+            // Update entity extraction
+            if (processing.entity_extraction && processing.entity_extraction.entities) {
+                const entityBadges = document.getElementById('entityBadges');
+                entityBadges.innerHTML = '';
+                
+                processing.entity_extraction.entities.forEach(entity => {
+                    const badge = document.createElement('span');
+                    badge.className = 'badge bg-info me-1';
+                    badge.textContent = `${entity.type}: ${entity.value}`;
+                    entityBadges.appendChild(badge);
+                });
+                
+                // Activate timeline item and node
+                document.getElementById('entityTimeline').classList.add('active');
+                document.getElementById('entityNode').classList.add('active');
+            }
+            
+            // Update agent selection
+            if (processing.agent_selection) {
+                document.getElementById('agentBadge').textContent = processing.agent_selection.selected_agent;
+                document.getElementById('agentBadge').className = 'badge bg-success';
+                
+                // Update selected agent card
+                const selectedAgentContainer = document.getElementById('selectedAgentContainer');
+                selectedAgentContainer.innerHTML = `
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title">${processing.agent_selection.selected_agent}</h5>
+                            <h6 class="card-subtitle mb-2 text-muted">Version ${processing.agent_selection.version}</h6>
+                            <p class="card-text"><strong>Reasoning:</strong> ${processing.agent_selection.reasoning}</p>
+                            <p class="card-text"><strong>Personalization:</strong> ${processing.agent_selection.personalization_applied ? 'Applied' : 'Not Applied'}</p>
+                        </div>
+                    </div>
+                `;
+                
+                // Activate timeline item and node
+                document.getElementById('agentTimeline').classList.add('active');
+                document.getElementById('agentNode').classList.add('active');
+            }
+            
+            // Update response generation
+            document.getElementById('responseTimeline').classList.add('active');
+            document.getElementById('responseNode').classList.add('active');
+            
+            // Get response time from execution graph
+            if (processing.execution_graph && processing.execution_graph.execution_path) {
+                const responsePath = processing.execution_graph.execution_path.find(path => path.node === 'response');
+                if (responsePath) {
+                    const start = new Date(responsePath.start_time);
+                    const end = new Date(responsePath.end_time);
+                    const time = (end - start) + 'ms';
+                    document.getElementById('responseTime').textContent = time;
+                    document.getElementById('responseTime').className = 'badge bg-success';
+                }
+            }
+            
+            // Update context influence
+            if (processing.intent_detection && processing.intent_detection.context_influence) {
+                const contextInfluence = document.getElementById('contextInfluence');
+                
+                let influenceHtml = '<i data-feather="info" class="me-2"></i><span>Context influenced the processing:</span><ul class="mt-2">';
+                
+                for (const [key, value] of Object.entries(processing.intent_detection.context_influence)) {
+                    // Format the key for display (convert snake_case to Title Case)
+                    const formattedKey = key.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+                    influenceHtml += `<li><strong>${formattedKey}:</strong> ${value}</li>`;
+                }
+                
+                influenceHtml += '</ul>';
+                contextInfluence.innerHTML = influenceHtml;
+                
+                // Re-initialize feather icons in dynamically added content
+                feather.replace();
+            }
+        }
+    </script>
+</body>
+</html>

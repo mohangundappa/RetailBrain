@@ -21,6 +21,7 @@ from backend.endpoints.optimized_chat import router as optimized_chat_router
 from backend.endpoints.optimized_chat import main_router as chat_router
 from backend.endpoints.state_management import state_router
 from backend.endpoints.routes import api_router
+from backend.endpoints.chat import router as context_chat_router
 from backend.database.db import get_db
 
 # Utility function to sanitize database URLs for asyncpg
@@ -185,6 +186,7 @@ app.include_router(chat_router, prefix=API_PREFIX)
 app.include_router(state_router, prefix=API_PREFIX)
 app.include_router(optimized_chat_router, prefix=API_PREFIX)
 app.include_router(api_router, prefix=API_PREFIX)
+app.include_router(context_chat_router, prefix=API_PREFIX)
 
 # API Documentation is available at /api/v1/docs
 # Root path now returns API information instead of redirecting to static files
