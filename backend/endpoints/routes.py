@@ -209,11 +209,20 @@ async def list_agents():
         if _brain is None:
             _brain = await get_brain_async()
             
-        agent_names = await _brain.list_agents()
+        response = await _brain.list_agents()
         
+        # Extract just the agent names from the detailed response
+        if response and "agents" in response and isinstance(response["agents"], list):
+            agent_names = [agent.get("name", "") for agent in response["agents"]]
+            return {
+                "success": True,
+                "agents": agent_names
+            }
+        
+        # Fallback to empty list if structure is unexpected
         return {
             "success": True,
-            "agents": agent_names
+            "agents": []
         }
         
     except Exception as e:
