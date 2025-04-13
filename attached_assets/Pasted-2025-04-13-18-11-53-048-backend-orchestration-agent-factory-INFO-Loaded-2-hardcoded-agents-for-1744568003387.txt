@@ -1,0 +1,19 @@
+2025-04-13 18:11:53,048 - backend.orchestration.agent_factory - INFO - Loaded 2 hardcoded agents for testing
+2025-04-13 18:11:53,048 - backend.services.optimized_brain_service - INFO - Loaded 2 agents from database/test data
+2025-04-13 18:11:53,048 - backend.services.optimized_brain_service - INFO - Vector store contains 2 agents
+2025-04-13 18:11:53,048 - backend.services.optimized_brain_service - INFO - Agent IDs in vector store: ['reset_password_id', 'order_tracking_id']
+2025-04-13 18:11:53,048 - backend.services.optimized_brain_service - INFO - Optimized brain service initialized successfully
+2025-04-13 18:11:53,048 - backend.services.optimized_dependencies - INFO - OptimizedBrainService initialized successfully
+2025-04-13 18:11:53,049 - backend.endpoints.optimized_chat - INFO - Chat request: Hi (session: sess_abcdef)
+2025-04-13 18:11:53,049 - backend.orchestration.agent_router - INFO - Starting route_and_prepare for query: Hi...
+2025-04-13 18:11:53,050 - backend.orchestration.agent_router - INFO - Vector store contains 2 agents
+2025-04-13 18:11:53,050 - backend.orchestration.agent_router - INFO - Available agent IDs: ['reset_password_id', 'order_tracking_id']
+2025-04-13 18:11:53,050 - backend.orchestration.agent_vector_store - INFO - Keyword prefilter found 0 agents for: Hi...
+2025-04-13 18:11:53,051 - backend.orchestration.agent_router - INFO - No keyword matches, using full semantic search
+2025-04-13 18:11:54,721 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-04-13 18:11:54,722 - backend.orchestration.embedding_service - INFO - Generated embedding in 1.67s (API calls: 3)
+2025-04-13 18:11:54,722 - backend.orchestration.agent_vector_store - INFO - Found 0 similar agents for query: Hi...
+2025-04-13 18:11:54,722 - backend.orchestration.agent_router - WARNING - No suitable agent found for query
+2025-04-13 18:11:54,722 - backend.orchestration.agent_router - WARNING - No agent found for query: Hi...
+2025-04-13 18:11:54,722 - backend.services.optimized_brain_service - INFO - Agent selection took 1.67s
+2025-04-13 18:11:54,722 - backend.services.optimized_brain_service - INFO - Selected agent: None with confidence 0.00
