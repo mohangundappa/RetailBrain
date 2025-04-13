@@ -109,7 +109,7 @@ class DatabaseAgent(LangGraphAgent):
     async def process_message(
         self, 
         message: str, 
-        session_id: str,
+        session_id: Optional[str] = None,
         context: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
         """
@@ -117,7 +117,7 @@ class DatabaseAgent(LangGraphAgent):
         
         Args:
             message: User input message
-            session_id: Session identifier
+            session_id: Session identifier (optional)
             context: Additional context information
             
         Returns:
@@ -164,20 +164,21 @@ class DatabaseAgent(LangGraphAgent):
     async def _route_to_processing_method(
         self,
         message: str,
-        session_id: str,
-        context: Dict[str, Any]
+        session_id: Optional[str] = None,
+        context: Dict[str, Any] = None
     ) -> Dict[str, Any]:
         """
         Route the message to the appropriate processing method based on agent type.
         
         Args:
             message: User message
-            session_id: Session identifier
+            session_id: Session identifier (optional)
             context: Additional context
             
         Returns:
             Response dictionary
         """
+        context = context or {}
         if self.agent_type == "LLM":
             return await self._process_with_llm(message, session_id, context)
         elif self.agent_type == "RULE":
@@ -191,20 +192,21 @@ class DatabaseAgent(LangGraphAgent):
     async def _process_with_llm(
         self,
         message: str,
-        session_id: str,
-        context: Dict[str, Any]
+        session_id: Optional[str] = None,
+        context: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
         """
         Process a message using the LLM-based approach.
         
         Args:
             message: User message
-            session_id: Session identifier
+            session_id: Session identifier (optional)
             context: Additional context
             
         Returns:
             Response dictionary
         """
+        context = context or {}
         if not self.llm:
             # Initialize LLM if not already done
             self._init_agent_components()
@@ -348,14 +350,13 @@ class DatabaseAgent(LangGraphAgent):
         # For now, fall back to LLM processing
         return await self._process_with_llm(message, context.get("session_id", ""), context)
     
-    def process(
+    async def process(
         self, 
         message: str, 
         context: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
         """
-        Process a message synchronously and generate an appropriate response.
-        This is a non-async version for use with the LangGraph orchestrator.
+        Process a message and generate an appropriate response.
         
         Args:
             message: User input message
@@ -364,19 +365,12 @@ class DatabaseAgent(LangGraphAgent):
         Returns:
             Response dictionary
         """
-        # For synchronous use cases, we just run the async version in a new event loop
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        try:
-            session_id = context.get("session_id", "") if context else ""
-            context = context or {}
-            result = loop.run_until_complete(self.process_message(message, session_id, context))
-            return result
-        finally:
-            loop.close()
+        session_id = context.get("session_id", "") if context else ""
+        context = context or {}
+        return await self.process_message(message, session_id, context)
 
 
-def create_database_agent_from_definition(agent_def: Dict[str, Any]) -> Optional[DatabaseAgent]:
+async def create_database_agent_from_definition(agent_def: Dict[str, Any]) -> Optional[DatabaseAgent]:
     """
     Create a DatabaseAgent instance from an agent definition dictionary.
     
@@ -496,12 +490,12 @@ async def create_database_agent_from_model(agent_model: AgentDefinition) -> Opti
         # Add response templates
         if hasattr(agent_model, 'response_templates') and agent_model.response_templates:
             agent_def["response_templates"] = {
-                template.template_name: template.content
+                template.template_key: template.template_content
                 for template in agent_model.response_templates
             }
         
         # Create the agent using the helper function
-        return create_database_agent_from_definition(agent_def)
+        return await create_database_agent_from_definition(agent_def)
     
     except Exception as e:
         logger.error(f"Error creating DatabaseAgent from model: {str(e)}", exc_info=True)

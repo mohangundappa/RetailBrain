@@ -97,7 +97,7 @@ async def get_chat_service_direct():
     
     # Create graph brain service with database session and agent factory
     brain_service = GraphBrainService(
-        db=db,
+        db_session=db,
         config=config,
         memory_service=memory_service,
         agent_factory=agent_factory
@@ -108,7 +108,7 @@ async def get_chat_service_direct():
         await brain_service.initialize()
     
     # Return properly initialized ChatService
-    return ChatService(db=db, brain_service=brain_service)
+    return ChatService(db_session=db, brain_service=brain_service)
 
 def get_telemetry_service_direct():
     """
@@ -125,7 +125,7 @@ def get_telemetry_service_direct():
     db = AsyncSession(engine)
     
     # Return properly initialized TelemetryService
-    return TelemetryService(db=db)
+    return TelemetryService(db_session=db)
 from backend.services.chat_service import ChatService
 from backend.services.telemetry_service import TelemetryService
 

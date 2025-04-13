@@ -159,7 +159,55 @@ class AgentRepository:
         Returns:
             List of active agent definitions
         """
-        return await self.list_agents(status="active")
+        try:
+            # Create a new session to ensure proper async context handling
+            from backend.database.db import async_session_factory
+            async with async_session_factory() as session:
+                query = select(AgentDefinition).where(AgentDefinition.status == "active")
+                
+                # Load all the related entities
+                query = query.options(
+                    selectinload(AgentDefinition.deployments),
+                    selectinload(AgentDefinition.patterns).selectinload(AgentPattern.embedding),
+                    selectinload(AgentDefinition.tools),
+                    selectinload(AgentDefinition.response_templates),
+                    selectinload(AgentDefinition.entity_mappings).joinedload(AgentEntityMapping.entity),
+                    selectinload(AgentDefinition.child_relationships),
+                    selectinload(AgentDefinition.parent_relationships)
+                )
+                
+                # Execute the query within this session context
+                result = await session.execute(query)
+                agents = list(result.scalars().all())
+                
+                # Load type-specific configurations
+                for agent in agents:
+                    if agent.agent_type == "LLM":
+                        llm_query = select(LlmAgentConfiguration).where(
+                            LlmAgentConfiguration.agent_id == agent.id
+                        )
+                        llm_result = await session.execute(llm_query)
+                        agent.llm_configuration = llm_result.scalar_one_or_none()
+                    elif agent.agent_type == "RULE":
+                        rule_query = select(RuleAgentConfiguration).where(
+                            RuleAgentConfiguration.agent_id == agent.id
+                        )
+                        rule_result = await session.execute(rule_query)
+                        agent.rule_configuration = rule_result.scalar_one_or_none()
+                    elif agent.agent_type == "RETRIEVAL":
+                        retrieval_query = select(RetrievalAgentConfiguration).where(
+                            RetrievalAgentConfiguration.agent_id == agent.id
+                        )
+                        retrieval_result = await session.execute(retrieval_query)
+                        agent.retrieval_configuration = retrieval_result.scalar_one_or_none()
+                
+                # Commit changes
+                await session.commit()
+                
+                return agents
+        except Exception as e:
+            logger.error(f"Error retrieving active agents: {str(e)}", exc_info=True)
+            return []
     
     async def list_agents(
         self, 
@@ -184,37 +232,44 @@ class AgentRepository:
         Returns:
             List of matching agent definitions
         """
-        query = select(AgentDefinition)
-        
-        # Apply filters
-        filters = []
-        if status is not None:
-            filters.append(AgentDefinition.status == status)
-        if agent_type is not None:
-            filters.append(AgentDefinition.agent_type == agent_type)
-        if is_system is not None:
-            filters.append(AgentDefinition.is_system == is_system)
-            
-        # Environment filter requires a join
-        if environment is not None:
-            query = query.join(
-                AgentDeployment,
-                and_(
-                    AgentDeployment.agent_definition_id == AgentDefinition.id,
-                    AgentDeployment.environment == environment,
-                    AgentDeployment.is_active == True
-                )
-            )
-        
-        if filters:
-            query = query.where(and_(*filters))
-            
-        # Add pagination
-        query = query.order_by(AgentDefinition.name).limit(limit).offset(offset)
-        
-        # Execute the query
-        result = await self.session.execute(query)
-        return list(result.scalars().all())
+        try:
+            # Create a new session to ensure proper async context handling
+            from backend.database.db import async_session_factory
+            async with async_session_factory() as session:
+                query = select(AgentDefinition)
+                
+                # Apply filters
+                filters = []
+                if status is not None:
+                    filters.append(AgentDefinition.status == status)
+                if agent_type is not None:
+                    filters.append(AgentDefinition.agent_type == agent_type)
+                if is_system is not None:
+                    filters.append(AgentDefinition.is_system == is_system)
+                    
+                # Environment filter requires a join
+                if environment is not None:
+                    query = query.join(
+                        AgentDeployment,
+                        and_(
+                            AgentDeployment.agent_definition_id == AgentDefinition.id,
+                            AgentDeployment.environment == environment,
+                            AgentDeployment.is_active == True
+                        )
+                    )
+                
+                if filters:
+                    query = query.where(and_(*filters))
+                    
+                # Add pagination
+                query = query.order_by(AgentDefinition.name).limit(limit).offset(offset)
+                
+                # Execute the query
+                result = await session.execute(query)
+                return list(result.scalars().all())
+        except Exception as e:
+            logger.error(f"Error listing agents: {str(e)}", exc_info=True)
+            return []
     
     async def list_active_deployments(
         self, environment: str

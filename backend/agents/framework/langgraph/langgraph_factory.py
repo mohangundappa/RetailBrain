@@ -14,10 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from backend.agents.framework.langgraph.langgraph_agent import LangGraphAgent
-from backend.agents.framework.langgraph.database_agent import (
-    DatabaseAgent, 
-    create_database_agent_from_model
-)
+from backend.agents.framework.langgraph.database_agent import DatabaseAgent
 from backend.repositories.agent_repository import AgentRepository
 from backend.database.agent_schema import (
     AgentDefinition, AgentDeployment, AgentComposition,
@@ -72,47 +69,39 @@ class LangGraphAgentFactory:
             List of LangGraphAgent instances
         """
         try:
-            # Instead of loading from database, we'll create hardcoded agents for now
-            # This is a temporary workaround until we fix the async database loading
-            from backend.agents.framework.langgraph.simple_agent import SimpleAgent
-            from uuid import uuid4
+            # Get agent definitions directly from our repository with the session provided during init
+            # This ensures we're in the correct async context
+            agent_definitions = await self.agent_repository.get_all_active_agents()
+            logger.info(f"Found {len(agent_definitions)} active agents in database")
             
-            # Create hardcoded agents for testing
             agents = []
+            for agent_def in agent_definitions:
+                try:
+                    # Load each agent in its own async context to ensure proper greenlet handling
+                    async def load_agent(agent_definition):
+                        from backend.agents.framework.langgraph.database_agent import create_database_agent_from_model
+                        # Create agent from database model
+                        return await create_database_agent_from_model(agent_definition)
+                    
+                    # Execute in proper async context
+                    agent = await load_agent(agent_def)
+                    
+                    if agent:
+                        # Add to registry
+                        self.agents[agent.id] = agent
+                        agents.append(agent)
+                        logger.info(f"Loaded agent: {agent.name} (ID: {agent.id}, Type: {agent.agent_type})")
+                    else:
+                        logger.error(f"Failed to create agent for {agent_def.name}")
+                except Exception as e:
+                    logger.error(f"Error creating agent {agent_def.name}: {str(e)}", exc_info=True)
             
-            # General Conversation Agent
-            general_agent = SimpleAgent(
-                id=str(uuid4()),
-                name="General Conversation Agent",
-                description="Handles general conversation and queries",
-                agent_type="LLM",
-                config={
-                    "model": "gpt-4",
-                    "temperature": 0.7,
-                    "system_prompt": "You are a helpful assistant at Staples. Answer customer questions professionally and accurately."
-                }
-            )
-            self.agents[general_agent.id] = general_agent
-            agents.append(general_agent)
-            logger.info(f"Created hardcoded agent: {general_agent.name} (ID: {general_agent.id})")
+            logger.info(f"Successfully loaded {len(agents)} active agents")
             
-            # Guardrails Agent
-            guardrails_agent = SimpleAgent(
-                id=str(uuid4()),
-                name="Guardrails Agent",
-                description="Ensures responses meet content policy guidelines",
-                agent_type="LLM",
-                config={
-                    "model": "gpt-4",
-                    "temperature": 0.3,
-                    "system_prompt": "You are a content safety system. Ensure responses do not contain harmful, offensive, or inappropriate content."
-                }
-            )
-            self.agents[guardrails_agent.id] = guardrails_agent
-            agents.append(guardrails_agent)
-            logger.info(f"Created hardcoded agent: {guardrails_agent.name} (ID: {guardrails_agent.id})")
+            # If no agents were loaded, log a warning
+            if not agents:
+                logger.warning("No agents were loaded from the database.")
             
-            logger.info(f"Successfully loaded {len(agents)} hardcoded agents")
             return agents
             
         except Exception as e:
@@ -139,8 +128,14 @@ class LangGraphAgentFactory:
             if not agent_def:
                 logger.warning(f"Agent with ID {agent_id} not found in database")
                 return None
+            
+            # Load the agent in a proper async context
+            async def load_agent(agent_definition):
+                from backend.agents.framework.langgraph.database_agent import create_database_agent_from_model
+                return await create_database_agent_from_model(agent_definition)
                 
-            agent = await create_database_agent_from_model(agent_def)
+            agent = await load_agent(agent_def)
+            
             if agent:
                 # Add to registry
                 self.agents[agent.id] = agent
@@ -175,8 +170,14 @@ class LangGraphAgentFactory:
             if not agent_def:
                 logger.warning(f"Agent with name {name} not found in database")
                 return None
+            
+            # Load the agent in a proper async context
+            async def load_agent(agent_definition):
+                from backend.agents.framework.langgraph.database_agent import create_database_agent_from_model
+                return await create_database_agent_from_model(agent_definition)
                 
-            agent = await create_database_agent_from_model(agent_def)
+            agent = await load_agent(agent_def)
+            
             if agent:
                 # Add to registry
                 self.agents[agent.id] = agent
@@ -236,9 +237,14 @@ class LangGraphAgentFactory:
             if not agent_def:
                 logger.error("Failed to create agent in database")
                 return None
+            
+            # Load the agent in a proper async context
+            async def load_agent(agent_definition):
+                from backend.agents.framework.langgraph.database_agent import create_database_agent_from_model
+                return await create_database_agent_from_model(agent_definition)
                 
-            # Create agent instance
-            agent = await create_database_agent_from_model(agent_def)
+            agent = await load_agent(agent_def)
+            
             if agent:
                 # Add to registry
                 self.agents[agent.id] = agent
