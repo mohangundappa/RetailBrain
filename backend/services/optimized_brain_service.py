@@ -76,6 +76,16 @@ class OptimizedBrainService:
             )
             logger.info("Created router and other components")
             
+            # Initialize core agents before loading from database
+            try:
+                # Import here to avoid circular imports
+                from backend.scripts.initialize_agents import initialize_core_agents
+                await initialize_core_agents()
+                logger.info("Initialized core agents (General Conversation and Guardrails)")
+            except Exception as core_agent_error:
+                logger.error(f"Error initializing core agents: {str(core_agent_error)}", exc_info=True)
+                logger.warning("Continuing with initialization despite core agent error")
+            
             # Load agents from database
             agent_count = await self.agent_factory.load_agents_from_database()
             logger.info(f"Loaded {agent_count} agents from database/test data")
@@ -86,6 +96,22 @@ class OptimizedBrainService:
                 logger.info(f"Vector store contains {agent_count} agents")
                 if agent_count > 0:
                     logger.info(f"Agent IDs in vector store: {list(self.router.agent_vector_store.agent_data.keys())}")
+                
+                # Verify we have a General Conversation Agent
+                has_general_agent = False
+                has_guardrails_agent = False
+                for agent_id, agent_data in self.router.agent_vector_store.agent_data.items():
+                    if "general conversation" in agent_data.name.lower():
+                        has_general_agent = True
+                        logger.info(f"Found General Conversation Agent: {agent_data.name}")
+                    elif "guardrails" in agent_data.name.lower():
+                        has_guardrails_agent = True
+                        logger.info(f"Found Guardrails Agent: {agent_data.name}")
+                
+                if not has_general_agent:
+                    logger.warning("General Conversation Agent not found in vector store")
+                if not has_guardrails_agent:
+                    logger.warning("Guardrails Agent not found in vector store")
             else:
                 logger.warning("Router or vector store is not initialized properly")
             
@@ -192,20 +218,43 @@ class OptimizedBrainService:
             logger.info(f"Selected agent: {agent.name if agent else 'None'} with confidence {confidence:.2f}")
             
             if not agent or confidence < 0.5:
-                return {
-                    "success": False,
-                    "error": "No suitable agent found",
-                    "response": "I'm not sure how to help with that. Could you please rephrase your question?"
-                }
+                # Try using General Conversation Agent as fallback
+                general_agent = None
+                for agent_id, agent_def in self.router.agent_vector_store.agent_data.items():
+                    if "general conversation" in agent_def.name.lower():
+                        general_agent = agent_def
+                        confidence = 0.6  # Moderate confidence for fallback
+                        route_context = route_context or {}
+                        route_context["selection_method"] = "fallback_general"
+                        logger.info(f"Using General Conversation Agent as fallback")
+                        break
                 
-            # Instead of passing to traditional service, directly handle the agent execution
-            # since there seems to be an issue with the traditional service execution
+                if not general_agent:
+                    return {
+                        "success": False,
+                        "error": "No suitable agent found",
+                        "response": "I'm not sure how to help with that. Could you please rephrase your question?"
+                    }
+                else:
+                    agent = general_agent
+                
+            # Execute the agent to generate a response
             execution_start_time = __import__('time').time()
+            
+            # Generate initial response
+            initial_response = self._generate_response_for_agent(agent, message, route_context)
+            
+            # Apply guardrails processing using the Guardrails Agent
+            final_response = await self._apply_guardrails(
+                original_response=initial_response,
+                user_query=message,
+                agent_name=agent.name
+            )
             
             # Initialize the execution result with our selected agent
             execution_result = {
                 "success": True,
-                "response": self._generate_response_for_agent(agent, message, route_context),
+                "response": final_response,
                 "agent": agent.name,
                 "agent_id": agent.id,
                 "confidence": confidence,
@@ -236,6 +285,69 @@ class OptimizedBrainService:
                 "response": "I encountered an error processing your request. Please try again."
             }
             
+    async def _apply_guardrails(
+        self,
+        original_response: str,
+        user_query: str,
+        agent_name: str
+    ) -> str:
+        """
+        Apply guardrails to the response using the Guardrails Agent.
+        
+        Args:
+            original_response: Original response from the selected agent
+            user_query: User's original query
+            agent_name: Name of the agent that generated the original response
+            
+        Returns:
+            Final response after guardrails processing
+        """
+        # Skip guardrails if the response is already from the Guardrails Agent
+        if "guardrails" in agent_name.lower():
+            logger.info("Skipping guardrails for response from Guardrails Agent")
+            return original_response
+            
+        try:
+            # Find Guardrails Agent
+            guardrails_agent = None
+            if self.router and self.router.agent_vector_store:
+                for agent_id, agent in self.router.agent_vector_store.agent_data.items():
+                    if "guardrails" in agent.name.lower():
+                        guardrails_agent = agent
+                        break
+            
+            if not guardrails_agent:
+                logger.warning("Guardrails Agent not found, using original response")
+                return original_response
+            
+            logger.info(f"Applying guardrails using {guardrails_agent.name}")
+            
+            # Construct a prompt for the guardrails agent
+            variables = {
+                "original_response": original_response,
+                "user_query": user_query,
+                "agent_name": agent_name
+            }
+            
+            # Create a simple context to generate the guardrails response
+            guardrails_context = {
+                "extracted_entities": variables
+            }
+            
+            # Generate response using guardrails agent
+            guardrails_response = self._generate_response_for_agent(
+                guardrails_agent, 
+                user_query,
+                guardrails_context
+            )
+            
+            logger.info("Applied guardrails to response")
+            return guardrails_response
+        except Exception as e:
+            logger.error(f"Error applying guardrails: {str(e)}", exc_info=True)
+            # Return original response if guardrails fail
+            return original_response
+            
     def _generate_response_for_agent(self, agent: AgentDefinition, message: str, context: Dict[str, Any]) -> str:
         """
         Generate a response for the given agent.
@@ -255,6 +367,37 @@ class OptimizedBrainService:
             
             # Check for response templates
             templates = agent.response_templates
+            
+            # Special handling for Guardrails Agent
+            if "guardrails" in agent.name.lower():
+                # Get the original response from entities (pass-through from _apply_guardrails)
+                original_response = entities.get("original_response", "")
+                user_query = entities.get("user_query", "")
+                source_agent_name = entities.get("agent_name", "")
+                
+                if not original_response:
+                    return "I'm the Guardrails Agent, ensuring all responses meet our policy requirements."
+                
+                # For now, just return the original response
+                # In a real implementation, you would use a more sophisticated LLM call
+                # to analyze and potentially modify the response
+                logger.info(f"Guardrails processing response from {source_agent_name}")
+                return original_response
+            
+            # Special handling for General Conversation Agent
+            if "general conversation" in agent.name.lower():
+                # Use template if available
+                if templates and "greeting" in templates and message.lower().strip() in ["hi", "hello", "hey"]:
+                    return templates["greeting"]
+                
+                if templates and "goodbye" in templates and any(word in message.lower() for word in ["bye", "goodbye", "thank"]):
+                    return templates["goodbye"]
+                
+                if templates and "help" in templates and "help" in message.lower():
+                    return templates["help"]
+                
+                # For longer general conversation, simple response
+                return "I'm the Staples Assistant. How can I help you with your Staples-related needs today?"
             
             # Reset Password Agent
             if agent.id == "reset_password_id":

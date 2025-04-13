@@ -1,18 +1,18 @@
-import asyncio
-import uuid
-import logging
-from datetime import datetime
+"""
+Script to add a general conversation agent to the system.
+This agent handles basic conversational interactions, greetings, and simple queries.
+"""
 
+import asyncio
+import logging
+import os
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 
-from backend.database.agent_schema import (
-    AgentDefinition, 
-    AgentPattern, 
-    AgentResponseTemplate,
-    LlmAgentConfiguration
-)
+from backend.database.schema import AgentDefinition, AgentPattern, EntityDefinition
+from backend.database.schema import ResponseTemplate
 from backend.config.config import get_config
+from backend.orchestration.embedding_service import EmbeddingService
 
 logger = logging.getLogger(__name__)
 
@@ -20,171 +20,185 @@ async def add_general_agent():
     """
     Add a general conversation agent to the database using LLM-based approach.
     """
-    # Get database URL from config
-    config = get_config()
-    db_url = config.database.url
+    logger.info("Adding General Conversation Agent...")
     
-    # Create async engine and session
+    # Get database URL from environment
+    config = get_config()
+    db_url = os.environ.get("DATABASE_URL") or config.get("database", {}).get("url")
+    if not db_url:
+        logger.error("Database URL not found in environment or config")
+        return False
+    
+    # Create async db engine and session
     engine = create_async_engine(db_url)
     async_session = sessionmaker(
         engine, class_=AsyncSession, expire_on_commit=False
     )
     
-    # Generate a unique ID for the agent
-    agent_id = uuid.uuid4()
-    
     async with async_session() as session:
-        # First check if the agent already exists
+        # Check if agent already exists
         from sqlalchemy import select
-        stmt = select(AgentDefinition).where(AgentDefinition.name == "General Conversation Agent")
-        result = await session.execute(stmt)
-        existing_agent = result.scalars().first()
+        query = select(AgentDefinition).where(AgentDefinition.name == "General Conversation Agent")
+        result = await session.execute(query)
+        existing_agent = result.scalar_one_or_none()
         
         if existing_agent:
-            logger.info(f"General Conversation Agent already exists with ID {existing_agent.id}")
-            return
+            logger.info("General Conversation Agent already exists, skipping creation")
+            return True
         
-        # Create the agent definition
-        agent = AgentDefinition(
-            id=agent_id,
+        # Create new general conversation agent
+        general_agent = AgentDefinition(
             name="General Conversation Agent",
-            description="Handles general conversation including greetings, goodbyes, and basic questions about Staples products and services.",
-            agent_type="llm",  # Using LLM agent type
-            status="active",
-            version=1,
+            description="Handles greetings, goodbyes, small talk, and general questions that don't fit other specialized agents.",
+            is_active=True,
             is_system=True,
-            created_at=datetime.utcnow()
+            prompts={
+                "system_prompt": (
+                    "You are a friendly and professional assistant for Staples. "
+                    "Your role is to handle basic greetings, provide friendly conversation, "
+                    "and help direct users to more specialized agents when needed. "
+                    "Keep responses concise and helpful. If a request is outside your scope, "
+                    "indicate that you'll find a specialized agent to assist."
+                ),
+                "user_prompt_template": (
+                    "User says: {{user_input}}\n\n"
+                    "Current conversation stage: {{conversation_stage}}\n\n"
+                    "Please respond in a friendly, helpful manner:"
+                )
+            },
+            version=1,
+            agent_type="llm-driven",
+            parameters={
+                "model": "gpt-4o",
+                "temperature": 0.7,
+                "response_format": "text",
+                "max_tokens": 250
+            }
         )
         
-        # Create LLM configuration for the agent
-        llm_config = LlmAgentConfiguration(
-            agent_id=agent_id,
-            model_name="gpt-4o",  # Using GPT-4o for high quality responses
-            temperature=0.7,      # Some creativity for conversational feel
-            max_tokens=150,       # Keep responses concise
-            system_prompt="""You are the General Conversation Agent for Staples customer service.
-
-Your primary responsibilities are:
-1. Respond to greetings (hello, hi, hey, etc.) with warm, friendly welcomes
-2. Handle goodbyes and thank yous appropriately
-3. Respond to general questions about Staples
-4. Identify when a customer needs specialized help and mention that you can assist with specific tasks like order tracking or password resets
-
-Keep your responses concise, friendly, and helpful. Always maintain a professional tone appropriate for Staples customer service.
-
-When you don't know something specific, acknowledge that and offer to help with what you can do.
-
-Respond ONLY as the General Conversation Agent. Do not attempt to handle specific tasks that would be better served by specialized agents.""",
-            version=1
-        )
+        session.add(general_agent)
+        await session.flush()
         
-        # Create semantic patterns for the agent
+        # Add patterns for this agent
         patterns = [
-            # Greeting patterns
+            # Greetings
             AgentPattern(
-                agent_id=agent_id,
-                pattern="greeting the assistant",
-                confidence=0.95,
-                pattern_type="semantic"
-            ),
-            AgentPattern(
-                agent_id=agent_id,
-                pattern="saying hello",
-                confidence=0.95,
-                pattern_type="semantic"
-            ),
-            AgentPattern(
-                agent_id=agent_id,
-                pattern="introducing oneself",
-                confidence=0.9,
-                pattern_type="semantic"
-            ),
-            
-            # Goodbye patterns
-            AgentPattern(
-                agent_id=agent_id,
-                pattern="ending the conversation",
-                confidence=0.95,
-                pattern_type="semantic"
-            ),
-            AgentPattern(
-                agent_id=agent_id,
-                pattern="saying thank you",
-                confidence=0.9,
-                pattern_type="semantic"
-            ),
-            
-            # General conversation patterns
-            AgentPattern(
-                agent_id=agent_id,
-                pattern="asking how the assistant is doing",
-                confidence=0.9,
-                pattern_type="semantic"
-            ),
-            AgentPattern(
-                agent_id=agent_id,
-                pattern="making small talk",
-                confidence=0.85,
-                pattern_type="semantic"
-            ),
-            
-            # Also add exact keyword matches for highest priority routing
-            AgentPattern(
-                agent_id=agent_id,
-                pattern="hi",
-                confidence=1.0,
-                pattern_type="exact"
-            ),
-            AgentPattern(
-                agent_id=agent_id,
+                agent_id=general_agent.id,
                 pattern="hello",
-                confidence=1.0,
-                pattern_type="exact"
+                weight=1.0,
+                is_regex=False
             ),
             AgentPattern(
-                agent_id=agent_id,
+                agent_id=general_agent.id,
+                pattern="hi there",
+                weight=1.0,
+                is_regex=False
+            ),
+            AgentPattern(
+                agent_id=general_agent.id,
+                pattern="good morning",
+                weight=1.0,
+                is_regex=False
+            ),
+            AgentPattern(
+                agent_id=general_agent.id,
                 pattern="hey",
-                confidence=1.0,
-                pattern_type="exact"
+                weight=1.0,
+                is_regex=False
             ),
+            # Goodbyes
             AgentPattern(
-                agent_id=agent_id,
-                pattern="thanks",
-                confidence=1.0,
-                pattern_type="exact"
-            ),
-            AgentPattern(
-                agent_id=agent_id,
-                pattern="thank you",
-                confidence=1.0,
-                pattern_type="exact"
-            ),
-            AgentPattern(
-                agent_id=agent_id,
+                agent_id=general_agent.id,
                 pattern="goodbye",
-                confidence=1.0,
-                pattern_type="exact"
+                weight=1.0,
+                is_regex=False
             ),
             AgentPattern(
-                agent_id=agent_id,
+                agent_id=general_agent.id,
                 pattern="bye",
-                confidence=1.0,
-                pattern_type="exact"
+                weight=1.0,
+                is_regex=False
+            ),
+            AgentPattern(
+                agent_id=general_agent.id,
+                pattern="thank you",
+                weight=1.0,
+                is_regex=False
+            ),
+            # Small talk
+            AgentPattern(
+                agent_id=general_agent.id,
+                pattern="how are you",
+                weight=1.0,
+                is_regex=False
+            ),
+            AgentPattern(
+                agent_id=general_agent.id,
+                pattern="nice to meet you",
+                weight=1.0,
+                is_regex=False
+            ),
+            # Help
+            AgentPattern(
+                agent_id=general_agent.id,
+                pattern="help",
+                weight=0.7,
+                is_regex=False
+            ),
+            AgentPattern(
+                agent_id=general_agent.id,
+                pattern="what can you do",
+                weight=0.9,
+                is_regex=False
             )
         ]
         
-        # Add all entities to the session
-        session.add(agent)
-        session.add(llm_config)
         for pattern in patterns:
             session.add(pattern)
+            
+        # Add basic templates
+        templates = [
+            ResponseTemplate(
+                agent_id=general_agent.id,
+                template_key="greeting",
+                template_content="Hello! I'm your Staples Assistant. How can I help you today?",
+                is_active=True
+            ),
+            ResponseTemplate(
+                agent_id=general_agent.id,
+                template_key="goodbye",
+                template_content="Thank you for chatting with Staples. Have a great day!",
+                is_active=True
+            ),
+            ResponseTemplate(
+                agent_id=general_agent.id,
+                template_key="help",
+                template_content="I can help with many things related to Staples, such as tracking orders, resetting passwords, finding stores, and providing product information. What would you like assistance with?",
+                is_active=True
+            )
+        ]
         
-        # Commit the changes
+        for template in templates:
+            session.add(template)
+            
+        # Generate and store embeddings for this agent
+        embedding_service = EmbeddingService()
+        
+        # Create embedding text
+        embedding_text = f"{general_agent.name}\n{general_agent.description}\n"
+        for pattern in patterns:
+            embedding_text += f"{pattern.pattern}\n"
+            
+        # Generate embedding
+        embedding = await embedding_service.create_embedding(embedding_text)
+        general_agent.embedding = embedding
+        
+        # Commit all changes
         await session.commit()
         
-        logger.info(f"Added General Conversation Agent with ID {agent_id}")
+        logger.info(f"Successfully added General Conversation Agent (ID: {general_agent.id})")
+        return True
 
-# Run the function if this script is executed directly
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
     asyncio.run(add_general_agent())

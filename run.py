@@ -55,6 +55,16 @@ async def start_app():
         await init_db()
         logger.info("Database initialization complete")
         
+        # Initialize core agents (General Conversation and Guardrails)
+        try:
+            from backend.scripts.initialize_agents import initialize_core_agents
+            logger.info("Initializing core agents...")
+            await initialize_core_agents()
+            logger.info("Core agents initialization complete")
+        except Exception as agent_error:
+            logger.error(f"Error initializing core agents: {str(agent_error)}", exc_info=True)
+            logger.warning("Continuing despite core agent initialization error")
+        
         # Start the API server with explicit reload flag
         logger.info("Starting API server...")
         run_api(reload=RELOAD)
