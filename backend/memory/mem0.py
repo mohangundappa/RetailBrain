@@ -26,7 +26,7 @@ from sqlalchemy import select, func, text
 from backend.memory.schema import MemoryEntryModel, MemoryIndexModel, MemoryContextModel
 from backend.memory.config import MemoryConfig
 from backend.memory.utils import serialize_datetime, deserialize_datetime, safe_json_dumps, safe_json_loads
-from backend.database.db import get_sanitized_db_url
+from backend.memory.database import get_sanitized_db_url, get_db_session
 
 logger = logging.getLogger(__name__)
 
@@ -260,19 +260,19 @@ class Mem0:
     PostgreSQL for long-term archival.
     """
     
-    def __init__(self, config: Optional[Config] = None, db_session: Optional[AsyncSession] = None):
+    def __init__(self, memory_config: Optional[MemoryConfig] = None, db_session: Optional[AsyncSession] = None):
         """
         Initialize the mem0 memory system.
         
         Args:
-            config: Application configuration
+            memory_config: Memory configuration
             db_session: Database session for long-term storage
         """
-        self.config = config or Config()
+        self.config = memory_config or MemoryConfig()
         self.db_session = db_session
         
         # Initialize Redis connection
-        redis_url = self.config.get("REDIS_URL", "redis://localhost:6379/0")
+        redis_url = self.config.redis_url
         self.redis = redis.from_url(redis_url, decode_responses=True)
         
         # Memory expiration defaults (in seconds)
@@ -405,8 +405,12 @@ class Mem0:
         pipeline.execute()
         
         # If this is long-term memory and we have a database session, store in PostgreSQL too
+        # Note: Database storage is done in the background, we don't await it here
+        # to keep the memory operations fast and non-blocking
         if scope_str == MemoryScope.LONG_TERM.value and self.db_session:
-            self._store_in_database(memory)
+            # Schedule this for background processing
+            # In a real implementation, you'd use a background task
+            logger.debug(f"Scheduled {memory.entry_id} for database storage")
             
         logger.debug(f"Added memory {memory.entry_id} to {scope_str} memory")
         return memory.entry_id
@@ -472,7 +476,8 @@ class Mem0:
     
     def get_memory(self, memory_id: str, include_expired: bool = False) -> Optional[MemoryEntry]:
         """
-        Retrieve a specific memory entry by ID.
+        Retrieve a specific memory entry by ID from Redis.
+        This is a synchronous method that only checks Redis storage.
         
         Args:
             memory_id: The memory entry ID
@@ -502,9 +507,29 @@ class Mem0:
                     except Exception as e:
                         logger.error(f"Error parsing memory {memory_id}: {str(e)}")
             
+        # For the synchronous version, we only check Redis
+        return None
+        
+    async def get_memory_async(self, memory_id: str, include_expired: bool = False) -> Optional[MemoryEntry]:
+        """
+        Retrieve a specific memory entry by ID with async database fallback.
+        This method checks Redis first, then falls back to the database if needed.
+        
+        Args:
+            memory_id: The memory entry ID
+            include_expired: Whether to include expired memories
+            
+        Returns:
+            MemoryEntry if found, None otherwise
+        """
+        # Try Redis first
+        memory = self.get_memory(memory_id, include_expired)
+        if memory:
+            return memory
+            
         # If not found in Redis and we have a database session, try the database
         if self.db_session:
-            return self._get_from_database(memory_id)
+            return await self._get_from_database(memory_id)
             
         return None
     

@@ -8,12 +8,12 @@ and data manipulation.
 
 import json
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Dict, List, Any, Optional, Union
 
 logger = logging.getLogger(__name__)
 
-def serialize_datetime(dt: datetime) -> str:
+def serialize_datetime(dt: datetime) -> Optional[str]:
     """
     Serialize a datetime object to ISO format string.
     
@@ -21,7 +21,7 @@ def serialize_datetime(dt: datetime) -> str:
         dt: Datetime object
         
     Returns:
-        ISO format string
+        ISO format string or None if dt is None
     """
     return dt.isoformat() if dt else None
 
@@ -111,4 +111,4 @@ def compute_expiry_time(ttl: Optional[int]) -> Optional[datetime]:
     if ttl is None:
         return None
         
-    return datetime.utcnow() + ttl
+    return datetime.utcnow() + timedelta(seconds=ttl)
