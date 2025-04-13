@@ -205,7 +205,7 @@ async def add_general_agent():
             embedding_text += f"{pattern.pattern_value}\n"
             
         # Generate embedding
-        embedding = await embedding_service.create_embedding(embedding_text)
+        embedding = await embedding_service.get_embedding(embedding_text)
         general_agent.embedding = embedding
         
         # Commit all changes
