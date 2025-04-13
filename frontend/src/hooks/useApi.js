@@ -1,83 +1,87 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import { useAppContext } from '../context/AppContext';
+import apiService from '../api/apiService';
 
 /**
- * Custom hook for making API calls with loading state and error handling
- * Integrated with the app context for global notifications and state management
+ * Custom hook for making API calls with built-in state management
  * 
- * @param {Function} apiMethod - The API method to call
- * @param {Array} dependencies - Dependencies to watch for automatic API calls
- * @param {Boolean} loadOnMount - Whether to load data on component mount
- * @param {Boolean} showErrorToast - Whether to show error notifications
- * @returns {Object} - API state and control functions
+ * @returns {Object} API utilities and state
  */
-const useApi = (
-  apiMethod,
-  dependencies = [],
-  loadOnMount = false,
-  showErrorToast = true
-) => {
+const useApi = () => {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const { actions } = useAppContext();
+  const { addNotification } = useAppContext();
 
-  const execute = useCallback(async (...args) => {
-    setLoading(true);
+  /**
+   * Makes an API call using the provided function and parameters
+   * 
+   * @param {Function} apiFunction - API function to call
+   * @param {Array} params - Parameters to pass to the API function
+   * @param {Object} options - Additional options
+   * @returns {Object} - API response data
+   */
+  const makeRequest = useCallback(async (apiFunction, params = [], options = {}) => {
+    const { 
+      skipLoading = false,
+      showSuccessNotification = false,
+      showErrorNotification = true,
+      successMessage = 'Operation completed successfully',
+      errorMessage = 'An error occurred. Please try again.'
+    } = options;
+
+    if (!skipLoading) {
+      setLoading(true);
+    }
     setError(null);
-    
+
     try {
-      const result = await apiMethod(...args);
-      
-      if (!result.success && result.error) {
-        setError(result.error);
-        
-        if (showErrorToast) {
-          actions.addNotification({
-            type: 'error',
-            title: 'API Error',
-            message: result.error,
-            autoDismiss: true
-          });
-        }
-        
-        setData(null);
-      } else {
-        setData(result);
+      const response = await apiService.apiCall(apiFunction, ...params);
+      setData(response);
+
+      if (showSuccessNotification) {
+        addNotification({
+          title: 'Success',
+          message: successMessage,
+          type: 'success'
+        });
       }
-      
-      return result;
+
+      return response;
     } catch (err) {
-      setError(err.message);
+      setError(err.message || errorMessage);
       
-      if (showErrorToast) {
-        actions.addNotification({
-          type: 'error',
-          title: 'API Error',
-          message: err.message,
-          autoDismiss: true
+      if (showErrorNotification) {
+        addNotification({
+          title: 'Error',
+          message: err.message || errorMessage,
+          type: 'error'
         });
       }
       
-      setData(null);
       return { success: false, error: err.message };
     } finally {
-      setLoading(false);
+      if (!skipLoading) {
+        setLoading(false);
+      }
     }
-  }, [apiMethod, actions, showErrorToast]);
+  }, [addNotification]);
 
-  // Auto-execute if loadOnMount is true
-  useEffect(() => {
-    if (loadOnMount) {
-      execute();
-    }
-  }, [loadOnMount, execute, ...dependencies]);
+  /**
+   * Resets the hook state
+   */
+  const reset = useCallback(() => {
+    setData(null);
+    setLoading(false);
+    setError(null);
+  }, []);
 
   return {
+    makeRequest,
+    reset,
     data,
     loading,
     error,
-    execute,
     setData
   };
 };

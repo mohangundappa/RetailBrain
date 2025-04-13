@@ -1,42 +1,36 @@
-import React, { useState } from 'react';
-import { Container } from 'react-bootstrap';
+import React from 'react';
+import { Outlet } from 'react-router-dom';
+import { Container, Row, Col } from 'react-bootstrap';
 import Sidebar from './Sidebar';
 import TopNavbar from './TopNavbar';
-import NotificationsContainer from './NotificationsContainer';
+import Notifications from './Notifications';
 import { useAppContext } from '../../context/AppContext';
 
-/**
- * Main application layout component
- * Provides the overall structure for the application with responsive sidebar
- * and top navigation
- */
-const AppLayout = ({ children }) => {
-  const [sidebarOpen, setSidebarOpen] = useState(true);
-  const { state } = useAppContext();
-  
-  const toggleSidebar = () => {
-    setSidebarOpen(!sidebarOpen);
-  };
+const AppLayout = () => {
+  const { loading } = useAppContext();
 
   return (
     <div className="app-container d-flex flex-column vh-100">
-      <TopNavbar 
-        sidebarOpen={sidebarOpen} 
-        toggleSidebar={toggleSidebar} 
-      />
-      
-      <div className="d-flex flex-grow-1 overflow-hidden">
-        <Sidebar open={sidebarOpen} />
-        
-        <main className={`main-content flex-grow-1 ${sidebarOpen ? 'with-sidebar' : ''}`}>
-          <Container fluid className="py-3">
-            {children}
-          </Container>
+      <TopNavbar />
+      <Container fluid className="flex-grow-1 d-flex p-0">
+        <Sidebar />
+        <main className="main-content flex-grow-1 p-3">
+          {loading ? (
+            <div className="d-flex justify-content-center align-items-center h-100">
+              <div className="spinner-border text-primary" role="status">
+                <span className="visually-hidden">Loading...</span>
+              </div>
+            </div>
+          ) : (
+            <Row className="h-100">
+              <Col>
+                <Outlet />
+              </Col>
+            </Row>
+          )}
         </main>
-      </div>
-      
-      {/* Notifications system */}
-      <NotificationsContainer notifications={state.notifications} />
+      </Container>
+      <Notifications />
     </div>
   );
 };

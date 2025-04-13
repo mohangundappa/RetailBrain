@@ -1,91 +1,83 @@
 import React from 'react';
-import { Navbar, Container, Button, Form, InputGroup, Nav, Dropdown } from 'react-bootstrap';
+import { Navbar, Container, Nav, NavDropdown, Form, Button } from 'react-bootstrap';
+import FeatherIcon from 'feather-icons-react';
 import { useAppContext } from '../../context/AppContext';
 
-/**
- * Top navigation bar component
- * Provides global actions, search, and user menu
- */
-const TopNavbar = ({ sidebarOpen, toggleSidebar }) => {
-  const { state, actions } = useAppContext();
-  
-  // Mock user data - would come from context in a real app
-  const user = state.user || {
-    name: 'Demo User',
-    avatar: 'https://via.placeholder.com/36',
-    role: 'admin'
+const TopNavbar = () => {
+  const { user, addNotification } = useAppContext();
+
+  const handleSearch = (e) => {
+    e.preventDefault();
+    const query = e.target.elements.search.value;
+    
+    if (query.trim()) {
+      // Implement search functionality
+      addNotification({
+        title: 'Search',
+        message: `Searching for: ${query}`,
+        type: 'info'
+      });
+    }
   };
-  
-  // Handle logout
-  const handleLogout = () => {
-    // In a real app, this would call an API and clear auth state
-    actions.addNotification({
-      type: 'info',
-      title: 'Logged Out',
-      message: 'You have been logged out successfully.',
-      autoDismiss: true
-    });
-  };
-  
+
   return (
-    <Navbar bg="dark" variant="dark" expand="lg" className="border-bottom">
+    <Navbar bg="dark" variant="dark" expand="lg" className="border-bottom border-secondary">
       <Container fluid>
-        <Button 
-          variant="link" 
-          className="me-2 text-white p-0" 
-          onClick={toggleSidebar}
-          aria-label="Toggle sidebar"
-        >
-          {/* This would use a proper icon component */}
-          <span className="fs-4">☰</span>
-        </Button>
-        
-        <Navbar.Brand href="#" className="me-auto">
-          {!sidebarOpen && 'Staples Brain'}
+        <Navbar.Brand href="/" className="d-flex align-items-center">
+          <FeatherIcon icon="cpu" className="me-2" />
+          <span className="d-none d-sm-inline">Staples Brain</span>
         </Navbar.Brand>
         
-        <div className="d-none d-md-flex flex-grow-1 justify-content-center mx-5">
-          <InputGroup style={{ maxWidth: '500px' }}>
-            <Form.Control
-              placeholder="Search..."
-              aria-label="Search"
-              className="bg-dark text-white border-secondary"
-            />
-            <Button variant="outline-secondary">
-              🔍
-            </Button>
-          </InputGroup>
-        </div>
+        <Navbar.Toggle aria-controls="navbar-nav" />
         
-        <Nav className="ms-auto align-items-center">
-          <Nav.Link href="#" className="px-2" title="Notifications">
-            🔔
-          </Nav.Link>
+        <Navbar.Collapse id="navbar-nav">
+          <Form className="d-flex mx-auto" style={{ maxWidth: '400px' }} onSubmit={handleSearch}>
+            <Form.Control
+              type="search"
+              placeholder="Search..."
+              className="me-2"
+              aria-label="Search"
+              name="search"
+            />
+            <Button variant="outline-light" type="submit">
+              <FeatherIcon icon="search" size={16} />
+            </Button>
+          </Form>
           
-          <Nav.Link href="#" className="px-2" title="Help">
-            ❓
-          </Nav.Link>
-          
-          <Dropdown align="end">
-            <Dropdown.Toggle as="a" className="nav-link dropdown-toggle d-flex align-items-center" id="user-dropdown">
-              <img 
-                src={user.avatar} 
-                alt={user.name} 
-                className="rounded-circle me-2" 
-                width="36" 
-                height="36" 
-              />
-              <span className="d-none d-lg-inline">{user.name}</span>
-            </Dropdown.Toggle>
+          <Nav className="ms-auto">
+            <Nav.Link href="#notifications" className="position-relative">
+              <FeatherIcon icon="bell" />
+              <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+                2
+              </span>
+            </Nav.Link>
             
-            <Dropdown.Menu>
-              <Dropdown.Item href="#">Profile</Dropdown.Item>
-              <Dropdown.Item href="#">Settings</Dropdown.Item>
-              <Dropdown.Divider />
-              <Dropdown.Item onClick={handleLogout}>Logout</Dropdown.Item>
-            </Dropdown.Menu>
-          </Dropdown>
-        </Nav>
+            <NavDropdown 
+              title={
+                <div className="d-inline-block">
+                  <FeatherIcon icon="user" className="me-1" />
+                  <span className="d-none d-md-inline">{user?.name || 'Guest'}</span>
+                </div>
+              } 
+              id="user-dropdown"
+              align="end"
+            >
+              <NavDropdown.Item href="#profile">
+                <FeatherIcon icon="user" size={16} className="me-2" />
+                Profile
+              </NavDropdown.Item>
+              <NavDropdown.Item href="#settings">
+                <FeatherIcon icon="settings" size={16} className="me-2" />
+                Settings
+              </NavDropdown.Item>
+              <NavDropdown.Divider />
+              <NavDropdown.Item href="#logout">
+                <FeatherIcon icon="log-out" size={16} className="me-2" />
+                Logout
+              </NavDropdown.Item>
+            </NavDropdown>
+          </Nav>
+        </Navbar.Collapse>
       </Container>
     </Navbar>
   );
