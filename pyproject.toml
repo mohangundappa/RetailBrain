@@ -38,4 +38,5 @@ dependencies = [
     "langgraph>=0.3.29",
     "sendgrid>=6.11.0",
     "uncompyle6>=3.9.2",
+    "redis>=5.2.1",
 ]
