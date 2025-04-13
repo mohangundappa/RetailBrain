@@ -1,0 +1,36 @@
+2025-04-13 19:00:23,926 - backend.scripts.initialize_agents - INFO - Successfully initialized Guardrails Agent
+2025-04-13 19:00:23,927 - backend.scripts.initialize_agents - INFO - Initialized 2 core agents
+2025-04-13 19:00:23,927 - backend.services.optimized_brain_service - INFO - Initialized core agents (General Conversation and Guardrails)
+2025-04-13 19:00:24,455 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-04-13 19:00:24,456 - backend.orchestration.embedding_service - INFO - Generated embedding in 0.53s (API calls: 1)
+2025-04-13 19:00:24,456 - backend.orchestration.agent_vector_store - INFO - Indexed agent: Reset Password Agent (ID: reset_password_id)
+2025-04-13 19:00:24,456 - backend.orchestration.agent_vector_store - INFO - Agent data store now contains 1 agents
+2025-04-13 19:00:24,457 - backend.orchestration.agent_vector_store - INFO - Agent IDs in store: ['reset_password_id']
+2025-04-13 19:00:24,684 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-04-13 19:00:24,686 - backend.orchestration.embedding_service - INFO - Generated embedding in 0.23s (API calls: 2)
+2025-04-13 19:00:24,686 - backend.orchestration.agent_vector_store - INFO - Indexed agent: Order Tracking Agent (ID: order_tracking_id)
+2025-04-13 19:00:24,686 - backend.orchestration.agent_vector_store - INFO - Agent data store now contains 2 agents
+2025-04-13 19:00:24,686 - backend.orchestration.agent_vector_store - INFO - Agent IDs in store: ['reset_password_id', 'order_tracking_id']
+2025-04-13 19:00:24,686 - backend.orchestration.agent_factory - INFO - Loaded 2 hardcoded agents for testing
+2025-04-13 19:00:24,686 - backend.services.optimized_brain_service - INFO - Loaded 2 agents from database/test data
+2025-04-13 19:00:24,686 - backend.services.optimized_brain_service - INFO - Vector store contains 2 agents
+2025-04-13 19:00:24,686 - backend.services.optimized_brain_service - INFO - Agent IDs in vector store: ['reset_password_id', 'order_tracking_id']
+2025-04-13 19:00:24,687 - backend.services.optimized_brain_service - WARNING - General Conversation Agent not found in vector store
+2025-04-13 19:00:24,687 - backend.services.optimized_brain_service - WARNING - Guardrails Agent not found in vector store
+2025-04-13 19:00:24,687 - backend.services.optimized_brain_service - INFO - Optimized brain service initialized successfully
+2025-04-13 19:00:24,687 - backend.services.optimized_dependencies - INFO - OptimizedBrainService initialized successfully
+2025-04-13 19:00:24,688 - backend.endpoints.optimized_chat - INFO - Chat request: Hi (session: sess_abcdef)
+2025-04-13 19:00:24,688 - backend.orchestration.agent_router - INFO - Starting route_and_prepare for query: Hi...
+2025-04-13 19:00:24,688 - backend.orchestration.agent_router - INFO - Vector store contains 2 agents
+2025-04-13 19:00:24,688 - backend.orchestration.agent_router - INFO - Available agent IDs: ['reset_password_id', 'order_tracking_id']
+2025-04-13 19:00:24,688 - backend.orchestration.agent_router - INFO - Query seems conversational: Hi
+2025-04-13 19:00:24,689 - backend.orchestration.agent_vector_store - INFO - Keyword prefilter found 0 agents for: Hi...
+2025-04-13 19:00:24,689 - backend.orchestration.agent_router - INFO - No keyword matches, using full semantic search
+2025-04-13 19:00:24,881 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-04-13 19:00:24,882 - backend.orchestration.embedding_service - INFO - Generated embedding in 0.19s (API calls: 3)
+2025-04-13 19:00:24,883 - backend.orchestration.agent_vector_store - INFO - Found 0 similar agents for query: Hi...
+2025-04-13 19:00:24,883 - backend.orchestration.agent_router - WARNING - No suitable agent found for query
+2025-04-13 19:00:24,883 - backend.orchestration.agent_router - WARNING - No agent found for query: Hi...
+2025-04-13 19:00:24,883 - backend.services.optimized_brain_service - INFO - Agent selection took 0.20s
+2025-04-13 19:00:24,883 - backend.services.optimized_brain_service - INFO - Selected agent: None with confidence 0.00
+INFO:     127.0.0.1:51604 - "POST /api/v1/chat HTTP/1.1" 200 OK

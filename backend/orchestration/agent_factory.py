@@ -67,13 +67,64 @@ class OptimizedAgentFactory:
     async def load_agents_from_database(self) -> int:
         """
         Load all active agents from the database and index them.
-        For testing purposes, this currently creates hardcoded agents.
         
         Returns:
             Number of agents loaded
         """
         if not self.vector_store:
             logger.error("Vector store not initialized")
+            return 0
+            
+        try:
+            # First, create and load hardcoded test agents for backwards compatibility
+            hardcoded_count = await self._load_hardcoded_test_agents()
+            logger.info(f"Loaded {hardcoded_count} hardcoded agents for testing")
+            
+            # Now load agents from the database
+            from backend.repositories.agent_repository import AgentRepository
+            agent_repository = AgentRepository(self.db_session)
+            
+            # Get all active agents from the database
+            logger.info("Loading agents from database...")
+            db_agents = await agent_repository.get_all_active_agents()
+            
+            # Count of database agents successfully loaded
+            db_count = 0
+            
+            # Load and index each agent
+            for db_agent in db_agents:
+                try:
+                    # Convert database model to internal representation
+                    agent = self._convert_db_agent(db_agent)
+                    
+                    if agent:
+                        # Index the agent in vector store
+                        success = await self.vector_store.index_agent(agent)
+                        if success:
+                            db_count += 1
+                            logger.info(f"Indexed agent from database: {agent.name} (ID: {agent.id})")
+                        else:
+                            logger.warning(f"Failed to index agent: {agent.name} (ID: {agent.id})")
+                except Exception as agent_error:
+                    logger.error(f"Error loading agent {getattr(db_agent, 'name', 'unknown')}: {str(agent_error)}")
+            
+            # Log combined results
+            total_count = hardcoded_count + db_count
+            logger.info(f"Loaded total of {total_count} agents ({hardcoded_count} hardcoded, {db_count} from database)")
+            
+            return total_count
+        except Exception as e:
+            logger.error(f"Error loading agents from database: {str(e)}", exc_info=True)
+            return 0
+            
+    async def _load_hardcoded_test_agents(self) -> int:
+        """
+        Load hardcoded test agents for testing purposes.
+        
+        Returns:
+            Number of hardcoded agents loaded
+        """
+        if not self.vector_store:
             return 0
             
         try:
@@ -157,11 +208,10 @@ class OptimizedAgentFactory:
             success = await self.vector_store.index_agent(order_agent)
             if success:
                 count += 1
-                
-            logger.info(f"Loaded {count} hardcoded agents for testing")
+            
             return count
         except Exception as e:
-            logger.error(f"Error creating test agents: {str(e)}")
+            logger.error(f"Error creating hardcoded test agents: {str(e)}")
             return 0
             
     def _convert_db_agent(self, db_agent: Any) -> Optional[AgentDefinition]:
