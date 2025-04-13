@@ -18,7 +18,7 @@ import importlib
 from typing import Dict, Any, List, Optional, Union, Tuple
 
 from backend.config.config import Config
-from backend.orchestration.router import OptimizedAgentRouter as AgentRouter
+from backend.orchestration.agent_router import OptimizedAgentRouter as AgentRouter
 from backend.orchestration.agent_factory import OptimizedAgentFactory as AgentFactory
 from backend.orchestration.telemetry import TelemetryManager
 from backend.orchestration.state.persistence import StatePersistenceManager

@@ -13,7 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 # Import from the orchestration module
 from backend.orchestration.agent_definition import AgentDefinition
 from backend.orchestration.agent_factory import OptimizedAgentFactory
-from backend.orchestration.router import OptimizedAgentRouter
+from backend.orchestration.agent_router import OptimizedAgentRouter
 from backend.config.config import Config
 
 logger = logging.getLogger(__name__)

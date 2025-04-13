@@ -28,5 +28,6 @@ __all__ = [
 # Direct exports from module files
 from backend.orchestration.agent_definition import AgentDefinition
 from backend.orchestration.state import create_db_tables
+from backend.orchestration.agent_factory import OptimizedAgentFactory
 
 # These should be imported at usage time to avoid circular dependencies
