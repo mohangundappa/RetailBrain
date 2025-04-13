@@ -783,17 +783,21 @@
                     }
                     
                     // Add agent response to chat
-                    addMessageToChat('agent', responseData.data.message);
+                    addMessageToChat('agent', responseData.response);
                     
-                    // Store conversation ID
-                    currentConversationId = responseData.data.conversation_id;
+                    // Store agent info if needed
+                    const agentName = responseData.agent || "Unknown Agent";
+                    console.log(`Response from ${agentName} with confidence: ${responseData.confidence}`);
                     
-                    // Update observability data
+                    // Update observability data (commented out as it needs to be updated to work with new API)
+                    /*
                     try {
                         fetchObservabilityData(currentConversationId);
                     } catch (error) {
                         console.warn('Observability data might not be available:', error);
                     }
+                    */
+                    console.log('Observability data temporarily disabled while API transition is completed');
                 } else {
                     // Remove thinking animation
                     const thinkingAnimation = document.getElementById('thinkingAnimation');
