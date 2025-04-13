@@ -111,10 +111,22 @@ class ChatRequest(BaseModel):
     session_id: Optional[str] = None
     agent_id: Optional[str] = None
 
+class AgentDetailModel(BaseModel):
+    id: str
+    name: str
+    description: Optional[str] = ""
+    type: Optional[str] = "unknown"
+    version: Optional[int] = 1
+    created_at: Optional[str] = None
+    db_driven: Optional[bool] = True
+    loaded: Optional[bool] = True
+    is_system: Optional[bool] = False
+
 class AgentListResponse(BaseModel):
     success: bool
-    agents: List[str]
+    agents: List[Union[str, AgentDetailModel]]
     error: Optional[str] = None
+    count: Optional[int] = None
 
 @api_router.get("/health", response_model=HealthResponse)
 async def health_check():
