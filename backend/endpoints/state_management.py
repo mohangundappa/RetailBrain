@@ -13,7 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import text
 
 from backend.database.db import get_db
-from backend.orchestration.state.recovery import (
+from backend.orchestration.state.state_recovery_manager import (
     resilient_create_checkpoint,
     resilient_persist_state,
     resilient_recover_state,
@@ -120,8 +120,9 @@ async def list_sessions(
         
         # Get active sessions from database
         query = text("""
-        SELECT DISTINCT session_id FROM orchestration_state
-        ORDER BY MAX(created_at) DESC
+        SELECT DISTINCT ON (session_id) session_id, created_at
+        FROM orchestration_state
+        ORDER BY session_id, created_at DESC
         LIMIT :limit
         """)
         
@@ -169,18 +170,18 @@ async def get_session_info(
         state_count = state_count_result.scalar_one_or_none() or 0
         
         # Get checkpoint count
-        checkpoint_count_query = """
+        checkpoint_count_query = text("""
         SELECT COUNT(*) FROM orchestration_state
         WHERE session_id = :session_id AND is_checkpoint = true
-        """
+        """)
         checkpoint_count_result = await db.execute(checkpoint_count_query, {"session_id": session_id})
         checkpoint_count = checkpoint_count_result.scalar_one_or_none() or 0
         
         # Get latest update timestamp
-        latest_update_query = """
+        latest_update_query = text("""
         SELECT MAX(created_at) FROM orchestration_state
         WHERE session_id = :session_id
-        """
+        """)
         latest_update_result = await db.execute(latest_update_query, {"session_id": session_id})
         latest_update = latest_update_result.scalar_one_or_none()
         

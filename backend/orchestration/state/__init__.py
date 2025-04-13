@@ -11,7 +11,7 @@ from backend.orchestration.state.state_persistence_manager import (
     StatePersistenceManager,
 )
 
-from backend.orchestration.state.recovery import (
+from backend.orchestration.state.state_recovery_manager import (
     StateRecoveryManager
 )
 
