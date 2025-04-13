@@ -41,7 +41,7 @@ class MemoryEntryModel(Base):
     relevance = Column(Float, default=1.0)  # Relevance to current context
     recency = Column(Float, default=1.0)  # Recency factor
     embedding = Column(ARRAY(Float), nullable=True)  # Vector embedding for semantic search
-    metadata = Column(JSONB, default={})
+    meta_data = Column(JSONB, default={})
     
     # Timestamps
     created_at = Column(DateTime, default=datetime.utcnow)

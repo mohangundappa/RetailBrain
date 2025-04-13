@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
 
 from backend.memory.schema import MemoryEntryModel, MemoryIndexModel, MemoryContextModel
-from backend.database.db import get_sanitized_db_url
+from backend.memory.database import get_sanitized_db_url
 from backend.memory.config import MemoryConfig
 
 logger = logging.getLogger(__name__)
