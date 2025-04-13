@@ -252,6 +252,35 @@ class OptimizedAgentRouter:
         
         return overlap_ratio >= 0.3 or has_markers
     
+    def _seems_conversational(self, query: str) -> bool:
+        """
+        Determine if a query seems conversational in nature.
+        
+        Args:
+            query: User query
+            
+        Returns:
+            True if the query seems conversational
+        """
+        # List of conversational words and phrases
+        conversational_indicators = [
+            'hi', 'hello', 'hey', 'thanks', 'thank', 'bye', 'goodbye', 
+            'morning', 'afternoon', 'evening', 'how are you', 'nice', 
+            'please', 'help', 'talk', 'chat', 'speak'
+        ]
+        
+        # Check if any of the conversational indicators are in the query
+        query_lower = query.lower()
+        for indicator in conversational_indicators:
+            if indicator in query_lower:
+                return True
+        
+        # Also consider very short queries conversational
+        if len(query.split()) <= 3:
+            return True
+        
+        return False
+        
     async def route_and_prepare(
         self,
         query: str,
@@ -278,18 +307,54 @@ class OptimizedAgentRouter:
         if agent_count > 0:
             logger.info(f"Available agent IDs: {list(self.agent_vector_store.agent_data.keys())}")
         
+        # Check if this is a simple greeting or basic conversation
+        if self._seems_conversational(query):
+            logger.info(f"Query seems conversational: {query}")
+            
+            # Look for a general conversation agent first
+            general_agent = None
+            for agent_id, agent_data in self.agent_vector_store.agent_data.items():
+                if "general conversation" in agent_data.get("name", "").lower():
+                    general_agent = agent_data
+                    logger.info(f"Found General Conversation Agent: {agent_data.get('name')}")
+                    break
+            
+            # If we found a general conversation agent, use it with high confidence
+            if general_agent:
+                route_context = context or {}
+                route_context["selection_method"] = "conversational_intent"
+                
+                # Higher confidence for very basic greetings
+                confidence = 0.95 if len(query.split()) <= 2 else 0.8
+                
+                logger.info(f"Selected general conversation agent with confidence {confidence}")
+                return general_agent, confidence, route_context
+        
+        # Standard routing for non-conversational queries
         agent, confidence, route_context = await self.route(query, session_id, context)
         
         if not agent:
-            logger.warning(f"No agent found for query: {query[:50]}...")
-            return None, 0.0, route_context
+            # If no agent was found, check for general conversation agent again as fallback
+            for agent_id, agent_data in self.agent_vector_store.agent_data.items():
+                if "general conversation" in agent_data.get("name", "").lower():
+                    logger.info("Using General Conversation Agent as fallback")
+                    agent = agent_data
+                    confidence = 0.6  # Moderate confidence for fallback
+                    if not route_context:
+                        route_context = {}
+                    route_context["selection_method"] = "general_fallback"
+                    break
+            
+            if not agent:
+                logger.warning(f"No agent found for query: {query[:50]}...")
+                return None, 0.0, route_context or {}
             
         # Extract entities for the selected agent
         entities = await self._extract_entities(query, agent)
         
         # Prepare context
         prepared_context = {
-            **route_context,
+            **(route_context or {}),
             "extracted_entities": entities,
             "confidence": confidence,
             "session_id": session_id
