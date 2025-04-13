@@ -17,8 +17,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 # Import only the routers we need
-from backend.endpoints.optimized_chat import router as optimized_chat_router
-from backend.endpoints.optimized_chat import main_router as chat_router
+from backend.endpoints.optimized_chat import router as chat_router  # Single, clean router for all chat functionality
 from backend.endpoints.state_management import state_router
 from backend.endpoints.routes import api_router
 from backend.endpoints.chat import router as context_chat_router
@@ -191,7 +190,6 @@ class AgentListResponse(BaseModel):
 # Include only essential routers
 app.include_router(chat_router, prefix=API_PREFIX)
 app.include_router(state_router, prefix=API_PREFIX)
-app.include_router(optimized_chat_router, prefix=API_PREFIX)
 app.include_router(api_router, prefix=API_PREFIX)
 app.include_router(context_chat_router, prefix=API_PREFIX)
 

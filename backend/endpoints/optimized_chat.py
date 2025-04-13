@@ -14,11 +14,8 @@ from backend.services.optimized_dependencies import get_optimized_brain_service
 logger = logging.getLogger(__name__)
 
 # Create API router
-# We have two routers:
-# 1. A router with the /optimized prefix for backward compatibility
-# 2. A main router with no prefix for the standard API
-router = APIRouter(prefix="/optimized", tags=["optimized"])
-main_router = APIRouter(tags=["chat"])
+# Single, clean router for chat functionality
+router = APIRouter(tags=["chat"])
 
 
 class ChatRequest(BaseModel):
@@ -86,34 +83,15 @@ async def _process_chat_request(
     
     return response
 
-# Standard API endpoint (no prefix)
-@main_router.post("/chat", response_model=ChatResponse)
+# Clean API endpoint for chat
+@router.post("/chat", response_model=ChatResponse)
 async def chat(
     request: ChatRequest,
     brain_service: OptimizedBrainService = Depends(get_optimized_brain_service)
 ):
     """
     Process a chat message using the optimized brain service.
-    This is the main production API endpoint for chat.
-    
-    Args:
-        request: Chat request
-        brain_service: Optimized brain service
-        
-    Returns:
-        Chat response
-    """
-    return await _process_chat_request(request, brain_service)
-
-# Legacy API endpoint (with /optimized prefix) for backward compatibility
-@router.post("/chat", response_model=OptimizedChatResponse)
-async def optimized_chat(
-    request: OptimizedChatRequest,
-    brain_service: OptimizedBrainService = Depends(get_optimized_brain_service)
-):
-    """
-    Process a chat message using the optimized brain service.
-    This endpoint is maintained for backward compatibility.
+    This is the clean API endpoint for chat functionality.
     
     Args:
         request: Chat request
@@ -186,7 +164,6 @@ class AgentListResponseModel(BaseModel):
 
 
 @router.get("/agents", response_model=AgentListResponseModel)
-@main_router.get("/agents", response_model=AgentListResponseModel)
 async def list_agents(
     brain_service: OptimizedBrainService = Depends(get_optimized_brain_service)
 ):
@@ -241,7 +218,6 @@ class SystemStatsResponseModel(BaseModel):
 
 
 @router.get("/stats", response_model=SystemStatsResponseModel)
-@main_router.get("/stats", response_model=SystemStatsResponseModel)
 async def get_system_stats(
     days: int = 7,
     brain_service: OptimizedBrainService = Depends(get_optimized_brain_service)
