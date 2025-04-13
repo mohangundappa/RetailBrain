@@ -398,11 +398,19 @@ class OptimizedBrainService:
                 
                 # For more complex conversations, use the LLM
                 try:
-                    from openai import OpenAI
                     import os
+                    api_key = os.environ.get("OPENAI_API_KEY")
+                    
+                    # Check if we have an API key before attempting to use OpenAI
+                    if not api_key:
+                        logger.warning("No OPENAI_API_KEY found in environment. Using fallback response.")
+                        return "I'm the Staples Assistant. How can I help you with your Staples-related needs today?"
+                    
+                    # Import here to avoid errors if OpenAI isn't available
+                    from openai import OpenAI
                     
                     # Initialize OpenAI client
-                    client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
+                    client = OpenAI(api_key=api_key)
                     
                     # Craft system prompt for Staples assistant
                     system_prompt = """
@@ -433,9 +441,11 @@ class OptimizedBrainService:
                         # Add the current message
                         conversation_history.append({"role": "user", "content": message})
                     
+                    logger.info(f"Calling OpenAI for General Conversation Agent with message: {message}")
+                    
                     # Call the OpenAI API for generation
                     response = client.chat.completions.create(
-                        model="gpt-4o",  # Use the latest model
+                        model="gpt-4o",  # the newest OpenAI model is "gpt-4o" which was released May 13, 2024
                         messages=conversation_history,
                         max_tokens=300,
                         temperature=0.7
@@ -447,7 +457,7 @@ class OptimizedBrainService:
                     return generated_text
                     
                 except Exception as llm_error:
-                    logger.error(f"Error using LLM for General Conversation Agent: {str(llm_error)}")
+                    logger.error(f"Error using LLM for General Conversation Agent: {str(llm_error)}", exc_info=True)
                     # Fallback to template response if LLM fails
                     return "I'm the Staples Assistant. How can I help you with your Staples-related needs today?"
             

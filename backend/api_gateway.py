@@ -294,14 +294,14 @@ async def startup_db_client():
         try:
             # Import individual functions directly from modules
             from backend.config.config import get_config
-            from backend.memory.factory import get_memory_service
+            from backend.memory.factory import get_mem0
             from backend.services.optimized_brain_service import OptimizedBrainService
             
             # Get configuration
             config = get_config()
             
-            # Get memory service
-            memory_service = await get_memory_service()
+            # Get memory service (mem0)
+            memory_service = await get_mem0("default")
             
             # Initialize the brain service directly
             db = await anext(get_db())
@@ -323,7 +323,7 @@ async def startup_db_client():
                 logger.info("Agents successfully pre-loaded at startup")
                 
         except Exception as brain_err:
-            logger.warning(f"Error pre-loading brain service: {str(brain_err)}")
+            logger.warning(f"Error pre-loading brain service: {str(brain_err)}", exc_info=True)
             
     except Exception as e:
         logger.error(f"Error initializing database tables: {str(e)}")
