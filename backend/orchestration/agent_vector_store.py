@@ -183,6 +183,13 @@ class AgentVectorStore:
             
         results = []
         
+        # Special handling for password reset queries
+        password_terms = ["password", "reset", "forgot", "login", "account"]
+        is_password_query = any(term in query.lower() for term in password_terms)
+        
+        if is_password_query:
+            logger.info(f"Password-related query detected: '{query}'")
+        
         for agent_id, agent in self.agent_data.items():
             # Initialize confidence to 0
             max_confidence = 0.0
@@ -193,12 +200,26 @@ class AgentVectorStore:
                     confidence = capability.matches(query)
                     max_confidence = max(max_confidence, confidence)
                     
+                    # Debug logging for password-related queries
+                    if is_password_query and confidence > 0:
+                        logger.info(f"Password query match: '{query}' | Agent: '{agent.name}' | Confidence: {confidence:.2f}")
+            
+            # Boost confidence for Reset Password Agent on password queries
+            if is_password_query and "Reset Password" in agent.name:
+                old_confidence = max_confidence
+                max_confidence = max(max_confidence, 0.9)  # Force higher confidence
+                logger.info(f"Boosting Reset Password Agent from {old_confidence:.2f} to {max_confidence:.2f}")
+                    
             # If we have a high enough confidence, include in results
             if max_confidence >= threshold:
                 results.append((agent, max_confidence))
                 
         # Sort by confidence (descending)
         results.sort(key=lambda x: x[1], reverse=True)
+        
+        # Debug log for top results
+        if results and is_password_query:
+            logger.info(f"Top agent for password query: {results[0][0].name} with confidence {results[0][1]:.2f}")
         
         logger.info(f"Keyword prefilter found {len(results)} agents for: {query[:50]}...")
         return results
