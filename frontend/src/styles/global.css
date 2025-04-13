@@ -1,0 +1,129 @@
+/* Global styles for Staples Brain UI */
+
+/* Import Replit-themed bootstrap CSS */
+@import url('https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css');
+
+/* Custom variables */
+:root {
+  --brand-primary: #6c5ce7;
+  --brand-secondary: #a29bfe;
+  --brand-accent: #00d2d3;
+  --card-border-radius: 0.5rem;
+  --transition-speed: 0.2s;
+}
+
+/* Base styles */
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  line-height: 1.6;
+  color: #e9ecef;
+  background-color: #1e1e2e;
+  min-height: 100vh;
+  transition: background-color var(--transition-speed) ease;
+}
+
+/* Card styling */
+.card {
+  border-radius: var(--card-border-radius);
+  overflow: hidden;
+  transition: transform var(--transition-speed) ease, box-shadow var(--transition-speed) ease;
+}
+
+.card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+}
+
+.card-header {
+  font-weight: 600;
+}
+
+/* Badge styling */
+.badge {
+  font-weight: 500;
+  letter-spacing: 0.5px;
+  padding: 0.4em 0.8em;
+}
+
+/* Nav pills styling */
+.nav-pills .nav-link {
+  border-radius: 0.25rem;
+  transition: all var(--transition-speed) ease;
+  margin-bottom: 0.25rem;
+  font-weight: 500;
+}
+
+.nav-pills .nav-link:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.nav-pills .nav-link.active {
+  background-color: var(--brand-primary);
+  color: white;
+}
+
+/* Link styling */
+a {
+  color: var(--brand-accent);
+  transition: color var(--transition-speed) ease;
+}
+
+a:hover {
+  color: var(--brand-secondary);
+  text-decoration: none;
+}
+
+/* Button styling */
+.btn {
+  font-weight: 500;
+  border-radius: 0.25rem;
+  padding: 0.5rem 1rem;
+  transition: all var(--transition-speed) ease;
+}
+
+.btn-primary {
+  background-color: var(--brand-primary);
+  border-color: var(--brand-primary);
+}
+
+.btn-primary:hover {
+  background-color: var(--brand-secondary);
+  border-color: var(--brand-secondary);
+}
+
+/* Code styling */
+code {
+  color: var(--brand-accent);
+  background-color: rgba(0, 0, 0, 0.2);
+  padding: 0.2em 0.4em;
+  border-radius: 3px;
+  font-size: 0.9em;
+}
+
+pre {
+  background-color: #2d2d3f;
+  border-radius: 0.25rem;
+  padding: 1rem;
+  color: #e9ecef;
+  overflow-x: auto;
+}
+
+/* Custom utility classes */
+.bg-opacity-10 {
+  --bs-bg-opacity: 0.1;
+}
+
+.text-muted {
+  color: #adb5bd !important;
+}
+
+.rounded-circle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Footer styling */
+footer {
+  font-size: 0.9rem;
+}
