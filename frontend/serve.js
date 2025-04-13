@@ -49,8 +49,8 @@ const server = http.createServer((req, res) => {
   }
   
   // Serve the agent routing architecture diagram
-  if (req.url === '/routing-architecture') {
-    fs.readFile(path.join(__dirname, 'public', 'agent_routing_architecture.html'), (err, data) => {
+  if (req.url === '/routing-architecture' || req.url === '/agent_routing_architecture.html') {
+    fs.readFile(path.join(__dirname, 'agent_routing_architecture.html'), (err, data) => {
       if (err) {
         res.writeHead(500);
         res.end('Error loading agent_routing_architecture.html');
