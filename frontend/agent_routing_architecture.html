@@ -76,6 +76,49 @@
             color: var(--bs-success);
             font-weight: bold;
         }
+        .implementation-details {
+            background-color: rgba(111, 66, 193, 0.1);
+            border: 1px solid var(--bs-purple);
+            border-radius: 8px;
+            margin-top: 10px;
+            padding: 10px;
+            font-size: 0.9em;
+            color: var(--bs-light);
+        }
+        .file-name {
+            color: var(--bs-info);
+            font-family: monospace;
+            font-weight: bold;
+        }
+        .method-name {
+            color: var(--bs-warning);
+            font-family: monospace;
+        }
+        .class-name {
+            color: var(--bs-success);
+            font-family: monospace;
+        }
+        .code-block {
+            background-color: var(--bs-gray-900);
+            border-radius: 4px;
+            padding: 15px;
+            margin: 10px 0;
+            white-space: pre-wrap;
+            font-family: monospace;
+            font-size: 0.85em;
+            overflow-x: auto;
+        }
+        .tab-content {
+            margin-top: 15px;
+        }
+        .nav-tabs .nav-link {
+            color: var(--bs-light);
+        }
+        .nav-tabs .nav-link.active {
+            background-color: var(--bs-gray-800);
+            color: var(--bs-white);
+            border-color: var(--bs-gray-600);
+        }
     </style>
 </head>
 <body>
@@ -88,17 +131,58 @@
                 <div class="diagram-container">
                     <div class="diagram-box">User Query: "password reset"</div>
                     <div class="arrow">↓</div>
-                    <div class="decision-box highlight">Check if Query is Conversational</div>
+                    <div class="decision-box highlight">Check if Query is Conversational
+                        <div class="implementation-details">
+                            <span class="file-name">backend/orchestration/agent_router.py</span>
+                            <span class="class-name">AgentRouter</span>.<span class="method-name">_seems_conversational()</span>
+                            <p>Simple check for short queries (≤2 words) that triggered before any pattern matching</p>
+                        </div>
+                    </div>
                     <div class="arrow">↓ (Yes: Short query)</div>
-                    <div class="agent-box">General Conversation Agent</div>
+                    <div class="agent-box">General Conversation Agent
+                        <div class="implementation-details">
+                            <span class="file-name">backend/orchestration/agent_router.py</span>
+                            <span class="class-name">AgentRouter</span>.<span class="method-name">route_and_prepare()</span>
+                            <p>Finds and uses general agent with high confidence (0.95)</p>
+                        </div>
+                    </div>
                     <div class="arrow">→</div>
-                    <div class="diagram-box">Generate Response</div>
+                    <div class="diagram-box">Generate Response
+                        <div class="implementation-details">
+                            <span class="file-name">backend/services/optimized_brain_service.py</span>
+                            <span class="class-name">OptimizedBrainService</span>.<span class="method-name">generate_response()</span>
+                        </div>
+                    </div>
                     <div class="arrow">↓</div>
-                    <div class="diagram-box">Apply Guardrails</div>
+                    <div class="diagram-box">Apply Guardrails
+                        <div class="implementation-details">
+                            <span class="file-name">backend/services/optimized_brain_service.py</span>
+                            <span class="class-name">OptimizedBrainService</span>.<span class="method-name">_apply_guardrails()</span>
+                        </div>
+                    </div>
                     <div class="arrow">↓</div>
                     <div class="diagram-box">Return Response to User</div>
                 </div>
                 <div class="text-danger"><strong>Problem:</strong> Password reset queries are incorrectly classified as conversational due to their simplicity, bypassing specialized agents.</div>
+                
+                <div class="code-block mt-3">
+# Previous pattern in agent_router.py:
+
+# Check if this is a simple greeting or basic conversation
+if self._seems_conversational(query):
+    # Look for a general conversation agent
+    general_agent = None
+    for agent_id, agent_data in self.agent_vector_store.agent_data.items():
+        if "general conversation" in agent_data.name.lower():
+            general_agent = agent_data
+            break
+    
+    # If we found a general conversation agent, use it with high confidence
+    if general_agent:
+        # Higher confidence for very basic greetings
+        confidence = 0.95 if len(query.split()) <= 2 else 0.8
+        return general_agent, confidence, route_context
+</div>
             </div>
             
             <div class="vs-half">
@@ -106,55 +190,308 @@
                 <div class="diagram-container">
                     <div class="diagram-box">User Query: "password reset"</div>
                     <div class="arrow">↓</div>
-                    <div class="decision-box highlight">Check for Specific Intent Patterns</div>
+                    <div class="decision-box highlight">Check for Specific Intent Patterns
+                        <div class="implementation-details">
+                            <span class="file-name">backend/orchestration/agent_router.py</span>
+                            <span class="class-name">AgentRouter</span>.<span class="method-name">route_and_prepare()</span>
+                            <p>Calls vector store's keyword_prefilter method first</p>
+                            <span class="file-name">backend/orchestration/agent_vector_store.py</span>
+                            <span class="class-name">AgentVectorStore</span>.<span class="method-name">keyword_prefilter()</span>
+                        </div>
+                    </div>
                     <div class="arrow">↓ (Yes: "password" keyword match)</div>
-                    <div class="agent-box">Reset Password Agent</div>
+                    <div class="agent-box">Reset Password Agent
+                        <div class="implementation-details">
+                            <span class="file-name">backend/orchestration/agent_factory.py</span>
+                            <span class="class-name">AgentFactory</span>.<span class="method-name">_init_agent_definition()</span>
+                            <p>Adds password pattern to Reset Password Agent during initialization</p>
+                        </div>
+                    </div>
                     <div class="arrow">→</div>
-                    <div class="diagram-box">Generate Response</div>
+                    <div class="diagram-box">Generate Response
+                        <div class="implementation-details">
+                            <span class="file-name">backend/services/optimized_brain_service.py</span>
+                            <span class="class-name">OptimizedBrainService</span>.<span class="method-name">generate_response()</span>
+                        </div>
+                    </div>
                     <div class="arrow">↓</div>
-                    <div class="diagram-box">Apply Guardrails</div>
+                    <div class="diagram-box">Apply Guardrails
+                        <div class="implementation-details">
+                            <span class="file-name">backend/services/optimized_brain_service.py</span>
+                            <span class="class-name">OptimizedBrainService</span>.<span class="method-name">_apply_guardrails()</span>
+                        </div>
+                    </div>
                     <div class="arrow">↓</div>
                     <div class="diagram-box">Return Response to User</div>
                 </div>
                 <div class="text-success"><strong>Solution:</strong> First check for specific intents via pattern matching, then consider conversational classification as a fallback.</div>
+                
+                <div class="code-block mt-3">
+# New intent-first approach in agent_router.py:
+
+# ARCHITECTURAL CHANGE: Intent-first approach
+# First try to identify specific intents via keyword pattern matching
+prefiltered_agents = await self.agent_vector_store.keyword_prefilter(query)
+if prefiltered_agents:
+    # If we have exactly one high-confidence match from patterns, use it directly
+    if len(prefiltered_agents) == 1 and prefiltered_agents[0][1] > 0.7:
+        agent, confidence = prefiltered_agents[0]
+        route_context["selection_method"] = "strong_intent_match"
+        return agent, confidence, route_context
+        
+    # If we have a clear winner among multiple matches
+    elif len(prefiltered_agents) > 1 and prefiltered_agents[0][1] > 0.8 and prefiltered_agents[0][1] - prefiltered_agents[1][1] > 0.2:
+        agent, confidence = prefiltered_agents[0]
+        route_context["selection_method"] = "clear_intent_winner"
+        return agent, confidence, route_context
+
+# After trying to find specific intents, check if conversational
+if self._seems_conversational(query):
+    # Proceed only if we didn't find specific intents
+    # ...
+</div>
             </div>
         </div>
         
         <div class="feature-list mt-4">
             <h3>Key Architectural Improvements</h3>
             <ul>
-                <li><span class="checkmark">✓</span> <strong>Intent-First Approach:</strong> Prioritize specific intents over conversation style</li>
-                <li><span class="checkmark">✓</span> <strong>Pattern Matching Priority:</strong> Check for specialized patterns before conversational classification</li>
-                <li><span class="checkmark">✓</span> <strong>Improved Decision Flow:</strong> Better confidence scoring and clear winner detection</li>
-                <li><span class="checkmark">✓</span> <strong>Semantic Refinement:</strong> Use embeddings for tiebreaker when multiple patterns match</li>
-                <li><span class="checkmark">✓</span> <strong>Lower Fallback Confidence:</strong> Reduced confidence of General Conversation Agent as fallback</li>
+                <li><span class="checkmark">✓</span> <strong>Intent-First Approach:</strong> Prioritize specific intents over conversation style
+                    <div class="implementation-details">
+                        <span class="file-name">backend/orchestration/agent_router.py</span>
+                        <p>Moved keyword pattern matching to top of the route_and_prepare() method</p>
+                    </div>
+                </li>
+                <li><span class="checkmark">✓</span> <strong>Pattern Matching Priority:</strong> Check for specialized patterns before conversational classification
+                    <div class="implementation-details">
+                        <span class="file-name">backend/orchestration/agent_vector_store.py</span>
+                        <span class="method-name">keyword_prefilter()</span>
+                        <p>Boosted confidence of password pattern matches from 0.75 to 1.0</p>
+                    </div>
+                </li>
+                <li><span class="checkmark">✓</span> <strong>Improved Decision Flow:</strong> Better confidence scoring and clear winner detection
+                    <div class="implementation-details">
+                        <span class="file-name">backend/orchestration/agent_router.py</span>
+                        <p>Added clear algorithm to identify primary intent when multiple matches found</p>
+                    </div>
+                </li>
+                <li><span class="checkmark">✓</span> <strong>Semantic Refinement:</strong> Use embeddings for tiebreaker when multiple patterns match
+                    <div class="implementation-details">
+                        <span class="file-name">backend/orchestration/agent_router.py</span>
+                        <span class="method-name">_semantic_search()</span>
+                        <p>Added option to limit search to prefiltered agent IDs</p>
+                    </div>
+                </li>
+                <li><span class="checkmark">✓</span> <strong>Lower Fallback Confidence:</strong> Reduced confidence of General Conversation Agent as fallback
+                    <div class="implementation-details">
+                        <span class="file-name">backend/orchestration/agent_router.py</span>
+                        <p>Changed fallback confidence from 0.6 to 0.5 to prioritize specialized agents</p>
+                    </div>
+                </li>
             </ul>
         </div>
         
         <div class="mt-4">
-            <h3>Detailed Decision Flow - New Architecture</h3>
-            <pre class="bg-dark text-light p-3 rounded">
-User Query
-   ↓
-1. Check for specific intent patterns (keyword matching)
-   ↓ 
-   If strong intent match → Use specialized agent (e.g., Reset Password Agent)
-   ↓
-   If no clear winner but multiple matches → Try semantic search on those candidates
-   ↓
-2. If no specific intent detected, check if conversational
-   ↓
-   If conversational → Use General Conversation Agent with moderate confidence
-   ↓
-3. If still no match, use standard routing with conversation memory
-   ↓
-4. Final fallback to General Conversation Agent if needed
-   ↓
-5. Apply guardrails to response
-   ↓
-Return response to user
-            </pre>
+            <h3>Implementation Details</h3>
+            
+            <ul class="nav nav-tabs" id="implementationTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="decision-tab" data-bs-toggle="tab" data-bs-target="#decision" type="button" role="tab" aria-controls="decision" aria-selected="true">Decision Flow</button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="pattern-tab" data-bs-toggle="tab" data-bs-target="#pattern" type="button" role="tab" aria-controls="pattern" aria-selected="false">Pattern Recognition</button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="router-tab" data-bs-toggle="tab" data-bs-target="#router" type="button" role="tab" aria-controls="router" aria-selected="false">Router Implementation</button>
+                </li>
+            </ul>
+            
+            <div class="tab-content" id="implementationTabsContent">
+                <div class="tab-pane fade show active" id="decision" role="tabpanel" aria-labelledby="decision-tab">
+                    <div class="code-block">
+# Detailed Decision Flow Implemented in agent_router.py (route_and_prepare method)
+
+1. Try to identify specific intents via keyword pattern matching
+   - Calls agent_vector_store.keyword_prefilter(query)
+   - Returns list of (agent, confidence) tuples sorted by confidence
+
+2. If found exactly one high-confidence match (>0.7)
+   - Use it directly with "strong_intent_match" method
+
+3. If found multiple matches with a clear winner (>0.8 and 0.2 higher than runner-up)
+   - Use the winner with "clear_intent_winner" method
+
+4. If keyword matching found potential matches but no clear winner
+   - Use semantic search limited to those prefiltered agents
+   - Pick best semantic match as a tiebreaker
+
+5. Only after intent detection fails, check if query is conversational
+   - If conversational → General Conversation Agent with moderate confidence
+   - Reduced confidence compared to previous implementation
+
+6. If nothing matches yet, use standard route() method
+   - This uses full semantic search and chat history
+
+7. Final fallback to General Conversation Agent with low confidence (0.5)
+                    </div>
+                </div>
+                <div class="tab-pane fade" id="pattern" role="tabpanel" aria-labelledby="pattern-tab">
+                    <div class="code-block">
+# Password pattern detection in AgentVectorStore (keyword_prefilter method)
+
+async def keyword_prefilter(self, query: str) -> List[Tuple[AgentDefinition, float]]:
+    """Prefilter agents based on keywords and patterns in the query."""
+    matched_agents = []
+    
+    # Check for password-related terms
+    password_terms = ['password', 'reset', 'forgot', 'change password', 'login issues']
+    contains_password = any(term in query.lower() for term in password_terms)
+    
+    if contains_password:
+        logger.info(f"Password query detected: '{query[:30]}...'")
+        
+    # For each agent in our data store
+    for agent_id, agent in self.agent_data.items():
+        
+        confidence = 0
+        
+        # Check agent's pattern capabilities against query
+        if hasattr(agent, 'pattern_capabilities') and agent.pattern_capabilities:
+            for pattern in agent.pattern_capabilities:
+                if re.search(pattern.regex, query, re.IGNORECASE):
+                    confidence = max(confidence, pattern.confidence)
+                    logger.info(f"Pattern match: '{query[:30]}...' | Agent: '{agent.name}' | Confidence: {confidence:.2f}")
+                    
+        # Special logic for password reset agent
+        if contains_password and "reset password" in agent.name.lower():
+            # Boost confidence for password reset agent
+            password_confidence = 1.0  # Increased from 0.75
+            logger.info(f"Password query match: '{query[:30]}...' | Agent: '{agent.name}' | Confidence: {password_confidence:.2f}")
+            logger.info(f"Boosting Reset Password Agent from {confidence:.2f} to {password_confidence:.2f}")
+            confidence = max(confidence, password_confidence)
+            
+        if confidence > 0:
+            matched_agents.append((agent, confidence))
+    
+    # Sort by confidence score, highest first
+    matched_agents.sort(key=lambda x: x[1], reverse=True)
+    
+    if matched_agents:
+        top_agent = matched_agents[0][0]
+        top_confidence = matched_agents[0][1]
+        logger.info(f"Keyword prefilter found {len(matched_agents)} agents for: {query[:30]}...")
+        
+    return matched_agents
+                    </div>
+                </div>
+                <div class="tab-pane fade" id="router" role="tabpanel" aria-labelledby="router-tab">
+                    <div class="code-block">
+# AgentRouter initialization in agent_factory.py
+
+def _init_agent_definition(self, agent_data: Dict[str, Any]) -> AgentDefinition:
+    """Initialize an agent definition from database data."""
+    agent_definition = AgentDefinition(
+        id=agent_data.get("id"),
+        name=agent_data.get("name"),
+        description=agent_data.get("description"),
+        status=agent_data.get("status", "active"),
+        version=agent_data.get("version", 1),
+        created_at=agent_data.get("created_at"),
+        updated_at=agent_data.get("updated_at"),
+        is_system=agent_data.get("is_system", False),
+        entity_definitions=[],
+        pattern_capabilities=[]
+    )
+    
+    # Add specific pattern capabilities based on agent name
+    if "reset password" in agent_definition.name.lower():
+        # Add password reset patterns with high confidence
+        logger.info(f"Added password pattern to agent: {agent_definition.name}")
+        agent_definition.pattern_capabilities.append(
+            PatternCapability(
+                regex=r'password|reset password|forgot password|change password|login issue',
+                confidence=0.85,
+                description="Password reset intent detection"
+            )
+        )
+    
+    return agent_definition
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="mt-5 mb-5">
+            <h3>How It Works: Technical Explanation</h3>
+            <div class="implementation-details" style="background-color: var(--bs-dark);">
+                <ol>
+                    <li><strong>Query Entry and Preprocessing</strong>
+                        <ul>
+                            <li>User query enters through <span class="file-name">backend/endpoints/optimized_chat.py</span> endpoint</li>
+                            <li>Routed to <span class="class-name">OptimizedBrainService</span> for processing in <span class="file-name">backend/services/optimized_brain_service.py</span></li>
+                            <li>Brain service calls <span class="class-name">AgentRouter</span>.<span class="method-name">route_and_prepare()</span> to select best agent</li>
+                        </ul>
+                    </li>
+                    <li><strong>Intent Detection (New First Step)</strong>
+                        <ul>
+                            <li>Before considering if a query is conversational, the router first checks for specific intents</li>
+                            <li>This uses <span class="class-name">AgentVectorStore</span>.<span class="method-name">keyword_prefilter()</span> which applies regex patterns and keyword matching</li>
+                            <li>For password queries, specific password terms are detected with regex patterns</li>
+                            <li>Reset Password Agent has special boosting logic to increase its confidence score to maximum (1.0)</li>
+                        </ul>
+                    </li>
+                    <li><strong>Specialized Agent Selection Logic</strong>
+                        <ul>
+                            <li>If a single high-confidence match is found (>0.7), it's used immediately</li>
+                            <li>If multiple matched agents have similar scores, semantic search is used as a tiebreaker</li>
+                            <li>This semantic search is limited to only the prefiltered candidates, not all agents</li>
+                        </ul>
+                    </li>
+                    <li><strong>Conversational Check (Now Secondary)</strong>
+                        <ul>
+                            <li>Only if no specific intent is detected, the system checks if query seems conversational</li>
+                            <li>The confidence score for General Conversation Agent is reduced (0.85) compared to previous (0.95)</li>
+                            <li>This gives specialized agents higher priority even for simple 2-word queries</li>
+                        </ul>
+                    </li>
+                    <li><strong>Fallback Chain</strong>
+                        <ul>
+                            <li>If none of the above methods yield an agent, standard semantic routing with full agent pool is tried</li>
+                            <li>Final fallback to General Conversation Agent has reduced confidence (0.5)</li>
+                            <li>Each selection method is tracked in context with "selection_method" field for telemetry</li>
+                        </ul>
+                    </li>
+                </ol>
+            </div>
         </div>
     </div>
+    
+    <script>
+        // Simple tab functionality for the implementation details
+        document.querySelectorAll('#implementationTabs button').forEach(button => {
+            button.addEventListener('click', function(event) {
+                event.preventDefault();
+                
+                // Hide all tab panes
+                document.querySelectorAll('.tab-pane').forEach(pane => {
+                    pane.classList.remove('show', 'active');
+                });
+                
+                // Remove active class from all tabs
+                document.querySelectorAll('.nav-link').forEach(tab => {
+                    tab.classList.remove('active');
+                    tab.setAttribute('aria-selected', 'false');
+                });
+                
+                // Show the selected tab pane
+                const targetId = this.getAttribute('data-bs-target').substring(1);
+                document.getElementById(targetId).classList.add('show', 'active');
+                
+                // Set this tab as active
+                this.classList.add('active');
+                this.setAttribute('aria-selected', 'true');
+            });
+        });
+    </script>
 </body>
 </html>
