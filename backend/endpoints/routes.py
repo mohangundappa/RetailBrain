@@ -24,16 +24,16 @@ _brain = None
 
 def get_brain():
     """
-    Get or initialize the Orchestration Engine instance.
+    Get or initialize the GraphBrainService instance.
     
     Returns:
-        OrchestrationEngine instance
+        GraphBrainService instance
     """
     global _brain
     if _brain is None:
         # Import here to avoid circular imports
-        from backend.orchestration.orchestration_engine import initialize_orchestration_engine
-        _brain = initialize_orchestration_engine()
+        from backend.services.graph_dependencies import get_graph_brain_service
+        _brain = get_graph_brain_service()
     return _brain
 
 # Define API models
@@ -471,8 +471,12 @@ async def chat(data: ChatRequest):
         if agent_id:
             context["agent_id"] = agent_id
             
-        # Process request
-        response = await brain.process_request(input_text=message, session_id=session_id, context=context)
+        # Process request with the GraphBrainService
+        response = await brain.process_request(
+            message=message, 
+            session_id=session_id, 
+            context=context
+        )
         
         return {
             "success": True,
