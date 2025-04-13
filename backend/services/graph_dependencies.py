@@ -82,3 +82,59 @@ async def get_graph_brain_service(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error initializing graph brain service: {str(e)}"
         )
+
+
+async def get_graph_brain_service_direct() -> GraphBrainService:
+    """
+    Get or create a graph brain service instance directly without using a dependency.
+    This function is used by non-FastAPI contexts like the routes.py module.
+    
+    Returns:
+        GraphBrainService instance
+    
+    Raises:
+        Exception: If the brain service cannot be initialized
+    """
+    global _graph_brain_service
+    
+    try:
+        if _graph_brain_service is None:
+            logger.info("Initializing GraphBrainService directly")
+            
+            # Get database session
+            from backend.database.db import get_db_direct
+            db = await get_db_direct()
+            
+            # Get configuration
+            config = get_config()
+            
+            # Create memory service
+            memory_service = await get_mem0("graph_brain")
+            logger.info("Created memory service for GraphBrainService")
+            
+            # Create agent factory
+            agent_factory = LangGraphAgentFactory(db)
+            logger.info("Created LangGraphAgentFactory for GraphBrainService")
+            
+            # Create brain service
+            _graph_brain_service = GraphBrainService(
+                db_session=db,
+                config=config,
+                memory_service=memory_service,
+                agent_factory=agent_factory
+            )
+            
+            # Initialize the service
+            success = await _graph_brain_service.initialize()
+            if not success:
+                logger.error("Failed to initialize GraphBrainService")
+                raise Exception("Failed to initialize graph brain service")
+                
+            logger.info("GraphBrainService initialized successfully")
+            
+        # Return the service instance directly
+        return _graph_brain_service
+        
+    except Exception as e:
+        logger.error(f"Error in get_graph_brain_service_direct: {str(e)}", exc_info=True)
+        raise Exception(f"Error initializing graph brain service: {str(e)}")

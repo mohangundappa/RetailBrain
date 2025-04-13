@@ -22,19 +22,36 @@ api_router = APIRouter(tags=["api"])
 # Store brain instance
 _brain = None
 
+async def get_brain_async():
+    """
+    Get or initialize the GraphBrainService instance asynchronously.
+    
+    Returns:
+        GraphBrainService instance
+    """
+    from backend.services.graph_dependencies import get_graph_brain_service_direct
+    return await get_graph_brain_service_direct()
+
+# Global brain instance
+_brain = None
+
 def get_brain():
     """
     Get or initialize the GraphBrainService instance.
+    This is a synchronous wrapper around get_brain_async for backward compatibility.
     
     Returns:
         GraphBrainService instance
     """
     global _brain
-    if _brain is None:
-        # Import here to avoid circular imports
-        from backend.services.graph_dependencies import get_graph_brain_service
-        _brain = get_graph_brain_service()
-    return _brain
+    # If the brain is already initialized, return it
+    if _brain is not None:
+        return _brain
+        
+    # If we're in an async context, we can't initialize here
+    # Return None and let the caller handle it
+    logger.warning("Brain not yet initialized and cannot initialize in sync context")
+    return None
 
 # Define API models
 class HealthResponse(BaseModel):
@@ -459,8 +476,10 @@ async def chat(data: ChatRequest):
         session_id = data.session_id or str(uuid.uuid4())
         agent_id = data.agent_id  # Optional explicit agent selection
         
-        # Get brain instance
-        brain = get_brain()
+        # Get brain instance asynchronously
+        global _brain
+        if _brain is None:
+            _brain = await get_brain_async()
         
         # Create context with session info
         context = {
@@ -472,7 +491,7 @@ async def chat(data: ChatRequest):
             context["agent_id"] = agent_id
             
         # Process request with the GraphBrainService
-        response = await brain.process_request(
+        response = await _brain.process_request(
             message=message, 
             session_id=session_id, 
             context=context

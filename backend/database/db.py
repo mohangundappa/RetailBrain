@@ -67,7 +67,7 @@ class Base(DeclarativeBase):
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
     """
-    Get a database session.
+    Get a database session for use with FastAPI dependency injection.
     
     Yields:
         AsyncSession: Database session
@@ -86,3 +86,14 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
             # Handle session already closed case
             import logging
             logging.getLogger("staples_brain").warning(f"Error closing session: {str(e)}")
+
+
+async def get_db_direct() -> AsyncSession:
+    """
+    Get a database session directly (not for use with FastAPI dependency injection).
+    This function is used by non-FastAPI contexts that need a database session.
+    
+    Returns:
+        AsyncSession: Database session
+    """
+    return async_session_factory()
