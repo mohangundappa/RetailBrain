@@ -375,6 +375,10 @@
                         </button>
                     </li>
                 </ul>
+                
+                <!-- Observability Status Area for Errors/Messages -->
+                <div id="observabilityStatus" class="mt-2"></div>
+                
                 <div class="tab-content" id="observabilityTabsContent">
                     <!-- Processing Flow Tab -->
                     <div class="tab-pane fade show active" id="processing" role="tabpanel" aria-labelledby="processing-tab">
@@ -750,7 +754,7 @@
                 }
             };
             
-            // Send message to API
+            // Send message to API with required session_id at top level
             fetch('/api/v1/chat', {
                 method: 'POST',
                 headers: {
@@ -759,10 +763,18 @@
                 body: JSON.stringify({
                     message: message,
                     conversation_id: currentConversationId,
+                    session_id: document.getElementById('sessionId').value, // Add session_id at top level as required by API
                     context: context
                 })
             })
-            .then(response => response.json())
+            .then(response => {
+                if (!response.ok) {
+                    return response.json().then(errorData => {
+                        throw new Error(JSON.stringify(errorData));
+                    });
+                }
+                return response.json();
+            })
             .then(responseData => {
                 if (responseData.success) {
                     // Remove thinking animation
@@ -803,8 +815,28 @@
                     thinkingAnimation.remove();
                 }
                 
+                // Try to extract detailed error message if available
+                let errorMessage = 'Sorry, there was an error communicating with the server. Please try again.';
+                
+                try {
+                    // Check if error message is a stringified JSON object
+                    const errorObj = JSON.parse(error.message);
+                    if (errorObj.detail && Array.isArray(errorObj.detail)) {
+                        // Format validation errors from FastAPI
+                        errorMessage = 'API Request Error: ' + errorObj.detail.map(err => 
+                            `${err.loc.join('.')} - ${err.msg}`
+                        ).join(', ');
+                    } else if (errorObj.detail) {
+                        // Single error message
+                        errorMessage = 'API Error: ' + errorObj.detail;
+                    }
+                } catch (e) {
+                    // If not JSON, use the error message directly
+                    console.warn('Could not parse error response:', e);
+                }
+                
                 // Add error message
-                addMessageToChat('agent', 'Sorry, there was an error communicating with the server. Please try again.');
+                addMessageToChat('agent', errorMessage);
                 console.error('Fetch error:', error);
             });
         }
@@ -834,16 +866,27 @@
         // Fetch observability data
         function fetchObservabilityData(conversationId) {
             fetch(`/api/v1/chat/observability/${conversationId}`)
-                .then(response => response.json())
+                .then(response => {
+                    if (!response.ok) {
+                        // Don't throw error here, just log it and continue
+                        console.warn(`Observability API returned ${response.status}: ${response.statusText}`);
+                        return { success: false, error: `API returned status ${response.status}` };
+                    }
+                    return response.json();
+                })
                 .then(data => {
                     if (data.success) {
                         updateObservabilityData(data.data);
                     } else {
-                        console.error('Error fetching observability data:', data.error);
+                        console.warn('Could not fetch observability data:', data.error);
+                        document.getElementById('observabilityStatus').innerHTML = 
+                            `<div class="alert alert-warning">Observability data unavailable</div>`;
                     }
                 })
                 .catch(error => {
-                    console.error('Fetch error:', error);
+                    console.error('Observability fetch error:', error);
+                    document.getElementById('observabilityStatus').innerHTML = 
+                        `<div class="alert alert-warning">Error retrieving observability data</div>`;
                 });
         }
         
