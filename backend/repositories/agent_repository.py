@@ -41,6 +41,57 @@ class AgentRepository:
         """
         self.session = session
     
+    async def get_agent_by_name(self, name: str, load_related: bool = True) -> Optional[AgentDefinition]:
+        """
+        Get an agent definition by name.
+        
+        Args:
+            name: The name of the agent
+            load_related: Whether to load related entities (configurations, patterns, etc.)
+            
+        Returns:
+            AgentDefinition or None if not found
+        """
+        query = select(AgentDefinition).where(func.lower(AgentDefinition.name) == name.lower())
+        
+        if load_related:
+            # Load all the related entities
+            query = query.options(
+                selectinload(AgentDefinition.deployments),
+                selectinload(AgentDefinition.patterns).selectinload(AgentPattern.embedding),
+                selectinload(AgentDefinition.tools),
+                selectinload(AgentDefinition.response_templates),
+                selectinload(AgentDefinition.entity_mappings).joinedload(AgentEntityMapping.entity),
+                selectinload(AgentDefinition.child_relationships),
+                selectinload(AgentDefinition.parent_relationships)
+            )
+        
+        result = await self.session.execute(query)
+        agent = result.scalar_one_or_none()
+        
+        if agent and load_related:
+            # Load type-specific configuration based on agent type
+            if agent.agent_type == "LLM":
+                query = select(LlmAgentConfiguration).where(
+                    LlmAgentConfiguration.agent_id == agent.id
+                )
+                result = await self.session.execute(query)
+                agent.llm_configuration = result.scalar_one_or_none()
+            elif agent.agent_type == "RULE":
+                query = select(RuleAgentConfiguration).where(
+                    RuleAgentConfiguration.agent_id == agent.id
+                )
+                result = await self.session.execute(query)
+                agent.rule_configuration = result.scalar_one_or_none()
+            elif agent.agent_type == "RETRIEVAL":
+                query = select(RetrievalAgentConfiguration).where(
+                    RetrievalAgentConfiguration.agent_id == agent.id
+                )
+                result = await self.session.execute(query)
+                agent.retrieval_configuration = result.scalar_one_or_none()
+                
+        return agent
+    
     async def get_agent_definition(
         self, agent_id: Union[uuid.UUID, str], load_related: bool = True
     ) -> Optional[AgentDefinition]:

@@ -79,6 +79,34 @@ class LangGraphAgentFactory:
             
             # Create a new async session to ensure we're in the correct async context
             db_url = os.environ.get("DATABASE_URL", "")
+            
+            # Parse URL to remove sslmode parameter
+            from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
+            
+            # Parse URL
+            parsed_url = urlparse(db_url)
+            
+            # Parse query parameters
+            query_params = parse_qs(parsed_url.query)
+            
+            # Remove sslmode parameter from query as asyncpg doesn't accept it
+            if 'sslmode' in query_params:
+                del query_params['sslmode']
+            
+            # Rebuild query string
+            new_query = urlencode(query_params, doseq=True)
+            
+            # Rebuild URL
+            db_url = urlunparse((
+                parsed_url.scheme,
+                parsed_url.netloc,
+                parsed_url.path,
+                parsed_url.params,
+                new_query,
+                parsed_url.fragment
+            ))
+            
+            # Convert to asyncpg URL if needed
             if db_url.startswith('postgresql://'):
                 db_url = db_url.replace('postgresql://', 'postgresql+asyncpg://')
             
