@@ -7,6 +7,7 @@ from agent definitions stored in the database.
 import logging
 import json
 import sys
+import os
 from typing import Dict, Any, List, Optional, Union, Tuple
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -72,26 +73,44 @@ class LangGraphAgentFactory:
         """
         try:
             # Get agent definitions from repository
-            agent_definitions = await self.agent_repository.get_all_active_agents()
-            logger.info(f"Found {len(agent_definitions)} active agents in database")
+            from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+            from sqlalchemy import func
+            import asyncio
             
-            agents = []
-            for agent_def in agent_definitions:
-                try:
-                    # Create agent from database model
-                    agent = await create_database_agent_from_model(agent_def)
-                    if agent:
-                        # Add to registry
-                        self.agents[agent.id] = agent
-                        agents.append(agent)
-                        logger.info(f"Loaded agent: {agent.name} (ID: {agent.id}, Type: {agent.agent_type})")
-                    else:
-                        logger.error(f"Failed to create agent for {agent_def.name}")
-                except Exception as e:
-                    logger.error(f"Error creating agent {agent_def.name}: {str(e)}", exc_info=True)
+            # Create a new async session to ensure we're in the correct async context
+            db_url = os.environ.get("DATABASE_URL", "")
+            if db_url.startswith('postgresql://'):
+                db_url = db_url.replace('postgresql://', 'postgresql+asyncpg://')
             
-            logger.info(f"Successfully loaded {len(agents)} active agents")
-            return agents
+            engine = create_async_engine(db_url)
+            async_session = async_sessionmaker(engine, expire_on_commit=False)
+            
+            async with async_session() as new_session:
+                # Create a new repository with this session
+                from backend.repositories.agent_repository import AgentRepository
+                repo = AgentRepository(new_session)
+                
+                # Get agent definitions from repository
+                agent_definitions = await repo.get_all_active_agents()
+                logger.info(f"Found {len(agent_definitions)} active agents in database")
+                
+                agents = []
+                for agent_def in agent_definitions:
+                    try:
+                        # Create agent from database model
+                        agent = await create_database_agent_from_model(agent_def)
+                        if agent:
+                            # Add to registry
+                            self.agents[agent.id] = agent
+                            agents.append(agent)
+                            logger.info(f"Loaded agent: {agent.name} (ID: {agent.id}, Type: {agent.agent_type})")
+                        else:
+                            logger.error(f"Failed to create agent for {agent_def.name}")
+                    except Exception as e:
+                        logger.error(f"Error creating agent {agent_def.name}: {str(e)}", exc_info=True)
+                
+                logger.info(f"Successfully loaded {len(agents)} active agents")
+                return agents
             
         except Exception as e:
             logger.error(f"Error loading active agents: {str(e)}", exc_info=True)
