@@ -21,7 +21,8 @@ All services are consolidated within the backend component, maintaining a clear 
 2. **Services Layer**: The `services` module contains business logic for handling requests.
 3. **Brain Orchestration**: The optimized brain service manages agent selection and execution.
 4. **Agent Framework**: Specialized agents provide domain-specific handling of user requests.
-5. **State Persistence**: Conversation state is maintained for context-aware interactions.
+5. **Memory System**: The mem0 memory system provides multi-level memory storage (working, short-term, long-term) with both Redis and PostgreSQL backends.
+6. **State Persistence**: Conversation state is maintained for context-aware interactions.
 
 For technical details on the backend architecture, see [backend/README.md](backend/README.md).
 
@@ -30,9 +31,11 @@ For technical details on the backend architecture, see [backend/README.md](backe
 - **Python 3.12+**: For backend and agent logic
 - **FastAPI**: Main API framework (replacing older Flask implementation)
 - **PostgreSQL with PgVec**: For database storage including vector embeddings
+- **Redis/FakeRedis**: For high-performance memory operations and caching
 - **LangChain/LangGraph**: For contextual intelligence
 - **OpenAI GPT-4o**: Core language model integration
 - **LangSmith**: For telemetry and observability
+- **Mem0**: Custom multi-level memory system with semantic search capabilities
 
 ## Project Structure
 
@@ -53,6 +56,19 @@ staples-brain/
 │   │       └── vector_store.py # Vector database 
 │   ├── config/            # Configuration management
 │   ├── database/          # Database schemas and connections
+│   ├── memory/            # Advanced memory management system
+│   │   ├── config.py      # Memory configuration settings
+│   │   ├── database.py    # Database utilities for memory system
+│   │   ├── factory.py     # Factory for memory system instances
+│   │   ├── init_memory_db.py # Database initialization for memory
+│   │   ├── mem0.py        # Core memory implementation
+│   │   ├── schema.py      # Database schema for memory system
+│   │   ├── test_mem0.py   # Test module for memory system
+│   │   └── utils.py       # Utility functions for memory system
+│   ├── orchestration/     # Agent orchestration components
+│   │   ├── agent_router.py # Agent routing and selection
+│   │   ├── orchestration_engine.py # Central orchestration
+│   │   └── state/         # State management components
 │   ├── repositories/      # Data access layer
 │   ├── services/          # Business logic services
 │   │   ├── chat_service.py # Chat processing
