@@ -3,7 +3,7 @@ Dependencies for FastAPI API Gateway.
 This module provides dependency injection for services used throughout the API.
 """
 import logging
-from typing import AsyncGenerator, Dict, Type, Callable, Optional
+from typing import AsyncGenerator, Dict, Type, Callable, Optional, Any
 from functools import lru_cache
 
 from fastapi import Depends, HTTPException, status
@@ -16,6 +16,9 @@ from backend.services.telemetry_service import TelemetryService
 from backend.services.optimized_brain_service import OptimizedBrainService
 from backend.config.config import get_config, Config
 from backend.repositories.agent_repository import AgentRepository
+# Import mem0 memory system
+from backend.memory.factory import get_memory_service as create_memory_service
+from backend.memory.config import MemoryConfig
 
 # Set up logging
 logger = logging.getLogger("staples_brain")
@@ -28,8 +31,9 @@ _service_factory: Dict[str, Callable] = {
     "telemetry_service": TelemetryService
 }
 
-# Singleton instance of brain service
+# Singleton instances
 _brain_service = None
+_memory_service = None
 
 
 def set_service_factory(service_name: str, factory_func: Callable) -> None:
@@ -57,17 +61,25 @@ def get_app_config() -> Config:
     return get_config()
 
 
+async def get_memory_service_instance() -> Any:
+    """Wrapper function to call the async memory service dependency."""
+    memory_service = await get_memory_service()
+    return memory_service
+
+
 async def get_brain_service(
     db: AsyncSession = Depends(get_db),
-    config: Config = Depends(get_app_config)
+    config: Config = Depends(get_app_config),
+    memory_service: Any = Depends(get_memory_service_instance)
 ) -> OptimizedBrainService:
     """
-    Get or create a brain service instance.
+    Get or create a brain service instance with memory integration.
     Uses a singleton pattern to ensure only one instance exists.
     
     Args:
         db: Database session
         config: Application configuration
+        memory_service: Memory service instance (mem0)
         
     Returns:
         OptimizedBrainService instance
@@ -79,7 +91,7 @@ async def get_brain_service(
     
     try:
         if _brain_service is None:
-            logger.info("Initializing OptimizedBrainService")
+            logger.info("Initializing OptimizedBrainService with memory integration")
             factory = _service_factory["brain_service"]
             
             # Create LangGraph agent factory
@@ -92,10 +104,11 @@ async def get_brain_service(
                 logger.warning("Could not import LangGraphAgentFactory, continuing without database-driven agents")
                 agent_factory = None
             
-            # Initialize brain service with database session and agent factory
+            # Initialize brain service with database session, memory service and agent factory
             _brain_service = factory(
                 db_session=db,
                 config=config,
+                memory_service=memory_service,
                 agent_factory=agent_factory
             )
             
@@ -103,7 +116,7 @@ async def get_brain_service(
             if hasattr(_brain_service, 'initialize') and callable(getattr(_brain_service, 'initialize')):
                 await _brain_service.initialize()
             
-            logger.info("OptimizedBrainService initialization complete")
+            logger.info("OptimizedBrainService initialization complete with memory integration")
         
         return _brain_service
     except Exception as e:
@@ -185,6 +198,50 @@ async def get_chat_service(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Chat service error"
+        )
+
+
+async def get_memory_service(
+    db: AsyncSession = Depends(get_db),
+    config: Config = Depends(get_app_config)
+) -> Any:
+    """
+    Get or create a memory service instance.
+    Uses a singleton pattern to ensure only one instance exists.
+    
+    Args:
+        db: Database session
+        config: Application configuration
+        
+    Returns:
+        mem0 Memory service instance
+    
+    Raises:
+        HTTPException: If the memory service cannot be initialized
+    """
+    global _memory_service
+    
+    try:
+        if _memory_service is None:
+            logger.info("Initializing memory service (mem0)")
+            
+            # Create memory config with default settings
+            # Using fakeredis in development and getting database URL from connection details
+            memory_config = MemoryConfig(
+                use_fakeredis=True,  # Use fakeredis for development and testing
+                db_url=str(db.bind.url)  # Get database URL from current session
+            )
+            
+            # Initialize memory service
+            _memory_service = await create_memory_service(memory_config)
+            logger.info("Memory service (mem0) initialization complete")
+            
+        return _memory_service
+    except Exception as e:
+        logger.error(f"Failed to initialize memory service: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Memory service initialization failed"
         )
 
 

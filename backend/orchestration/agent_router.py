@@ -158,7 +158,7 @@ class OptimizedAgentRouter:
         context: Dict[str, Any]
     ) -> Optional[Tuple[AgentDefinition, float, Dict[str, Any]]]:
         """
-        Check for conversation continuity.
+        Check for conversation continuity using the mem0 memory system.
         
         Args:
             query: User query
@@ -172,28 +172,50 @@ class OptimizedAgentRouter:
             return None
             
         try:
-            # Get conversation context from memory service
-            conversation = await self.memory_service.get_conversation(session_id)
-            if not conversation:
+            # Get last interaction from working memory
+            last_interaction = await self.memory_service.retrieve(
+                namespace=f"conversation:{session_id}",
+                key="last_interaction",
+                memory_type="working"  # Use working memory for recent context
+            )
+            
+            # Get current topic from short-term memory
+            current_topic = await self.memory_service.retrieve(
+                namespace=f"conversation:{session_id}",
+                key="current_topic",
+                memory_type="short_term"  # Use short-term memory for topic tracking
+            )
+            
+            # If we don't have last interaction data, no continuity
+            if not last_interaction:
+                logger.debug(f"No last interaction found for session {session_id}")
                 return None
                 
             # Check if we have a last agent
-            last_agent_id = conversation.get("last_agent_id")
+            last_agent_id = last_interaction.get("agent_id")
             if not last_agent_id or last_agent_id not in self.agent_vector_store.agent_data:
+                logger.debug(f"No valid last agent ID found: {last_agent_id}")
                 return None
                 
             # Get the agent
             agent = self.agent_vector_store.agent_data[last_agent_id]
             
             # Check if the query seems related to the current topic
-            current_topic = conversation.get("current_topic", "")
             if current_topic and self._is_same_topic(query, current_topic):
                 # Apply continuity bonus
                 continuity_confidence = 0.75  # High confidence for continuing conversation
-                continuity_context = {"continuity_from": last_agent_id, "current_topic": current_topic}
+                continuity_context = {
+                    "continuity_from": last_agent_id,
+                    "current_topic": current_topic,
+                    "last_response": last_interaction.get("response", ""),
+                    "last_message": last_interaction.get("message", "")
+                }
+                
+                logger.info(f"Detected conversation continuity with agent {agent.name}")
                 return agent, continuity_confidence, continuity_context
+                
         except Exception as e:
-            logger.error(f"Error checking continuity: {str(e)}")
+            logger.error(f"Error checking continuity: {str(e)}", exc_info=True)
             
         return None
     
