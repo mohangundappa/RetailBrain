@@ -9,8 +9,7 @@ import os
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 
-from backend.database.agent_schema import AgentDefinition, AgentPattern
-from backend.database.agent_schema import AgentResponseTemplate as ResponseTemplate
+from backend.database.agent_schema import AgentDefinition, AgentPattern, AgentResponseTemplate
 from backend.database.entity_schema import EntityDefinition
 from backend.config.config import get_config
 
@@ -80,17 +79,21 @@ async def add_guardrails_agent():
         
         # Add basic templates
         templates = [
-            ResponseTemplate(
+            AgentResponseTemplate(
                 agent_id=guardrails_agent.id,
                 template_key="policy_violation",
                 template_content="I apologize, but I cannot provide that information as it would violate our policies. How can I assist you with something else?",
-                is_active=True
+                template_type="text",
+                language="en",
+                tone="professional"
             ),
-            ResponseTemplate(
+            AgentResponseTemplate(
                 agent_id=guardrails_agent.id,
                 template_key="refined_response",
                 template_content="{{refined_response}}",
-                is_active=True
+                template_type="text",
+                language="en",
+                tone="professional"
             )
         ]
         

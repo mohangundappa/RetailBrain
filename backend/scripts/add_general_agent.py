@@ -9,8 +9,7 @@ import os
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 
-from backend.database.agent_schema import AgentDefinition, AgentPattern
-from backend.database.agent_schema import AgentResponseTemplate as ResponseTemplate
+from backend.database.agent_schema import AgentDefinition, AgentPattern, AgentResponseTemplate
 from backend.database.entity_schema import EntityDefinition
 from backend.config.config import get_config
 from backend.orchestration.embedding_service import EmbeddingService
@@ -90,66 +89,76 @@ async def add_general_agent():
             ),
             AgentPattern(
                 agent_id=general_agent.id,
-                pattern="hi there",
-                weight=1.0,
-                is_regex=False
+                pattern_type="keyword",
+                pattern_value="hi there",
+                priority=1,
+                confidence_boost=0.2
             ),
             AgentPattern(
                 agent_id=general_agent.id,
-                pattern="good morning",
-                weight=1.0,
-                is_regex=False
+                pattern_type="keyword",
+                pattern_value="good morning",
+                priority=1,
+                confidence_boost=0.2
             ),
             AgentPattern(
                 agent_id=general_agent.id,
-                pattern="hey",
-                weight=1.0,
-                is_regex=False
+                pattern_type="keyword",
+                pattern_value="hey",
+                priority=1,
+                confidence_boost=0.2
             ),
             # Goodbyes
             AgentPattern(
                 agent_id=general_agent.id,
-                pattern="goodbye",
-                weight=1.0,
-                is_regex=False
+                pattern_type="keyword",
+                pattern_value="goodbye",
+                priority=1,
+                confidence_boost=0.2
             ),
             AgentPattern(
                 agent_id=general_agent.id,
-                pattern="bye",
-                weight=1.0,
-                is_regex=False
+                pattern_type="keyword",
+                pattern_value="bye",
+                priority=1,
+                confidence_boost=0.2
             ),
             AgentPattern(
                 agent_id=general_agent.id,
-                pattern="thank you",
-                weight=1.0,
-                is_regex=False
+                pattern_type="keyword",
+                pattern_value="thank you",
+                priority=1,
+                confidence_boost=0.2
             ),
             # Small talk
             AgentPattern(
                 agent_id=general_agent.id,
-                pattern="how are you",
-                weight=1.0,
-                is_regex=False
+                pattern_type="keyword",
+                pattern_value="how are you",
+                priority=1,
+                confidence_boost=0.2
             ),
             AgentPattern(
                 agent_id=general_agent.id,
-                pattern="nice to meet you",
-                weight=1.0,
-                is_regex=False
+                pattern_type="keyword",
+                pattern_value="nice to meet you",
+                priority=1,
+                confidence_boost=0.2
             ),
             # Help
             AgentPattern(
                 agent_id=general_agent.id,
-                pattern="help",
-                weight=0.7,
-                is_regex=False
+                pattern_type="keyword",
+                pattern_value="help",
+                priority=0,
+                confidence_boost=0.1
             ),
             AgentPattern(
                 agent_id=general_agent.id,
-                pattern="what can you do",
-                weight=0.9,
-                is_regex=False
+                pattern_type="keyword",
+                pattern_value="what can you do",
+                priority=0,
+                confidence_boost=0.1
             )
         ]
         
@@ -158,23 +167,29 @@ async def add_general_agent():
             
         # Add basic templates
         templates = [
-            ResponseTemplate(
+            AgentResponseTemplate(
                 agent_id=general_agent.id,
                 template_key="greeting",
                 template_content="Hello! I'm your Staples Assistant. How can I help you today?",
-                is_active=True
+                template_type="text",
+                language="en",
+                tone="friendly"
             ),
-            ResponseTemplate(
+            AgentResponseTemplate(
                 agent_id=general_agent.id,
                 template_key="goodbye",
                 template_content="Thank you for chatting with Staples. Have a great day!",
-                is_active=True
+                template_type="text",
+                language="en",
+                tone="friendly"
             ),
-            ResponseTemplate(
+            AgentResponseTemplate(
                 agent_id=general_agent.id,
                 template_key="help",
                 template_content="I can help with many things related to Staples, such as tracking orders, resetting passwords, finding stores, and providing product information. What would you like assistance with?",
-                is_active=True
+                template_type="text",
+                language="en", 
+                tone="helpful"
             )
         ]
         
@@ -187,7 +202,7 @@ async def add_general_agent():
         # Create embedding text
         embedding_text = f"{general_agent.name}\n{general_agent.description}\n"
         for pattern in patterns:
-            embedding_text += f"{pattern.pattern}\n"
+            embedding_text += f"{pattern.pattern_value}\n"
             
         # Generate embedding
         embedding = await embedding_service.create_embedding(embedding_text)
