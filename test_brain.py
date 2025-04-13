@@ -63,17 +63,30 @@ async def test_brain():
     logger.info(f"Starting brain test with session_id: {session_id}")
     
     async with aiohttp.ClientSession() as session:
-        for message in TEST_MESSAGES:
-            result = await send_message(session, message, session_id)
-            
-            if result:
-                logger.info(f"Response from {result.get('agent', 'unknown')}: "
-                           f"{result.get('response', 'No response')[:100]}...")
-                logger.info(f"Confidence: {result.get('confidence', 0)}")
-                logger.info("-" * 50)
+        for i, message in enumerate(TEST_MESSAGES, 1):
+            logger.info(f"*** TEST {i}/{len(TEST_MESSAGES)} ***")
+            try:
+                # Set a timeout for the request to avoid hanging
+                result = await asyncio.wait_for(
+                    send_message(session, message, session_id),
+                    timeout=15  # 15 seconds timeout
+                )
+                
+                if result:
+                    # Get the full response
+                    response_text = result.get('response', 'No response')
+                    logger.info(f"Response from {result.get('agent', 'unknown')}:")
+                    logger.info(f"{response_text}")
+                    logger.info(f"Confidence: {result.get('confidence', 0)}")
+                    logger.info("-" * 50)
+                
+            except asyncio.TimeoutError:
+                logger.error(f"Request timed out for message: {message}")
+            except Exception as e:
+                logger.error(f"Error during test: {str(e)}")
             
             # Add a delay between requests to avoid rate limiting
-            await asyncio.sleep(1)
+            await asyncio.sleep(2)
     
     logger.info("Test completed successfully")
 

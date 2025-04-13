@@ -40,4 +40,5 @@ dependencies = [
     "uncompyle6>=3.9.2",
     "redis>=5.2.1",
     "fakeredis>=2.28.1",
+    "aiohttp>=3.11.16",
 ]
