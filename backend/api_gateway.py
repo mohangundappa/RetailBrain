@@ -186,15 +186,18 @@ app.include_router(state_router, prefix=API_PREFIX)
 app.include_router(optimized_chat_router, prefix=API_PREFIX)
 app.include_router(api_router, prefix=API_PREFIX)
 
-# Mount static directories
-app.mount("/static", StaticFiles(directory="backend/static"), name="static")
-
-# Serve root path by redirecting to documentation
+# API Documentation is available at /api/v1/docs
+# Root path now returns API information instead of redirecting to static files
 @app.get("/")
 async def root():
-    """Redirect root to static documentation"""
-    from fastapi.responses import RedirectResponse
-    return RedirectResponse(url="/static/index.html")
+    """Return API information"""
+    return {
+        "name": "Staples Brain API",
+        "version": "1.0.0",
+        "description": "API for Staples Brain - Multi-agent AI orchestration platform",
+        "documentation_url": "/api/v1/docs",
+        "api_prefix": API_PREFIX
+    }
 
 
 # API Routes
