@@ -99,6 +99,19 @@ class EmbeddingService:
             logger.debug(f"Embedding cache hits: {cache_hits}/{len(texts)}")
             
         return results
+        
+    async def get_embedding(self, text: str) -> List[float]:
+        """
+        Generate an embedding for a single text.
+        
+        Args:
+            text: Text to embed
+            
+        Returns:
+            Embedding vector
+        """
+        embeddings = await self.get_embeddings([text])
+        return embeddings[0]
     
     def _get_cache_key(self, text: str) -> str:
         """Generate a cache key for a text string"""
