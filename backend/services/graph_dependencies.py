@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.database.db import get_db
 from backend.config.config import get_config, Config
-from backend.memory.factory import get_memory_service as create_memory_service
+from backend.memory.factory import get_mem0
 from backend.agents.framework.langgraph.langgraph_factory import LangGraphAgentFactory
 from backend.services.graph_brain_service import GraphBrainService
 
@@ -47,7 +47,7 @@ async def get_graph_brain_service(
             logger.info("Initializing GraphBrainService with memory integration")
             
             # Create memory service
-            memory_service = await create_memory_service(config)
+            memory_service = await get_mem0("graph_brain")
             logger.info("Created memory service for GraphBrainService")
             
             # Create agent factory

@@ -21,6 +21,7 @@ from backend.endpoints.optimized_chat import router as chat_router  # Single, cl
 from backend.endpoints.state_management import state_router
 from backend.endpoints.routes import api_router
 from backend.endpoints.chat import router as context_chat_router
+from backend.endpoints.graph_chat import router as graph_chat_router  # LangGraph-based chat functionality
 from backend.database.db import get_db
 
 # Utility function to sanitize database URLs for asyncpg
@@ -192,6 +193,7 @@ app.include_router(chat_router, prefix=API_PREFIX)
 app.include_router(state_router, prefix=API_PREFIX)
 app.include_router(api_router, prefix=API_PREFIX)
 app.include_router(context_chat_router, prefix=API_PREFIX)
+app.include_router(graph_chat_router, prefix=API_PREFIX)  # LangGraph-based chat functionality
 
 # API Documentation is available at /api/v1/docs
 # Root path now returns API information instead of redirecting to static files
