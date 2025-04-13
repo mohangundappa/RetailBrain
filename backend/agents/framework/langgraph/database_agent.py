@@ -62,7 +62,9 @@ class DatabaseAgent(LangGraphAgent):
         """
         super().__init__(id, name, description, config)
         
+        # Standardize agent type (convert to uppercase for internal processing)
         self.agent_type = agent_type.upper() if agent_type else "LLM"
+        self.raw_agent_type = agent_type  # Keep the original agent type for reference
         self.status = status
         self.is_system = is_system
         self.created_at = created_at
@@ -96,7 +98,10 @@ class DatabaseAgent(LangGraphAgent):
     
     def _init_agent_components(self):
         """Initialize the components specific to this agent type."""
-        if self.agent_type == "LLM":
+        # All LLM-based agents need the OpenAI model
+        if self.agent_type in ["LLM", "LLM-DRIVEN", "PACKAGE_TRACKING", "RESET_PASSWORD", 
+                              "STORE_LOCATOR", "PRODUCT_INFO", "RETURNS_PROCESSING", 
+                              "POLICY-ENFORCER"]:
             # Initialize LLM
             try:
                 self.llm = ChatOpenAI(
@@ -179,12 +184,21 @@ class DatabaseAgent(LangGraphAgent):
             Response dictionary
         """
         context = context or {}
+        
+        # Check for core processing types first
         if self.agent_type == "LLM":
             return await self._process_with_llm(message, session_id, context)
         elif self.agent_type == "RULE":
             return await self._process_with_rules(message, context)
         elif self.agent_type == "RETRIEVAL":
             return await self._process_with_retrieval(message, context)
+        
+        # Check for specialized agent types - all these use the LLM handler
+        # but could have specialized configuration, prompts, etc.
+        elif self.agent_type in ["LLM-DRIVEN", "PACKAGE_TRACKING", "RESET_PASSWORD", 
+                                "STORE_LOCATOR", "PRODUCT_INFO", "RETURNS_PROCESSING", 
+                                "POLICY-ENFORCER"]:
+            return await self._process_with_llm(message, session_id, context)
         else:
             logger.warning(f"Unknown agent type: {self.agent_type}, defaulting to LLM")
             return await self._process_with_llm(message, session_id, context)
