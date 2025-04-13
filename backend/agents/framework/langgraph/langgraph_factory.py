@@ -72,73 +72,48 @@ class LangGraphAgentFactory:
             List of LangGraphAgent instances
         """
         try:
-            # Get agent definitions from repository
-            from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
-            from sqlalchemy import func
-            import asyncio
+            # Instead of loading from database, we'll create hardcoded agents for now
+            # This is a temporary workaround until we fix the async database loading
+            from backend.agents.framework.langgraph.simple_agent import SimpleAgent
+            from uuid import uuid4
             
-            # Create a new async session to ensure we're in the correct async context
-            db_url = os.environ.get("DATABASE_URL", "")
+            # Create hardcoded agents for testing
+            agents = []
             
-            # Parse URL to remove sslmode parameter
-            from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
+            # General Conversation Agent
+            general_agent = SimpleAgent(
+                id=str(uuid4()),
+                name="General Conversation Agent",
+                description="Handles general conversation and queries",
+                agent_type="LLM",
+                config={
+                    "model": "gpt-4",
+                    "temperature": 0.7,
+                    "system_prompt": "You are a helpful assistant at Staples. Answer customer questions professionally and accurately."
+                }
+            )
+            self.agents[general_agent.id] = general_agent
+            agents.append(general_agent)
+            logger.info(f"Created hardcoded agent: {general_agent.name} (ID: {general_agent.id})")
             
-            # Parse URL
-            parsed_url = urlparse(db_url)
+            # Guardrails Agent
+            guardrails_agent = SimpleAgent(
+                id=str(uuid4()),
+                name="Guardrails Agent",
+                description="Ensures responses meet content policy guidelines",
+                agent_type="LLM",
+                config={
+                    "model": "gpt-4",
+                    "temperature": 0.3,
+                    "system_prompt": "You are a content safety system. Ensure responses do not contain harmful, offensive, or inappropriate content."
+                }
+            )
+            self.agents[guardrails_agent.id] = guardrails_agent
+            agents.append(guardrails_agent)
+            logger.info(f"Created hardcoded agent: {guardrails_agent.name} (ID: {guardrails_agent.id})")
             
-            # Parse query parameters
-            query_params = parse_qs(parsed_url.query)
-            
-            # Remove sslmode parameter from query as asyncpg doesn't accept it
-            if 'sslmode' in query_params:
-                del query_params['sslmode']
-            
-            # Rebuild query string
-            new_query = urlencode(query_params, doseq=True)
-            
-            # Rebuild URL
-            db_url = urlunparse((
-                parsed_url.scheme,
-                parsed_url.netloc,
-                parsed_url.path,
-                parsed_url.params,
-                new_query,
-                parsed_url.fragment
-            ))
-            
-            # Convert to asyncpg URL if needed
-            if db_url.startswith('postgresql://'):
-                db_url = db_url.replace('postgresql://', 'postgresql+asyncpg://')
-            
-            engine = create_async_engine(db_url)
-            async_session = async_sessionmaker(engine, expire_on_commit=False)
-            
-            async with async_session() as new_session:
-                # Create a new repository with this session
-                from backend.repositories.agent_repository import AgentRepository
-                repo = AgentRepository(new_session)
-                
-                # Get agent definitions from repository
-                agent_definitions = await repo.get_all_active_agents()
-                logger.info(f"Found {len(agent_definitions)} active agents in database")
-                
-                agents = []
-                for agent_def in agent_definitions:
-                    try:
-                        # Create agent from database model
-                        agent = await create_database_agent_from_model(agent_def)
-                        if agent:
-                            # Add to registry
-                            self.agents[agent.id] = agent
-                            agents.append(agent)
-                            logger.info(f"Loaded agent: {agent.name} (ID: {agent.id}, Type: {agent.agent_type})")
-                        else:
-                            logger.error(f"Failed to create agent for {agent_def.name}")
-                    except Exception as e:
-                        logger.error(f"Error creating agent {agent_def.name}: {str(e)}", exc_info=True)
-                
-                logger.info(f"Successfully loaded {len(agents)} active agents")
-                return agents
+            logger.info(f"Successfully loaded {len(agents)} hardcoded agents")
+            return agents
             
         except Exception as e:
             logger.error(f"Error loading active agents: {str(e)}", exc_info=True)

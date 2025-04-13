@@ -68,6 +68,37 @@ class LangGraphAgent(ABC):
         Returns:
             Dictionary containing the response and metadata
         """
+    
+    async def process_message(
+        self,
+        message: str,
+        session_id: Optional[str] = None,
+        context: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, Any]:
+        """
+        Process a message from the orchestration system.
+        
+        This method is called by the orchestration system and maintains
+        compatibility with the expected interface.
+        
+        Args:
+            message: User input message
+            session_id: Session identifier
+            context: Additional context information
+            
+        Returns:
+            Dictionary containing the response and metadata
+        """
+        logger.info(f"Agent {self.name} processing message for session {session_id}")
+        
+        # Add session_id to context if present
+        if session_id and context:
+            context["session_id"] = session_id
+        
+        # Call the underlying process method
+        result = await self.process(message, context)
+        
+        return result
         pass
     
     def get_id(self) -> str:
