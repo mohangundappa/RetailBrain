@@ -48,6 +48,21 @@ const server = http.createServer((req, res) => {
     return;
   }
   
+  // Serve the agent routing architecture diagram
+  if (req.url === '/routing-architecture') {
+    fs.readFile(path.join(__dirname, 'public', 'agent_routing_architecture.html'), (err, data) => {
+      if (err) {
+        res.writeHead(500);
+        res.end('Error loading agent_routing_architecture.html');
+        return;
+      }
+      
+      res.writeHead(200, { 'Content-Type': 'text/html' });
+      res.end(data);
+    });
+    return;
+  }
+  
   // Proxy API requests to backend server
   if (req.url.startsWith('/api/')) {
     // Proxy request to backend API server

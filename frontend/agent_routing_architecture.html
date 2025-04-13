@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agent Routing Architecture</title>
+    <link rel="stylesheet" href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css">
+    <style>
+        body {
+            padding: 20px;
+        }
+        .diagram-container {
+            background-color: var(--bs-dark);
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .diagram-box {
+            border: 2px solid var(--bs-primary);
+            border-radius: 8px;
+            padding: 10px;
+            margin: 10px 0;
+            text-align: center;
+            background-color: rgba(13, 110, 253, 0.1);
+        }
+        .decision-box {
+            border: 2px solid var(--bs-warning);
+            border-radius: 8px;
+            padding: 10px;
+            margin: 10px 0;
+            text-align: center;
+            background-color: rgba(255, 193, 7, 0.1);
+        }
+        .agent-box {
+            border: 2px solid var(--bs-success);
+            border-radius: 8px;
+            padding: 10px;
+            margin: 10px 0;
+            text-align: center;
+            background-color: rgba(25, 135, 84, 0.1);
+        }
+        .arrow {
+            text-align: center;
+            padding: 5px;
+            font-size: 24px;
+            color: var(--bs-secondary);
+        }
+        .vs-container {
+            display: flex;
+            justify-content: space-between;
+        }
+        .vs-half {
+            width: 48%;
+        }
+        .vs-title {
+            text-align: center;
+            font-weight: bold;
+            margin-bottom: 15px;
+            padding: 5px;
+            background-color: var(--bs-gray-800);
+            border-radius: 4px;
+        }
+        .highlight {
+            border: 2px dashed var(--bs-danger);
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 8px;
+        }
+        .feature-list {
+            background-color: var(--bs-gray-800);
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+        .checkmark {
+            color: var(--bs-success);
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="my-4">Agent Routing Architecture Improvements</h1>
+        
+        <div class="vs-container">
+            <div class="vs-half">
+                <div class="vs-title bg-danger text-white">Previous Architecture: Conversation-First</div>
+                <div class="diagram-container">
+                    <div class="diagram-box">User Query: "password reset"</div>
+                    <div class="arrow">↓</div>
+                    <div class="decision-box highlight">Check if Query is Conversational</div>
+                    <div class="arrow">↓ (Yes: Short query)</div>
+                    <div class="agent-box">General Conversation Agent</div>
+                    <div class="arrow">→</div>
+                    <div class="diagram-box">Generate Response</div>
+                    <div class="arrow">↓</div>
+                    <div class="diagram-box">Apply Guardrails</div>
+                    <div class="arrow">↓</div>
+                    <div class="diagram-box">Return Response to User</div>
+                </div>
+                <div class="text-danger"><strong>Problem:</strong> Password reset queries are incorrectly classified as conversational due to their simplicity, bypassing specialized agents.</div>
+            </div>
+            
+            <div class="vs-half">
+                <div class="vs-title bg-success text-white">New Architecture: Intent-First</div>
+                <div class="diagram-container">
+                    <div class="diagram-box">User Query: "password reset"</div>
+                    <div class="arrow">↓</div>
+                    <div class="decision-box highlight">Check for Specific Intent Patterns</div>
+                    <div class="arrow">↓ (Yes: "password" keyword match)</div>
+                    <div class="agent-box">Reset Password Agent</div>
+                    <div class="arrow">→</div>
+                    <div class="diagram-box">Generate Response</div>
+                    <div class="arrow">↓</div>
+                    <div class="diagram-box">Apply Guardrails</div>
+                    <div class="arrow">↓</div>
+                    <div class="diagram-box">Return Response to User</div>
+                </div>
+                <div class="text-success"><strong>Solution:</strong> First check for specific intents via pattern matching, then consider conversational classification as a fallback.</div>
+            </div>
+        </div>
+        
+        <div class="feature-list mt-4">
+            <h3>Key Architectural Improvements</h3>
+            <ul>
+                <li><span class="checkmark">✓</span> <strong>Intent-First Approach:</strong> Prioritize specific intents over conversation style</li>
+                <li><span class="checkmark">✓</span> <strong>Pattern Matching Priority:</strong> Check for specialized patterns before conversational classification</li>
+                <li><span class="checkmark">✓</span> <strong>Improved Decision Flow:</strong> Better confidence scoring and clear winner detection</li>
+                <li><span class="checkmark">✓</span> <strong>Semantic Refinement:</strong> Use embeddings for tiebreaker when multiple patterns match</li>
+                <li><span class="checkmark">✓</span> <strong>Lower Fallback Confidence:</strong> Reduced confidence of General Conversation Agent as fallback</li>
+            </ul>
+        </div>
+        
+        <div class="mt-4">
+            <h3>Detailed Decision Flow - New Architecture</h3>
+            <pre class="bg-dark text-light p-3 rounded">
+User Query
+   ↓
+1. Check for specific intent patterns (keyword matching)
+   ↓ 
+   If strong intent match → Use specialized agent (e.g., Reset Password Agent)
+   ↓
+   If no clear winner but multiple matches → Try semantic search on those candidates
+   ↓
+2. If no specific intent detected, check if conversational
+   ↓
+   If conversational → Use General Conversation Agent with moderate confidence
+   ↓
+3. If still no match, use standard routing with conversation memory
+   ↓
+4. Final fallback to General Conversation Agent if needed
+   ↓
+5. Apply guardrails to response
+   ↓
+Return response to user
+            </pre>
+        </div>
+    </div>
+</body>
+</html>
