@@ -7,7 +7,7 @@ from typing import Dict, Any, Optional, List, Union, Callable, Awaitable, TypeVa
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.orchestration.state.persistence import (
+from backend.orchestration.state.state_persistence_manager import (
     StatePersistenceManager,
     resilient_persist_state,
     resilient_create_checkpoint,

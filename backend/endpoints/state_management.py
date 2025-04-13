@@ -21,7 +21,7 @@ from backend.orchestration.state.recovery import (
     check_db_connection,
     process_pending_operations
 )
-from backend.orchestration.state.persistence import (
+from backend.orchestration.state.state_persistence_manager import (
     StatePersistenceManager,
     ErrorType
 )

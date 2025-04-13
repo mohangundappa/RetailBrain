@@ -17,11 +17,15 @@ import os
 import importlib
 from typing import Dict, Any, List, Optional, Union, Tuple
 
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+
 from backend.config.config import Config
 from backend.orchestration.agent_router import OptimizedAgentRouter as AgentRouter
 from backend.orchestration.agent_factory import OptimizedAgentFactory as AgentFactory
 from backend.orchestration.telemetry import TelemetryManager
-from backend.orchestration.state.persistence import StatePersistenceManager
+from backend.orchestration.state.state_persistence_manager import StatePersistenceManager
+from backend.database.db import get_db
+from backend.api_gateway import get_sanitized_db_url
 
 logger = logging.getLogger(__name__)
 
@@ -45,9 +49,6 @@ class OrchestrationEngine:
         logger.info("Initializing Orchestration Engine with config: %s", self.config)
         
         # Initialize components
-        from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
-        from backend.database.db import get_db
-        from backend.api_gateway import get_sanitized_db_url
         
         if db_session is None:
             # Create a database session if none is provided
