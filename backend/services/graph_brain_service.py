@@ -88,7 +88,7 @@ class GraphBrainService:
                 logger.info("Created LangGraphAgentFactory")
             
             # Load agents from database
-            agents = await self.agent_factory.get_all_active_agents()
+            agents = await self.agent_factory.load_all_active_agents()
             agent_count = len(agents)
             logger.info(f"Loaded {agent_count} agents from database")
             
@@ -120,24 +120,38 @@ class GraphBrainService:
         Create the LangGraph workflow graph for agent orchestration.
         This defines the execution flow between agents.
         """
-        # Define the graph state schema
-        # This schema represents the conversation state that flows through the graph
-        workflow_state = {
-            "messages": [],  # Conversation messages
-            "current_agent_id": None,  # Currently active agent
-            "context": {},  # Additional context data
-            "session_id": "",  # Session identifier
-            "user_input": "",  # Original user input
-            "selected_agent": None,  # Agent selected for processing
-            "confidence": 0.0,  # Confidence in agent selection
-            "processing_start": 0,  # Processing start timestamp
-            "response": None,  # Final response
-            "trace": [],  # Execution trace for observability
-            "completed": False  # Whether processing is complete
-        }
+        # Initialize StateGraph with LangGraph 0.3.x requirements
+        from typing import Dict as DictType
         
-        # Create the graph with the defined state schema
-        builder = StateGraph(workflow_state)
+        # For LangGraph 0.3.29, pass the type as the first arg
+        builder = StateGraph(DictType)  # State is a dictionary
+        
+        # We'll still maintain documentation of the expected state fields here:
+        # - messages: Conversation messages
+        # - current_agent_id: Currently active agent
+        # - context: Additional context data
+        # - session_id: Session identifier
+        # - user_input: Original user input
+        # - selected_agent: Agent selected for processing
+        # - confidence: Confidence in agent selection
+        # - processing_start: Processing start timestamp
+        # - response: Final response
+        # - trace: Execution trace for observability
+        # - completed: Whether processing is complete
+        
+        # Define the expected state keys for documentation
+        # This state schema represents the conversation state that flows through the graph
+        # - messages: Conversation messages
+        # - current_agent_id: Currently active agent
+        # - context: Additional context data
+        # - session_id: Session identifier
+        # - user_input: Original user input
+        # - selected_agent: Agent selected for processing
+        # - confidence: Confidence in agent selection
+        # - processing_start: Processing start timestamp
+        # - response: Final response
+        # - trace: Execution trace for observability
+        # - completed: Whether processing is complete
         
         # Add nodes to the graph
         

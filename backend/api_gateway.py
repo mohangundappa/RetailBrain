@@ -321,10 +321,9 @@ async def startup_db_client():
             # Initialize the brain service
             await brain_service.initialize()
             
-            # Preload agents from database
-            logger.info("Pre-loading agents from database for LangGraph orchestration")
-            await agent_factory.load_agents_from_database()
-            logger.info("Agents successfully pre-loaded at startup")
+            # Preload agents from database 
+            # (This step is already handled by the GraphBrainService.initialize() method above)
+            logger.info("Agents successfully pre-loaded during brain service initialization")
                 
         except Exception as brain_err:
             logger.warning(f"Error pre-loading brain service: {str(brain_err)}", exc_info=True)
