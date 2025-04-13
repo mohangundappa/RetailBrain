@@ -72,27 +72,7 @@ async def add_general_agent():
             status="active",
             is_system=True,
             version=1,
-            agent_type="llm-driven",
-            parameters={
-                "prompts": {
-                    "system_prompt": (
-                        "You are a friendly and professional assistant for Staples. "
-                        "Your role is to handle basic greetings, provide friendly conversation, "
-                        "and help direct users to more specialized agents when needed. "
-                        "Keep responses concise and helpful. If a request is outside your scope, "
-                        "indicate that you'll find a specialized agent to assist."
-                    ),
-                    "user_prompt_template": (
-                        "User says: {{user_input}}\n\n"
-                        "Current conversation stage: {{conversation_stage}}\n\n"
-                        "Please respond in a friendly, helpful manner:"
-                    )
-                },
-                "model": "gpt-4o",
-                "temperature": 0.7,
-                "response_format": "text",
-                "max_tokens": 250
-            }
+            agent_type="llm-driven"
         )
         
         session.add(general_agent)
@@ -103,9 +83,10 @@ async def add_general_agent():
             # Greetings
             AgentPattern(
                 agent_id=general_agent.id,
-                pattern="hello",
-                weight=1.0,
-                is_regex=False
+                pattern_type="keyword",
+                pattern_value="hello",
+                priority=1,
+                confidence_boost=0.2
             ),
             AgentPattern(
                 agent_id=general_agent.id,

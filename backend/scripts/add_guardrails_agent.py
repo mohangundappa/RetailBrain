@@ -72,34 +72,7 @@ async def add_guardrails_agent():
             status="active",
             is_system=True,
             version=1,
-            agent_type="policy-enforcer",
-            parameters={
-                "prompts": {
-                    "system_prompt": (
-                        "You are the Guardrails Agent for Staples, responsible for ensuring all "
-                        "responses meet the following requirements:\n\n"
-                        "1. Professional and courteous tone\n"
-                        "2. No inappropriate language or content\n"
-                        "3. No personally identifiable information unless necessary for the request\n"
-                        "4. All information is accurate and reflects Staples policies\n"
-                        "5. Maintains brand voice: helpful, knowledgeable, and solution-oriented\n\n"
-                        "You will review responses before they are sent to users and make any necessary "
-                        "adjustments to ensure compliance with these guidelines."
-                    ),
-                    "user_prompt_template": (
-                        "Original response: {{original_response}}\n\n"
-                        "User query: {{user_query}}\n\n"
-                        "Agent: {{agent_name}}\n\n"
-                        "Please review the response and make any necessary adjustments to ensure "
-                        "it meets our policy requirements and maintains a professional tone. "
-                        "If no changes are needed, return the original response exactly."
-                    )
-                },
-                "model": "gpt-4o",
-                "temperature": 0.3,
-                "response_format": "text",
-                "max_tokens": 500
-            }
+            agent_type="policy-enforcer"
         )
         
         session.add(guardrails_agent)
