@@ -1,33 +1,22 @@
 import React from 'react';
-import { Navbar, Nav, Container, Button, Badge } from 'react-bootstrap';
+import { Navbar, Nav, Container, Badge } from 'react-bootstrap';
 import { Link, useLocation } from 'react-router-dom';
 import FeatherIcon from 'feather-icons-react';
 import { useAppContext } from '../context/AppContext';
 
 const NavigationBar = () => {
   const location = useLocation();
-  const { systemStatus, startNewConversation } = useAppContext();
+  const { systemStatus } = useAppContext();
   
   // Check if the current path matches a given path
   const isActive = (path) => location.pathname === path;
-  
-  // Handler for starting a new conversation
-  const handleNewChat = () => {
-    startNewConversation();
-  };
   
   return (
     <Navbar bg="dark" variant="dark" expand="lg" className="mb-3 shadow-sm">
       <Container fluid>
         <Navbar.Brand as={Link} to="/" className="d-flex align-items-center">
-          <img
-            src="/logo192.png"
-            width="30"
-            height="30"
-            className="d-inline-block align-top me-2"
-            alt="Staples Brain Logo"
-          />
-          <span>Staples Brain</span>
+          <FeatherIcon icon="activity" size={24} className="me-2 text-primary" />
+          <span className="fw-bold">Staples Brain</span>
         </Navbar.Brand>
         
         <Navbar.Toggle aria-controls="basic-navbar-nav" />
@@ -40,28 +29,8 @@ const NavigationBar = () => {
               active={isActive('/')}
               className="d-flex align-items-center"
             >
-              <FeatherIcon icon="message-square" size={16} className="me-1" />
-              <span>Chat</span>
-            </Nav.Link>
-            
-            <Nav.Link 
-              as={Link} 
-              to="/agents" 
-              active={isActive('/agents')}
-              className="d-flex align-items-center"
-            >
-              <FeatherIcon icon="users" size={16} className="me-1" />
-              <span>Agents</span>
-            </Nav.Link>
-            
-            <Nav.Link 
-              as={Link} 
-              to="/telemetry" 
-              active={isActive('/telemetry')}
-              className="d-flex align-items-center"
-            >
-              <FeatherIcon icon="activity" size={16} className="me-1" />
-              <span>Telemetry</span>
+              <FeatherIcon icon="home" size={16} className="me-1" />
+              <span>Home</span>
             </Nav.Link>
             
             <Nav.Link 
@@ -80,25 +49,15 @@ const NavigationBar = () => {
               {systemStatus.isHealthy ? (
                 <Badge bg="success" className="d-flex align-items-center py-2 px-3">
                   <FeatherIcon icon="check-circle" size={14} className="me-1" />
-                  <span>System Healthy</span>
+                  <span>System Online</span>
                 </Badge>
               ) : (
                 <Badge bg="danger" className="d-flex align-items-center py-2 px-3">
                   <FeatherIcon icon="alert-circle" size={14} className="me-1" />
-                  <span>System Unhealthy</span>
+                  <span>System Offline</span>
                 </Badge>
               )}
             </div>
-            
-            <Button 
-              variant="outline-light" 
-              size="sm" 
-              onClick={handleNewChat}
-              className="d-flex align-items-center"
-            >
-              <FeatherIcon icon="plus" size={14} className="me-1" />
-              <span>New Chat</span>
-            </Button>
           </Nav>
         </Navbar.Collapse>
       </Container>

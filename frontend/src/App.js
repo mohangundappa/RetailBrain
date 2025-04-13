@@ -3,8 +3,6 @@ import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import { AppProvider } from './context/AppContext';
 import NavigationBar from './components/NavigationBar';
 import HomePage from './pages/HomePage';
-import AgentsPage from './pages/AgentsPage';
-import TelemetryPage from './pages/TelemetryPage';
 import DocumentationPage from './pages/DocumentationPage';
 import NotFoundPage from './pages/NotFoundPage';
 
@@ -17,8 +15,6 @@ function App() {
           <main className="flex-grow-1 bg-body">
             <Routes>
               <Route path="/" element={<HomePage />} />
-              <Route path="/agents" element={<AgentsPage />} />
-              <Route path="/telemetry" element={<TelemetryPage />} />
               <Route path="/documentation" element={<DocumentationPage />} />
               <Route path="*" element={<NotFoundPage />} />
             </Routes>
