@@ -8,34 +8,33 @@ const AgentOverview = () => {
   const { agents, setAgents, setLoading, addNotification } = useAppContext();
   const [selectedAgent, setSelectedAgent] = useState(null);
 
-  useEffect(() => {
-    const fetchAgents = async () => {
-      try {
-        setLoading(true);
-        const response = await apiService.apiCall(apiService.getAgents);
-        
-        if (response.success && response.agents) {
-          setAgents(response.agents);
-        } else {
-          throw new Error('Failed to fetch agents');
-        }
-      } catch (error) {
-        console.error('Error fetching agents:', error);
-        addNotification({
-          title: 'Error',
-          message: 'Failed to load agents. Please try again later.',
-          type: 'error'
-        });
-      } finally {
-        setLoading(false);
+  // Create reusable fetchAgents function
+  const fetchAgents = async () => {
+    try {
+      setLoading(true);
+      const response = await apiService.apiCall(apiService.getAgents);
+      
+      if (response.success && response.agents) {
+        setAgents(response.agents);
+      } else {
+        throw new Error('Failed to fetch agents');
       }
-    };
-
-    // Only fetch if we don't already have agents
-    if (!agents || agents.length === 0) {
-      fetchAgents();
+    } catch (error) {
+      console.error('Error fetching agents:', error);
+      addNotification({
+        title: 'Error',
+        message: 'Failed to load agents. Please try again later.',
+        type: 'error'
+      });
+    } finally {
+      setLoading(false);
     }
-  }, [agents, setAgents, setLoading, addNotification]);
+  };
+
+  // Fetch agents on component mount
+  useEffect(() => {
+    fetchAgents();
+  }, [setAgents, setLoading, addNotification]);
 
   const handleAgentSelect = async (agent) => {
     try {
@@ -82,7 +81,11 @@ const AgentOverview = () => {
             <Card.Header className="bg-transparent d-flex justify-content-between align-items-center">
               <h5 className="mb-0">Available Agents</h5>
               <div>
-                <Button variant="outline-primary" size="sm">
+                <Button 
+                  variant="outline-primary" 
+                  size="sm" 
+                  onClick={fetchAgents}
+                >
                   <FeatherIcon icon="refresh-cw" size={16} className="me-1" />
                   Refresh
                 </Button>
