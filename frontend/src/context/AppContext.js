@@ -1,37 +1,28 @@
-import React, { createContext, useContext, useReducer, useCallback } from 'react';
+import React, { createContext, useReducer, useContext } from 'react';
 
-// Initial state for the application context
+// Initial state
 const initialState = {
   user: null,
-  notifications: [],
-  systemStatus: {
-    isHealthy: true,
-    lastCheck: null
-  },
-  preferences: {
-    darkMode: true,
-    autoRefresh: true,
-    refreshInterval: 30000 // 30 seconds
-  },
-  ui: {
-    sidebarOpen: true,
-    currentView: 'dashboard'
-  }
+  isAuthenticated: false,
+  agents: [],
+  conversations: [],
+  currentConversation: null,
+  loading: false,
+  error: null,
+  notifications: []
 };
-
-// Context setup
-const AppContext = createContext();
 
 // Action types
 const ActionTypes = {
   SET_USER: 'SET_USER',
-  LOGOUT_USER: 'LOGOUT_USER',
+  SET_AGENTS: 'SET_AGENTS',
+  SET_CONVERSATIONS: 'SET_CONVERSATIONS',
+  SET_CURRENT_CONVERSATION: 'SET_CURRENT_CONVERSATION',
+  SET_LOADING: 'SET_LOADING',
+  SET_ERROR: 'SET_ERROR',
   ADD_NOTIFICATION: 'ADD_NOTIFICATION',
   REMOVE_NOTIFICATION: 'REMOVE_NOTIFICATION',
   CLEAR_NOTIFICATIONS: 'CLEAR_NOTIFICATIONS',
-  UPDATE_SYSTEM_STATUS: 'UPDATE_SYSTEM_STATUS',
-  UPDATE_PREFERENCES: 'UPDATE_PREFERENCES',
-  UPDATE_UI_STATE: 'UPDATE_UI_STATE',
   RESET_STATE: 'RESET_STATE'
 };
 
@@ -41,28 +32,39 @@ const appReducer = (state, action) => {
     case ActionTypes.SET_USER:
       return {
         ...state,
-        user: action.payload
+        user: action.payload,
+        isAuthenticated: !!action.payload
       };
-      
-    case ActionTypes.LOGOUT_USER:
+    case ActionTypes.SET_AGENTS:
       return {
         ...state,
-        user: null
+        agents: action.payload
       };
-      
+    case ActionTypes.SET_CONVERSATIONS:
+      return {
+        ...state,
+        conversations: action.payload
+      };
+    case ActionTypes.SET_CURRENT_CONVERSATION:
+      return {
+        ...state,
+        currentConversation: action.payload
+      };
+    case ActionTypes.SET_LOADING:
+      return {
+        ...state,
+        loading: action.payload
+      };
+    case ActionTypes.SET_ERROR:
+      return {
+        ...state,
+        error: action.payload
+      };
     case ActionTypes.ADD_NOTIFICATION:
-      // Add timestamp if not provided
-      const notification = {
-        ...action.payload,
-        id: action.payload.id || Date.now().toString(),
-        timestamp: action.payload.timestamp || Date.now()
-      };
-      
       return {
         ...state,
-        notifications: [...state.notifications, notification]
+        notifications: [...state.notifications, action.payload]
       };
-      
     case ActionTypes.REMOVE_NOTIFICATION:
       return {
         ...state,
@@ -70,116 +72,92 @@ const appReducer = (state, action) => {
           notification => notification.id !== action.payload
         )
       };
-      
     case ActionTypes.CLEAR_NOTIFICATIONS:
       return {
         ...state,
         notifications: []
       };
-      
-    case ActionTypes.UPDATE_SYSTEM_STATUS:
-      return {
-        ...state,
-        systemStatus: {
-          ...state.systemStatus,
-          ...action.payload,
-          lastCheck: action.payload.lastCheck || Date.now()
-        }
-      };
-      
-    case ActionTypes.UPDATE_PREFERENCES:
-      return {
-        ...state,
-        preferences: {
-          ...state.preferences,
-          ...action.payload
-        }
-      };
-      
-    case ActionTypes.UPDATE_UI_STATE:
-      return {
-        ...state,
-        ui: {
-          ...state.ui,
-          ...action.payload
-        }
-      };
-      
     case ActionTypes.RESET_STATE:
-      return {
-        ...initialState,
-        // Preserve some state if needed
-        preferences: state.preferences
-      };
-      
+      return initialState;
     default:
       return state;
   }
 };
 
+// Create context
+const AppContext = createContext();
+
 // Provider component
 export const AppProvider = ({ children }) => {
   const [state, dispatch] = useReducer(appReducer, initialState);
-  
-  // Action creators
-  const setUser = useCallback((user) => {
+
+  // Helper functions for common actions
+  const setUser = (user) => {
     dispatch({ type: ActionTypes.SET_USER, payload: user });
-  }, []);
-  
-  const logoutUser = useCallback(() => {
-    dispatch({ type: ActionTypes.LOGOUT_USER });
-  }, []);
-  
-  const addNotification = useCallback((notification) => {
-    dispatch({ type: ActionTypes.ADD_NOTIFICATION, payload: notification });
-  }, []);
-  
-  const removeNotification = useCallback((id) => {
+  };
+
+  const setAgents = (agents) => {
+    dispatch({ type: ActionTypes.SET_AGENTS, payload: agents });
+  };
+
+  const setConversations = (conversations) => {
+    dispatch({ type: ActionTypes.SET_CONVERSATIONS, payload: conversations });
+  };
+
+  const setCurrentConversation = (conversation) => {
+    dispatch({ type: ActionTypes.SET_CURRENT_CONVERSATION, payload: conversation });
+  };
+
+  const setLoading = (isLoading) => {
+    dispatch({ type: ActionTypes.SET_LOADING, payload: isLoading });
+  };
+
+  const setError = (error) => {
+    dispatch({ type: ActionTypes.SET_ERROR, payload: error });
+  };
+
+  const addNotification = (notification) => {
+    const id = Date.now();
+    dispatch({
+      type: ActionTypes.ADD_NOTIFICATION,
+      payload: { id, ...notification }
+    });
+
+    // Auto-dismiss notifications after 5 seconds
+    if (notification.autoClose !== false) {
+      setTimeout(() => {
+        removeNotification(id);
+      }, notification.duration || 5000);
+    }
+
+    return id;
+  };
+
+  const removeNotification = (id) => {
     dispatch({ type: ActionTypes.REMOVE_NOTIFICATION, payload: id });
-  }, []);
-  
-  const clearNotifications = useCallback(() => {
+  };
+
+  const clearNotifications = () => {
     dispatch({ type: ActionTypes.CLEAR_NOTIFICATIONS });
-  }, []);
-  
-  const updateSystemStatus = useCallback((status) => {
-    dispatch({ type: ActionTypes.UPDATE_SYSTEM_STATUS, payload: status });
-  }, []);
-  
-  const updatePreferences = useCallback((preferences) => {
-    dispatch({ type: ActionTypes.UPDATE_PREFERENCES, payload: preferences });
-    
-    // Apply preferences
-    if (preferences.darkMode !== undefined) {
-      document.documentElement.setAttribute(
-        'data-bs-theme', 
-        preferences.darkMode ? 'dark' : 'light'
-      );
-    }
-  }, []);
-  
-  const updateUIState = useCallback((uiState) => {
-    dispatch({ type: ActionTypes.UPDATE_UI_STATE, payload: uiState });
-  }, []);
-  
-  const resetState = useCallback(() => {
+  };
+
+  const resetState = () => {
     dispatch({ type: ActionTypes.RESET_STATE });
-  }, []);
-  
-  // Expose state and actions
+  };
+
+  // Context value
   const contextValue = {
-    state,
-    actions: {
-      setUser,
-      logoutUser,
-      addNotification,
-      removeNotification,
-      clearNotifications,
-      updateSystemStatus,
-      updatePreferences,
-      updateUIState,
-      resetState
-    }
+    ...state,
+    setUser,
+    setAgents,
+    setConversations,
+    setCurrentConversation,
+    setLoading,
+    setError,
+    addNotification,
+    removeNotification,
+    clearNotifications,
+    resetState
   };
 
   return (
@@ -189,14 +167,12 @@ export const AppProvider = ({ children }) => {
   );
 };
 
-// Custom hook for using the context
+// Custom hook to use the app context
 export const useAppContext = () => {
   const context = useContext(AppContext);
-  
-  if (!context) {
+  if (context === undefined) {
     throw new Error('useAppContext must be used within an AppProvider');
   }
-  
   return context;
 };
 
