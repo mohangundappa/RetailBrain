@@ -782,12 +782,12 @@
                         thinkingAnimation.remove();
                     }
                     
-                    // Add agent response to chat
-                    addMessageToChat('agent', responseData.response);
+                    // Add agent response to chat using nested response object
+                    addMessageToChat('agent', responseData.response.message);
                     
-                    // Store agent info if needed
-                    const agentName = responseData.agent || "Unknown Agent";
-                    console.log(`Response from ${agentName} with confidence: ${responseData.confidence}`);
+                    // Store conversation ID if needed
+                    const conversationId = responseData.conversation_id || "";
+                    console.log(`Response in conversation: ${conversationId}, Type: ${responseData.response.type}`);
                     
                     // Update observability data (commented out as it needs to be updated to work with new API)
                     /*

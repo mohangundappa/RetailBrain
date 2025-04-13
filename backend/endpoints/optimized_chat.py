@@ -25,15 +25,18 @@ class ChatRequest(BaseModel):
     context: Optional[Dict[str, Any]] = Field(None, description="Additional context")
 
 
+class ResponseContent(BaseModel):
+    """Content model for response"""
+    message: str = Field(..., description="Response message text")
+    type: str = Field("text", description="Type of response (text, rich, etc.)")
+
 class ChatResponse(BaseModel):
     """Response model for chat"""
     success: bool = Field(..., description="Whether the request was successful")
-    response: str = Field(..., description="Agent response")
-    agent: Optional[str] = Field(None, description="Name of the agent that handled the request")
-    agent_id: Optional[str] = Field(None, description="ID of the agent that handled the request")
-    confidence: Optional[float] = Field(None, description="Confidence of the agent selection")
-    entities: Optional[Dict[str, Any]] = Field(None, description="Extracted entities")
-    metadata: Optional[Dict[str, Any]] = Field(None, description="Additional metadata")
+    response: ResponseContent = Field(..., description="Agent response content")
+    conversation_id: str = Field("", description="Internal conversation ID")
+    external_conversation_id: str = Field("", description="External conversation ID for integration")
+    observability_trace_id: str = Field("", description="Trace ID for observability")
     error: Optional[str] = Field(None, description="Error message if unsuccessful")
 
 # Alias for backward compatibility
@@ -66,18 +69,16 @@ async def _process_chat_request(
         context=request.context
     )
     
-    # Construct response
+    # Construct response using new format
     response = ChatResponse(
         success=result.get("success", False),
-        response=result.get("response", "No response generated"),
-        agent=result.get("agent") or result.get("agent_name"),
-        agent_id=result.get("agent_id"),
-        confidence=result.get("confidence") or result.get("selection_confidence"),
-        entities=result.get("entities"),
-        metadata={
-            "selection_time": result.get("selection_time"),
-            "execution_time": result.get("execution_time")
-        },
+        response=ResponseContent(
+            message=result.get("response", "No response generated"),
+            type="text"
+        ),
+        conversation_id=result.get("conversation_id", ""),
+        external_conversation_id=result.get("external_conversation_id", ""),
+        observability_trace_id=result.get("trace_id", ""),
         error=result.get("error")
     )
     
@@ -135,19 +136,16 @@ async def execute_agent(
         context=request.context
     )
     
-    # Construct response - now handling both agent and agent_name fields
-    # as we're in a transition period between the old and new implementations
+    # Construct response using new format
     response = OptimizedChatResponse(
         success=result.get("success", False),
-        response=result.get("response", "No response generated" if not result.get("response") else result.get("response")),
-        agent=result.get("agent") or result.get("agent_name"),
-        agent_id=request.agent_id,  # Use the requested agent ID
-        confidence=1.0,  # Direct execution, so confidence is 1.0
-        entities=result.get("entities"),
-        metadata={
-            "direct_execution": True,
-            "execution_time": result.get("execution_time")
-        },
+        response=ResponseContent(
+            message=result.get("response", "No response generated" if not result.get("response") else result.get("response")),
+            type="text"
+        ),
+        conversation_id=result.get("conversation_id", ""),
+        external_conversation_id=result.get("external_conversation_id", ""),
+        observability_trace_id=result.get("trace_id", ""),
         error=result.get("error")
     )
     
