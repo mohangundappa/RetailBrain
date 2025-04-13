@@ -1,32 +1,373 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-bs-theme="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Staples Brain</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css" rel="stylesheet">
     <style>
+        :root {
+            --brand-primary: #0066CC;
+            --brand-secondary: #003366;
+            --brand-accent: #FF9900;
+            --color-bg-dark: #121212;
+            --color-bg-card: #1e1e1e;
+            --color-success: #28a745;
+            --color-warning: #ffc107;
+            --color-error: #dc3545;
+            --color-info: #17a2b8;
+        }
+        
+        [data-bs-theme="dark"] {
+            --bs-body-bg: var(--color-bg-dark);
+            --bs-body-color: #ffffff;
+            --bs-card-bg: var(--color-bg-card);
+            --bs-primary: var(--brand-primary);
+            --bs-secondary: var(--brand-secondary);
+            --bs-success: var(--color-success);
+            --bs-warning: var(--color-warning);
+            --bs-danger: var(--color-error);
+            --bs-info: var(--color-info);
+        }
+        
         body {
-            background-color: #222222;
-            color: white;
-            font-family: Arial, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+            line-height: 1.6;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .navbar {
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .sidebar {
+            width: 250px;
+            background-color: var(--color-bg-card);
+            border-right: 1px solid rgba(255, 255, 255, 0.1);
+            height: calc(100vh - 56px);
+            position: fixed;
+            left: 0;
+            top: 56px;
+            overflow-y: auto;
+        }
+        
+        .main-content {
+            margin-left: 250px;
             padding: 20px;
-            text-align: center;
+            min-height: calc(100vh - 56px);
         }
-        .container {
-            margin-top: 50px;
+        
+        .card {
+            border: none;
+            border-radius: 0.5rem;
+            box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+            margin-bottom: 1.5rem;
+            transition: transform 0.3s ease;
         }
-        a {
-            color: #3498db;
+        
+        .card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .status-badge {
+            padding: 0.5rem 1rem;
+            border-radius: 2rem;
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+        
+        .feature-icon {
+            width: 4rem;
+            height: 4rem;
+            border-radius: 0.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 1rem;
+            font-size: 2rem;
+        }
+        
+        .agent-item {
+            padding: 0.75rem 1rem;
+            margin-bottom: 0.5rem;
+            border-radius: 0.25rem;
+            background-color: rgba(255, 255, 255, 0.05);
+        }
+        
+        @media (max-width: 992px) {
+            .sidebar {
+                left: -250px;
+            }
+            
+            .main-content {
+                margin-left: 0;
+            }
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>Staples Brain</h1>
-        <p>Welcome to Staples Brain API</p>
-        <p>Documentation is currently under development.</p>
-        <p>For API access, visit <a href="/docs">/docs</a> for Swagger UI documentation.</p>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#">Staples Brain</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarSupportedContent">
+                <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="#">Dashboard</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/static/documentation/index.html">Documentation</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/api/v1/docs">API Reference</a>
+                    </li>
+                </ul>
+                <span class="navbar-text">
+                    <span class="badge bg-success">System Online</span>
+                </span>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Sidebar and Main Content -->
+    <div class="d-flex">
+        <div class="sidebar p-3">
+            <h5 class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-muted">
+                <span>Navigation</span>
+            </h5>
+            <ul class="nav flex-column">
+                <li class="nav-item">
+                    <a class="nav-link active" href="#">
+                        🏠 Dashboard
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="#">
+                        💬 Chat
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="#">
+                        📊 Observability
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="#">
+                        👨‍💻 Agent Builder
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/static/documentation/index.html">
+                        ℹ️ Documentation
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="#">
+                        ⚙️ Settings
+                    </a>
+                </li>
+            </ul>
+            
+            <h5 class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-muted">
+                <span>Admin</span>
+            </h5>
+            <ul class="nav flex-column mb-2">
+                <li class="nav-item">
+                    <a class="nav-link" href="#">
+                        👥 Users
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="#">
+                        🖥️ System
+                    </a>
+                </li>
+            </ul>
+        </div>
+
+        <main class="main-content">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2>Dashboard</h2>
+                <div class="status-badge bg-success">System Online</div>
+            </div>
+            
+            <!-- Stats Cards -->
+            <div class="row mb-4">
+                <div class="col-md-3 col-sm-6 mb-3">
+                    <div class="card text-white bg-primary">
+                        <div class="card-body">
+                            <h5 class="card-title">Agents</h5>
+                            <p class="card-text display-4">5</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3 col-sm-6 mb-3">
+                    <div class="card text-white bg-success">
+                        <div class="card-body">
+                            <h5 class="card-title">Active Sessions</h5>
+                            <p class="card-text display-4">12</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3 col-sm-6 mb-3">
+                    <div class="card text-white bg-info">
+                        <div class="card-body">
+                            <h5 class="card-title">Conversations</h5>
+                            <p class="card-text display-4">87</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3 col-sm-6 mb-3">
+                    <div class="card text-white bg-warning">
+                        <div class="card-body">
+                            <h5 class="card-title">Response Time</h5>
+                            <p class="card-text display-4">1.2s</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Overview Section -->
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-body">
+                            <h4 class="card-title">Staples Brain</h4>
+                            <p class="lead">
+                                Welcome to Staples Brain - an advanced multi-agent AI orchestration platform designed for
+                                Staples Customer Engagement focusing on Sales and Services.
+                            </p>
+                            <div class="d-flex gap-2 mt-3">
+                                <a href="/static/documentation/index.html" class="btn btn-primary">
+                                    📖 View Documentation
+                                </a>
+                                <a href="#" class="btn btn-outline-primary">
+                                    💬 Start Chat
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Features Section -->
+            <div class="row mb-4">
+                <div class="col-12 mb-3">
+                    <h4>Key Features</h4>
+                </div>
+                
+                <div class="col-md-4 mb-3">
+                    <div class="card h-100">
+                        <div class="card-body">
+                            <div class="feature-icon bg-primary bg-opacity-10 text-primary">
+                                🔄
+                            </div>
+                            <h5 class="card-title">Modular Architecture</h5>
+                            <p class="card-text">
+                                Centralized orchestration system for specialized agents (Order Tracking, Reset Password, Store Locator) with LangChain and LangGraph integration.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-4 mb-3">
+                    <div class="card h-100">
+                        <div class="card-body">
+                            <div class="feature-icon bg-success bg-opacity-10 text-success">
+                                💾
+                            </div>
+                            <h5 class="card-title">Dynamic Agent Creation</h5>
+                            <p class="card-text">
+                                Database-driven agent configurations for flexible agent management without code changes. Deploy and modify agents through the dashboard.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-4 mb-3">
+                    <div class="card h-100">
+                        <div class="card-body">
+                            <div class="feature-icon bg-info bg-opacity-10 text-info">
+                                🧠
+                            </div>
+                            <h5 class="card-title">Advanced Memory System</h5>
+                            <p class="card-text">
+                                Redis for working memory (5-min TTL) and short-term memory (1-hour TTL), with PostgreSQL for archival storage and analytics.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- System Status Section -->
+            <div class="row">
+                <div class="col-12 mb-3">
+                    <h4>System Status</h4>
+                </div>
+                
+                <div class="col-md-6 mb-3">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title">Component Status</h5>
+                            
+                            <div class="d-flex justify-content-between mb-3">
+                                <span>API Gateway:</span>
+                                <span class="badge bg-success">Online</span>
+                            </div>
+                            <div class="d-flex justify-content-between mb-3">
+                                <span>Database Connection:</span>
+                                <span class="badge bg-success">Connected</span>
+                            </div>
+                            <div class="d-flex justify-content-between mb-3">
+                                <span>Memory Service:</span>
+                                <span class="badge bg-success">Operational</span>
+                            </div>
+                            <div class="d-flex justify-content-between">
+                                <span>Agent System:</span>
+                                <span class="badge bg-success">Running</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-6 mb-3">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title">Available Agents</h5>
+                            
+                            <div class="agent-item d-flex justify-content-between">
+                                <span>Package Tracking Agent</span>
+                                <span class="badge bg-primary">Ready</span>
+                            </div>
+                            <div class="agent-item d-flex justify-content-between">
+                                <span>Password Reset Agent</span>
+                                <span class="badge bg-primary">Ready</span>
+                            </div>
+                            <div class="agent-item d-flex justify-content-between">
+                                <span>Store Locator Agent</span>
+                                <span class="badge bg-primary">Ready</span>
+                            </div>
+                            <div class="agent-item d-flex justify-content-between">
+                                <span>Product Information Agent</span>
+                                <span class="badge bg-primary">Ready</span>
+                            </div>
+                            <div class="agent-item d-flex justify-content-between">
+                                <span>Returns Processing Agent</span>
+                                <span class="badge bg-primary">Ready</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
     </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
