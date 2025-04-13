@@ -1,25 +1,24 @@
 import React from 'react';
-import { Container, Row, Col, Button } from 'react-bootstrap';
+import { Container, Row, Col, Card, Button } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
-import FeatherIcon from 'feather-icons-react';
 
 const NotFoundPage = () => {
   return (
-    <Container className="py-5 text-center">
+    <Container className="py-5">
       <Row className="justify-content-center">
         <Col md={8} lg={6}>
-          <div className="my-5">
-            <FeatherIcon icon="alert-triangle" size={64} className="text-warning mb-4" />
-            <h1 className="display-1 fw-bold">404</h1>
-            <h2 className="mb-4">Page Not Found</h2>
-            <p className="lead mb-5">
-              The page you are looking for doesn't exist or has been moved.
-            </p>
-            <Button as={Link} to="/" variant="primary" size="lg" className="px-5">
-              <FeatherIcon icon="home" className="me-2" />
-              Go Home
-            </Button>
-          </div>
+          <Card className="shadow-sm border-0 text-center">
+            <Card.Body className="p-5">
+              <h1 className="display-1 fw-bold text-primary">404</h1>
+              <h2 className="mb-4">Page Not Found</h2>
+              <p className="lead mb-4">
+                The page you are looking for does not exist or has been moved.
+              </p>
+              <Button as={Link} to="/" variant="primary" className="px-4">
+                Return to Dashboard
+              </Button>
+            </Card.Body>
+          </Card>
         </Col>
       </Row>
     </Container>
