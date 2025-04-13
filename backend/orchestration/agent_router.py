@@ -314,9 +314,11 @@ class OptimizedAgentRouter:
             # Look for a general conversation agent first
             general_agent = None
             for agent_id, agent_data in self.agent_vector_store.agent_data.items():
-                if "general conversation" in agent_data.get("name", "").lower():
+                # Access the name attribute directly since agent_data is an AgentDefinition object
+                agent_name = getattr(agent_data, "name", "")
+                if "general conversation" in agent_name.lower():
                     general_agent = agent_data
-                    logger.info(f"Found General Conversation Agent: {agent_data.get('name')}")
+                    logger.info(f"Found General Conversation Agent: {agent_name}")
                     break
             
             # If we found a general conversation agent, use it with high confidence
@@ -336,7 +338,9 @@ class OptimizedAgentRouter:
         if not agent:
             # If no agent was found, check for general conversation agent again as fallback
             for agent_id, agent_data in self.agent_vector_store.agent_data.items():
-                if "general conversation" in agent_data.get("name", "").lower():
+                # Access the name attribute directly since agent_data is an AgentDefinition object
+                agent_name = getattr(agent_data, "name", "")
+                if "general conversation" in agent_name.lower():
                     logger.info("Using General Conversation Agent as fallback")
                     agent = agent_data
                     confidence = 0.6  # Moderate confidence for fallback
