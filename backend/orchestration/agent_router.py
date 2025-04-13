@@ -314,12 +314,35 @@ class OptimizedAgentRouter:
         logger.info(f"Vector store contains {agent_count} agents")
         if agent_count > 0:
             logger.info(f"Available agent IDs: {list(self.agent_vector_store.agent_data.keys())}")
+            
+        # ARCHITECTURAL CHANGE: Intent-first approach
+        # First try to identify specific intents via keyword pattern matching
+        # This moves specialized intent detection ahead of conversational classification
+        prefiltered_agents = await self.agent_vector_store.keyword_prefilter(query)
+        if prefiltered_agents:
+            logger.info(f"Intent detection: Found {len(prefiltered_agents)} potential agents via pattern matching")
+            
+            # If we have exactly one high-confidence match from patterns, use it directly
+            if len(prefiltered_agents) == 1 and prefiltered_agents[0][1] > 0.7:
+                agent, confidence = prefiltered_agents[0]
+                logger.info(f"Strong intent match: Selected '{agent.name}' with confidence {confidence:.2f}")
+                route_context = context or {}
+                route_context["selection_method"] = "strong_intent_match"
+                return agent, confidence, route_context
+                
+            # If we have a clear winner among multiple matches
+            elif len(prefiltered_agents) > 1 and prefiltered_agents[0][1] > 0.8 and prefiltered_agents[0][1] - prefiltered_agents[1][1] > 0.2:
+                agent, confidence = prefiltered_agents[0]
+                logger.info(f"Clear intent winner: Selected '{agent.name}' with confidence {confidence:.2f}")
+                route_context = context or {}
+                route_context["selection_method"] = "clear_intent_winner"
+                return agent, confidence, route_context
         
-        # Check if this is a simple greeting or basic conversation
+        # After trying to find specific intents, check if this is conversational
         if self._seems_conversational(query):
             logger.info(f"Query seems conversational: {query}")
             
-            # Look for a general conversation agent first
+            # Look for a general conversation agent
             general_agent = None
             for agent_id, agent_data in self.agent_vector_store.agent_data.items():
                 # Access the name attribute directly since agent_data is an AgentDefinition object
@@ -329,29 +352,47 @@ class OptimizedAgentRouter:
                     logger.info(f"Found General Conversation Agent: {agent_name}")
                     break
             
-            # If we found a general conversation agent, use it with high confidence
+            # If we found a general conversation agent, use it with moderate confidence
+            # Lower confidence than before, since we already checked for specific intents
             if general_agent:
                 route_context = context or {}
-                route_context["selection_method"] = "conversational_intent"
+                route_context["selection_method"] = "conversational_after_intent_check"
                 
-                # Higher confidence for very basic greetings
-                confidence = 0.95 if len(query.split()) <= 2 else 0.8
+                # Slightly lower confidence than before since we're prioritizing intent
+                confidence = 0.85 if len(query.split()) <= 2 else 0.7
                 
                 logger.info(f"Selected general conversation agent with confidence {confidence}")
                 return general_agent, confidence, route_context
         
-        # Standard routing for non-conversational queries
+        # If we have prefiltered agents but no clear winner, try semantic search on those
+        if prefiltered_agents:
+            # Extract just the agent IDs for semantic search
+            prefiltered_ids = [agent.id for agent, _ in prefiltered_agents]
+            
+            # Proceed with semantic search limited to prefiltered agents
+            similar_results = await self._semantic_search(query, limit_to_ids=prefiltered_ids)
+            
+            if similar_results:
+                best_match = similar_results[0]
+                agent = best_match["agent"]
+                similarity = best_match["similarity"]
+                logger.info(f"Semantic refinement: Selected '{agent.name}' with similarity {similarity:.2f}")
+                route_context = context or {}
+                route_context["selection_method"] = "semantic_refinement"
+                return agent, similarity, route_context or {}
+        
+        # If no specific intent was found via patterns, fall back to standard routing
         agent, confidence, route_context = await self.route(query, session_id, context)
         
         if not agent:
-            # If no agent was found, check for general conversation agent again as fallback
+            # If no agent was found, check for general conversation agent again as final fallback
             for agent_id, agent_data in self.agent_vector_store.agent_data.items():
                 # Access the name attribute directly since agent_data is an AgentDefinition object
                 agent_name = getattr(agent_data, "name", "")
                 if "general conversation" in agent_name.lower():
                     logger.info("Using General Conversation Agent as fallback")
                     agent = agent_data
-                    confidence = 0.6  # Moderate confidence for fallback
+                    confidence = 0.5  # Lower confidence for fallback
                     if not route_context:
                         route_context = {}
                     route_context["selection_method"] = "general_fallback"
