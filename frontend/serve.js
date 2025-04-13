@@ -4,6 +4,24 @@ const path = require('path');
 
 const PORT = process.env.PORT || 3001;
 
+// Try to read backend port from file if it exists
+let BACKEND_PORT = process.env.BACKEND_PORT || 5000;
+const backendPortFile = path.join(__dirname, '..', 'backend_port.txt');
+
+try {
+  if (fs.existsSync(backendPortFile)) {
+    const portFileContent = fs.readFileSync(backendPortFile, 'utf8').trim();
+    if (portFileContent && !isNaN(parseInt(portFileContent))) {
+      BACKEND_PORT = parseInt(portFileContent);
+      console.log(`Found backend port ${BACKEND_PORT} from file`);
+      // Update environment variable
+      process.env.BACKEND_PORT = BACKEND_PORT.toString();
+    }
+  }
+} catch (error) {
+  console.error('Error reading backend port file:', error.message);
+}
+
 // Create a simple HTTP server
 const server = http.createServer((req, res) => {
   // Set CORS headers
@@ -65,10 +83,16 @@ const server = http.createServer((req, res) => {
   
   // Proxy API requests to backend server
   if (req.url.startsWith('/api/')) {
+    // Get backend hostname and port from environment or use defaults
+    const backendHost = process.env.BACKEND_HOST || 'localhost';
+    const backendPort = process.env.BACKEND_PORT || BACKEND_PORT;
+    
+    console.log(`Proxying API request to ${backendHost}:${backendPort}${req.url}`);
+    
     // Proxy request to backend API server
     const options = {
-      hostname: 'localhost',
-      port: 5000,
+      hostname: backendHost,
+      port: backendPort,
       path: req.url,
       method: req.method,
       headers: {
@@ -88,15 +112,102 @@ const server = http.createServer((req, res) => {
     
     // Handle errors
     proxyReq.on('error', (error) => {
-      console.error('Error proxying request:', error.message);
+      console.error(`Error proxying request to ${options.hostname}:${options.port}${req.url}:`, error.message);
       
-      // Return a fallback response when backend is unavailable
-      res.writeHead(502, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({
-        success: false,
-        error: 'Backend service unavailable',
-        message: 'The API service is currently unavailable. Please try again later.'
-      }));
+      // For API requests to /agents, provide a mock response with system agents included
+      if (req.url === '/api/v1/agents') {
+        console.log('Returning cached agents response since backend is unavailable');
+        
+        // Check if we're running in a development environment
+        const isDev = process.env.NODE_ENV !== 'production';
+        
+        // Find the port that the real API is running on
+        const expectedPort = process.env.BACKEND_PORT || BACKEND_PORT;
+        console.log(`The backend API should be running on port ${expectedPort}, but we couldn't connect.`);
+        
+        // Execute a shell command to check what's running on the expected port
+        const { exec } = require('child_process');
+        exec(`lsof -i :${expectedPort}`, (err, stdout, stderr) => {
+          if (stdout) {
+            console.log(`Process using port ${expectedPort}:`);
+            console.log(stdout);
+          } else {
+            console.log(`No process found on port ${expectedPort}`);
+          }
+        });
+        
+        // Return a fallback response with the list of agents - this should include the system agents
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        
+        // Try to make a direct HTTP request to the backend at a different port to see if it's running
+        // We'll try a range of ports to see if we can find the API
+        const tryBackendPorts = [5000, 5001, 5002, 5003, 5004, 5005];
+        console.log(`Trying to find backend on ports: ${tryBackendPorts.join(', ')}`);
+        
+        let portFound = false;
+        let portChecks = 0;
+        
+        // Check each port
+        tryBackendPorts.forEach(portToCheck => {
+          const testReq = http.request({
+            hostname: 'localhost',
+            port: portToCheck,
+            path: '/api/v1/agents',
+            method: 'GET',
+            headers: {'Accept': 'application/json'}
+          }, (testRes) => {
+            // If we get a response, read it and proxy it back
+            let data = '';
+            testRes.on('data', (chunk) => {
+              data += chunk;
+            });
+            
+            testRes.on('end', () => {
+              if (!portFound) {
+                portFound = true;
+                console.log(`✅ Found working backend API on port ${portToCheck}!`);
+                console.log(`Updating BACKEND_PORT environment variable to ${portToCheck}`);
+                BACKEND_PORT = portToCheck;
+                process.env.BACKEND_PORT = portToCheck.toString();
+                
+                // Write to port file for future use
+                try {
+                  fs.writeFileSync(backendPortFile, portToCheck.toString());
+                  console.log(`Updated ${backendPortFile} with new port ${portToCheck}`);
+                } catch (e) {
+                  console.error(`Failed to write port file: ${e.message}`);
+                }
+                
+                // Forward the successful response
+                res.end(data);
+              }
+            });
+          });
+          
+          testReq.on('error', () => {
+            portChecks++;
+            // If we've checked all ports and none worked, return an error
+            if (portChecks === tryBackendPorts.length && !portFound) {
+              console.log('❌ Could not find backend API on any port');
+              res.end(JSON.stringify({
+                success: false,
+                error: 'Backend service unavailable',
+                message: `Cannot connect to backend. Tried ports ${tryBackendPorts.join(', ')}. Please restart the backend API server.`
+              }));
+            }
+          });
+          
+          testReq.end();
+        });
+      } else {
+        // Return a fallback response when backend is unavailable for other endpoints
+        res.writeHead(502, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({
+          success: false,
+          error: 'Backend service unavailable',
+          message: `Cannot connect to backend at ${options.hostname}:${options.port}. Please check if the API server is running.`
+        }));
+      }
     });
     
     // Forward request body to backend
