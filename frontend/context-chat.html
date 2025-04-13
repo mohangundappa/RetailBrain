@@ -778,7 +778,11 @@
                     currentConversationId = responseData.data.conversation_id;
                     
                     // Update observability data
-                    fetchObservabilityData(currentConversationId);
+                    try {
+                        fetchObservabilityData(currentConversationId);
+                    } catch (error) {
+                        console.warn('Observability data might not be available:', error);
+                    }
                 } else {
                     // Remove thinking animation
                     const thinkingAnimation = document.getElementById('thinkingAnimation');
@@ -786,8 +790,9 @@
                         thinkingAnimation.remove();
                     }
                     
-                    // Add error message
-                    addMessageToChat('agent', 'Sorry, there was an error processing your request. Please try again.');
+                    // Add error message with specific error if available
+                    const errorMessage = responseData.error || 'Sorry, there was an error processing your request. Please try again.';
+                    addMessageToChat('agent', errorMessage);
                     console.error('API error:', responseData.error);
                 }
             })

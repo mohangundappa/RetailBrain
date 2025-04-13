@@ -102,10 +102,7 @@ const server = http.createServer((req, res) => {
     return;
   }
   
-  // Add http module import for proxy
-  const http = require('http');
-  
-  // No need for specific path handling - all API requests are proxied to backend by the previous handler
+  // No need for specific path handling - all API requests are proxied to backend
   
   // For any other request, return 404
   res.writeHead(404);
