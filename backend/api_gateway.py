@@ -25,14 +25,21 @@ from backend.endpoints.chat import router as context_chat_router
 from backend.database.db import get_db
 
 # Utility function to sanitize database URLs for asyncpg
-def get_sanitized_db_url():
+def get_sanitized_db_url(for_async=False):
     """
     Get a database URL with the sslmode parameter removed for asyncpg compatibility.
     
+    Args:
+        for_async: If True, the URL will be formatted for asyncpg.
+        
     Returns:
         str: Sanitized database URL
     """
     db_url = os.environ.get("DATABASE_URL", "")
+    
+    # Handle asyncpg driver if needed
+    if for_async and db_url.startswith('postgresql://'):
+        db_url = db_url.replace('postgresql://', 'postgresql+asyncpg://')
     
     # Parse URL
     parsed_url = urlparse(db_url)
@@ -41,7 +48,7 @@ def get_sanitized_db_url():
     query_params = parse_qs(parsed_url.query)
     
     # Remove sslmode parameter from query as asyncpg doesn't accept it
-    if 'sslmode' in query_params:
+    if 'sslmode' in query_params and (for_async or 'asyncpg' in db_url):
         del query_params['sslmode']
         
     # Rebuild query string

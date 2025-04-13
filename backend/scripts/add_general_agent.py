@@ -9,8 +9,9 @@ import os
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 
-from backend.database.schema import AgentDefinition, AgentPattern, EntityDefinition
-from backend.database.schema import ResponseTemplate
+from backend.database.agent_schema import AgentDefinition, AgentPattern
+from backend.database.agent_schema import AgentResponseTemplate as ResponseTemplate
+from backend.database.entity_schema import EntityDefinition
 from backend.config.config import get_config
 from backend.orchestration.embedding_service import EmbeddingService
 
@@ -28,6 +29,24 @@ async def add_general_agent():
     if not db_url:
         logger.error("Database URL not found in environment or config")
         return False
+    
+    # Make sure we're using asyncpg for async operations
+    # Replace 'postgresql://' with 'postgresql+asyncpg://' for async operations
+    if db_url.startswith('postgresql://'):
+        db_url = db_url.replace('postgresql://', 'postgresql+asyncpg://')
+        
+    # Remove sslmode parameter as it's not compatible with asyncpg
+    if 'sslmode=' in db_url:
+        # Parse the URL to remove the sslmode parameter
+        parts = db_url.split('?')
+        base_url = parts[0]
+        if len(parts) > 1:
+            query_params = parts[1].split('&')
+            filtered_params = [p for p in query_params if not p.startswith('sslmode=')]
+            if filtered_params:
+                db_url = f"{base_url}?{'&'.join(filtered_params)}"
+            else:
+                db_url = base_url
     
     # Create async db engine and session
     engine = create_async_engine(db_url)
@@ -50,25 +69,25 @@ async def add_general_agent():
         general_agent = AgentDefinition(
             name="General Conversation Agent",
             description="Handles greetings, goodbyes, small talk, and general questions that don't fit other specialized agents.",
-            is_active=True,
+            status="active",
             is_system=True,
-            prompts={
-                "system_prompt": (
-                    "You are a friendly and professional assistant for Staples. "
-                    "Your role is to handle basic greetings, provide friendly conversation, "
-                    "and help direct users to more specialized agents when needed. "
-                    "Keep responses concise and helpful. If a request is outside your scope, "
-                    "indicate that you'll find a specialized agent to assist."
-                ),
-                "user_prompt_template": (
-                    "User says: {{user_input}}\n\n"
-                    "Current conversation stage: {{conversation_stage}}\n\n"
-                    "Please respond in a friendly, helpful manner:"
-                )
-            },
             version=1,
             agent_type="llm-driven",
             parameters={
+                "prompts": {
+                    "system_prompt": (
+                        "You are a friendly and professional assistant for Staples. "
+                        "Your role is to handle basic greetings, provide friendly conversation, "
+                        "and help direct users to more specialized agents when needed. "
+                        "Keep responses concise and helpful. If a request is outside your scope, "
+                        "indicate that you'll find a specialized agent to assist."
+                    ),
+                    "user_prompt_template": (
+                        "User says: {{user_input}}\n\n"
+                        "Current conversation stage: {{conversation_stage}}\n\n"
+                        "Please respond in a friendly, helpful manner:"
+                    )
+                },
                 "model": "gpt-4o",
                 "temperature": 0.7,
                 "response_format": "text",

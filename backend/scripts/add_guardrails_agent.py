@@ -9,8 +9,9 @@ import os
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 
-from backend.database.schema import AgentDefinition, AgentPattern, EntityDefinition
-from backend.database.schema import ResponseTemplate
+from backend.database.agent_schema import AgentDefinition, AgentPattern
+from backend.database.agent_schema import AgentResponseTemplate as ResponseTemplate
+from backend.database.entity_schema import EntityDefinition
 from backend.config.config import get_config
 
 logger = logging.getLogger(__name__)
@@ -28,6 +29,24 @@ async def add_guardrails_agent():
     if not db_url:
         logger.error("Database URL not found in environment or config")
         return False
+    
+    # Make sure we're using asyncpg for async operations
+    # Replace 'postgresql://' with 'postgresql+asyncpg://' for async operations
+    if db_url.startswith('postgresql://'):
+        db_url = db_url.replace('postgresql://', 'postgresql+asyncpg://')
+        
+    # Remove sslmode parameter as it's not compatible with asyncpg
+    if 'sslmode=' in db_url:
+        # Parse the URL to remove the sslmode parameter
+        parts = db_url.split('?')
+        base_url = parts[0]
+        if len(parts) > 1:
+            query_params = parts[1].split('&')
+            filtered_params = [p for p in query_params if not p.startswith('sslmode=')]
+            if filtered_params:
+                db_url = f"{base_url}?{'&'.join(filtered_params)}"
+            else:
+                db_url = base_url
     
     # Create async db engine and session
     engine = create_async_engine(db_url)
@@ -50,32 +69,32 @@ async def add_guardrails_agent():
         guardrails_agent = AgentDefinition(
             name="Guardrails Agent",
             description="Verifies all responses to ensure they meet policy requirements and maintain a professional tone.",
-            is_active=True,
+            status="active",
             is_system=True,
-            prompts={
-                "system_prompt": (
-                    "You are the Guardrails Agent for Staples, responsible for ensuring all "
-                    "responses meet the following requirements:\n\n"
-                    "1. Professional and courteous tone\n"
-                    "2. No inappropriate language or content\n"
-                    "3. No personally identifiable information unless necessary for the request\n"
-                    "4. All information is accurate and reflects Staples policies\n"
-                    "5. Maintains brand voice: helpful, knowledgeable, and solution-oriented\n\n"
-                    "You will review responses before they are sent to users and make any necessary "
-                    "adjustments to ensure compliance with these guidelines."
-                ),
-                "user_prompt_template": (
-                    "Original response: {{original_response}}\n\n"
-                    "User query: {{user_query}}\n\n"
-                    "Agent: {{agent_name}}\n\n"
-                    "Please review the response and make any necessary adjustments to ensure "
-                    "it meets our policy requirements and maintains a professional tone. "
-                    "If no changes are needed, return the original response exactly."
-                )
-            },
             version=1,
             agent_type="policy-enforcer",
             parameters={
+                "prompts": {
+                    "system_prompt": (
+                        "You are the Guardrails Agent for Staples, responsible for ensuring all "
+                        "responses meet the following requirements:\n\n"
+                        "1. Professional and courteous tone\n"
+                        "2. No inappropriate language or content\n"
+                        "3. No personally identifiable information unless necessary for the request\n"
+                        "4. All information is accurate and reflects Staples policies\n"
+                        "5. Maintains brand voice: helpful, knowledgeable, and solution-oriented\n\n"
+                        "You will review responses before they are sent to users and make any necessary "
+                        "adjustments to ensure compliance with these guidelines."
+                    ),
+                    "user_prompt_template": (
+                        "Original response: {{original_response}}\n\n"
+                        "User query: {{user_query}}\n\n"
+                        "Agent: {{agent_name}}\n\n"
+                        "Please review the response and make any necessary adjustments to ensure "
+                        "it meets our policy requirements and maintains a professional tone. "
+                        "If no changes are needed, return the original response exactly."
+                    )
+                },
                 "model": "gpt-4o",
                 "temperature": 0.3,
                 "response_format": "text",
