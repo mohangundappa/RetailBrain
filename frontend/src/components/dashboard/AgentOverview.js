@@ -3,16 +3,8 @@ import { Container, Row, Col, Card, Badge, Button, Table } from 'react-bootstrap
 import FeatherIcon from 'feather-icons-react';
 import { useAppContext } from '../../context/AppContext';
 import apiService from '../../api/apiService';
-import axios from 'axios';
 
-// Create direct API client
-const api = axios.create({
-  baseURL: '/api/v1',
-  headers: {
-    'Content-Type': 'application/json',
-  },
-  timeout: 30000, // 30 seconds timeout
-});
+// We'll use a direct request rather than Axios to see what's happening
 
 const AgentOverview = () => {
   const { agents, setAgents, setLoading, addNotification } = useAppContext();
@@ -24,40 +16,26 @@ const AgentOverview = () => {
       console.log('AgentOverview: Fetching agents from API...');
       setLoading(true);
       
-      // ADD A DEBUG ALERT FOR IMMEDIATE FEEDBACK
-      console.log('DEBUG: Making API call to fetch agents at:', new Date().toISOString());
+      // Use the apiService instead of direct axios
+      console.log('Using apiService to make the call...');
+      const response = await apiService.apiCall(apiService.getAgents);
+      console.log('AgentOverview: API response:', response);
       
-      try {
-        // Force a direct API request without using cached data
-        const response = await api.get('/agents');
-        const responseData = response.data;
-        console.log('AgentOverview: API response:', responseData);
+      if (response.success && response.agents) {
+        console.log('AgentOverview: Setting agents:', response.agents);
         
-        if (responseData.success && responseData.agents) {
-          console.log('AgentOverview: Setting agents:', responseData.agents);
-          // Find system agents for debugging
-          const systemAgents = responseData.agents.filter(a => a.is_system);
-          console.log('AgentOverview: System agents found:', systemAgents.length, systemAgents);
-          
-          setAgents(responseData.agents);
-          alert('Successfully loaded ' + responseData.agents.length + ' agents including ' + 
-                systemAgents.length + ' system agents');
-        } else {
-          throw new Error('Failed to fetch agents - success flag false');
-        }
-      } catch (networkError) {
-        console.error('Network error details:', networkError);
-        if (networkError.response) {
-          console.error('Response data:', networkError.response.data);
-          console.error('Response status:', networkError.response.status);
-          console.error('Response headers:', networkError.response.headers);
-        } else if (networkError.request) {
-          console.error('Request was made but no response was received');
-          console.error('Request details:', networkError.request);
-        } else {
-          console.error('Error setting up request:', networkError.message);
-        }
-        throw networkError;
+        // Filter for system agents
+        const systemAgents = response.agents.filter(a => a.is_system === true);
+        console.log('AgentOverview: System agents found:', systemAgents.length, systemAgents);
+        
+        // Show all agents including system agents
+        setAgents(response.agents);
+        console.log('Updated agents in state to:', response.agents.length, 'agents');
+        
+        // Show an alert with information
+        alert(`Successfully loaded ${response.agents.length} agents (including ${systemAgents.length} system agents)`);
+      } else {
+        throw new Error('API call succeeded but response was not successful');
       }
     } catch (error) {
       console.error('Error fetching agents:', error);
