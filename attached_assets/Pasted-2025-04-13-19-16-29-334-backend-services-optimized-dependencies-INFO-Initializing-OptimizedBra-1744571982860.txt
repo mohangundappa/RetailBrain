@@ -1,0 +1,90 @@
+2025-04-13 19:16:29,334 - backend.services.optimized_dependencies - INFO - Initializing OptimizedBrainService
+2025-04-13 19:16:29,334 - backend.services.optimized_brain_service - INFO - Initialized OptimizedBrainService
+2025-04-13 19:16:29,334 - backend.services.optimized_brain_service - INFO - Starting OptimizedBrainService initialization
+2025-04-13 19:16:29,334 - backend.services.optimized_brain_service - INFO - Created OptimizedAgentFactory
+2025-04-13 19:16:29,357 - backend.orchestration.embedding_service - INFO - Initialized EmbeddingService with model text-embedding-3-small
+2025-04-13 19:16:29,358 - backend.orchestration.agent_vector_store - INFO - Initialized AgentVectorStore
+2025-04-13 19:16:29,358 - backend.orchestration.agent_router - INFO - Initialized OptimizedAgentRouter
+2025-04-13 19:16:29,358 - backend.orchestration.agent_factory - INFO - Created optimized agent selection components
+2025-04-13 19:16:29,359 - backend.services.optimized_brain_service - INFO - Created router and other components
+2025-04-13 19:16:29,361 - backend.scripts.initialize_agents - INFO - Initializing core agents...
+2025-04-13 19:16:29,362 - backend.scripts.add_general_agent - INFO - Adding General Conversation Agent...
+2025-04-13 19:16:35,932 - backend.scripts.add_general_agent - INFO - General Conversation Agent already exists, skipping creation
+2025-04-13 19:16:35,968 - backend.scripts.initialize_agents - INFO - Successfully initialized General Conversation Agent
+2025-04-13 19:16:35,969 - backend.scripts.add_guardrails_agent - INFO - Adding Guardrails Agent...
+2025-04-13 19:16:36,905 - backend.scripts.add_guardrails_agent - INFO - Guardrails Agent already exists, skipping creation
+2025-04-13 19:16:36,942 - backend.scripts.initialize_agents - INFO - Successfully initialized Guardrails Agent
+2025-04-13 19:16:36,943 - backend.scripts.initialize_agents - INFO - Initialized 2 core agents
+2025-04-13 19:16:36,943 - backend.services.optimized_brain_service - INFO - Initialized core agents (General Conversation and Guardrails)
+2025-04-13 19:16:36,943 - backend.orchestration.agent_vector_store - INFO - Cleared 0 agents from vector store
+2025-04-13 19:16:36,943 - backend.orchestration.agent_factory - INFO - Cleared vector store of existing agents
+2025-04-13 19:16:36,943 - backend.orchestration.agent_factory - INFO - Loading agents from database...
+2025-04-13 19:16:39,502 - backend.orchestration.agent_factory - INFO - Added universal pattern to General Conversation Agent: General Conversation Agent
+2025-04-13 19:16:40,039 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-04-13 19:16:40,041 - backend.orchestration.embedding_service - INFO - Generated embedding in 0.54s (API calls: 1)
+2025-04-13 19:16:40,041 - backend.orchestration.agent_vector_store - INFO - Indexed agent: General Conversation Agent (ID: d5e22e3a-1d83-49bf-baef-52c8f4d55a87)
+2025-04-13 19:16:40,041 - backend.orchestration.agent_vector_store - INFO - Agent data store now contains 1 agents
+2025-04-13 19:16:40,041 - backend.orchestration.agent_vector_store - INFO - Agent IDs in store: ['d5e22e3a-1d83-49bf-baef-52c8f4d55a87']
+2025-04-13 19:16:40,042 - backend.orchestration.agent_factory - INFO - Indexed agent from database: General Conversation Agent (ID: d5e22e3a-1d83-49bf-baef-52c8f4d55a87)
+2025-04-13 19:16:40,042 - backend.orchestration.agent_factory - INFO - Added universal pattern to Guardrails Agent: Guardrails Agent
+2025-04-13 19:16:40,928 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-04-13 19:16:40,930 - backend.orchestration.embedding_service - INFO - Generated embedding in 0.89s (API calls: 2)
+2025-04-13 19:16:40,930 - backend.orchestration.agent_vector_store - INFO - Indexed agent: Guardrails Agent (ID: f2feabb7-2279-4feb-875a-3c7f58105ac9)
+2025-04-13 19:16:40,930 - backend.orchestration.agent_vector_store - INFO - Agent data store now contains 2 agents
+2025-04-13 19:16:40,930 - backend.orchestration.agent_vector_store - INFO - Agent IDs in store: ['d5e22e3a-1d83-49bf-baef-52c8f4d55a87', 'f2feabb7-2279-4feb-875a-3c7f58105ac9']
+2025-04-13 19:16:40,930 - backend.orchestration.agent_factory - INFO - Indexed agent from database: Guardrails Agent (ID: f2feabb7-2279-4feb-875a-3c7f58105ac9)
+2025-04-13 19:16:40,930 - backend.orchestration.agent_factory - INFO - Added order tracking pattern to agent: Package Tracking Agent
+2025-04-13 19:16:41,532 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-04-13 19:16:41,534 - backend.orchestration.embedding_service - INFO - Generated embedding in 0.60s (API calls: 3)
+2025-04-13 19:16:41,534 - backend.orchestration.agent_vector_store - INFO - Indexed agent: Package Tracking Agent (ID: f3056c69-a490-4336-8721-31912669a48d)
+2025-04-13 19:16:41,535 - backend.orchestration.agent_vector_store - INFO - Agent data store now contains 3 agents
+2025-04-13 19:16:41,535 - backend.orchestration.agent_vector_store - INFO - Agent IDs in store: ['d5e22e3a-1d83-49bf-baef-52c8f4d55a87', 'f2feabb7-2279-4feb-875a-3c7f58105ac9', 'f3056c69-a490-4336-8721-31912669a48d']
+2025-04-13 19:16:41,535 - backend.orchestration.agent_factory - INFO - Indexed agent from database: Package Tracking Agent (ID: f3056c69-a490-4336-8721-31912669a48d)
+2025-04-13 19:16:42,238 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-04-13 19:16:42,240 - backend.orchestration.embedding_service - INFO - Generated embedding in 0.70s (API calls: 4)
+2025-04-13 19:16:42,240 - backend.orchestration.agent_vector_store - INFO - Indexed agent: Product Information Agent (ID: d421645a-5e90-4c0e-9776-58af67d45f60)
+2025-04-13 19:16:42,240 - backend.orchestration.agent_vector_store - INFO - Agent data store now contains 4 agents
+2025-04-13 19:16:42,240 - backend.orchestration.agent_vector_store - INFO - Agent IDs in store: ['d5e22e3a-1d83-49bf-baef-52c8f4d55a87', 'f2feabb7-2279-4feb-875a-3c7f58105ac9', 'f3056c69-a490-4336-8721-31912669a48d', 'd421645a-5e90-4c0e-9776-58af67d45f60']
+2025-04-13 19:16:42,240 - backend.orchestration.agent_factory - INFO - Indexed agent from database: Product Information Agent (ID: d421645a-5e90-4c0e-9776-58af67d45f60)
+2025-04-13 19:16:42,240 - backend.orchestration.agent_factory - INFO - Added password pattern to agent: Reset Password Agent
+2025-04-13 19:16:42,468 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-04-13 19:16:42,469 - backend.orchestration.embedding_service - INFO - Generated embedding in 0.23s (API calls: 5)
+2025-04-13 19:16:42,469 - backend.orchestration.agent_vector_store - INFO - Indexed agent: Reset Password Agent (ID: 9b65b143-699d-425f-84bf-e92f4634b972)
+2025-04-13 19:16:42,470 - backend.orchestration.agent_vector_store - INFO - Agent data store now contains 5 agents
+2025-04-13 19:16:42,470 - backend.orchestration.agent_vector_store - INFO - Agent IDs in store: ['d5e22e3a-1d83-49bf-baef-52c8f4d55a87', 'f2feabb7-2279-4feb-875a-3c7f58105ac9', 'f3056c69-a490-4336-8721-31912669a48d', 'd421645a-5e90-4c0e-9776-58af67d45f60', '9b65b143-699d-425f-84bf-e92f4634b972']
+2025-04-13 19:16:42,470 - backend.orchestration.agent_factory - INFO - Indexed agent from database: Reset Password Agent (ID: 9b65b143-699d-425f-84bf-e92f4634b972)
+2025-04-13 19:16:43,319 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-04-13 19:16:43,321 - backend.orchestration.embedding_service - INFO - Generated embedding in 0.85s (API calls: 6)
+2025-04-13 19:16:43,321 - backend.orchestration.agent_vector_store - INFO - Indexed agent: Returns Processing Agent (ID: b49871a0-9ce8-483b-9be8-3c7df82cbb52)
+2025-04-13 19:16:43,322 - backend.orchestration.agent_vector_store - INFO - Agent data store now contains 6 agents
+2025-04-13 19:16:43,322 - backend.orchestration.agent_vector_store - INFO - Agent IDs in store: ['d5e22e3a-1d83-49bf-baef-52c8f4d55a87', 'f2feabb7-2279-4feb-875a-3c7f58105ac9', 'f3056c69-a490-4336-8721-31912669a48d', 'd421645a-5e90-4c0e-9776-58af67d45f60', '9b65b143-699d-425f-84bf-e92f4634b972', 'b49871a0-9ce8-483b-9be8-3c7df82cbb52']
+2025-04-13 19:16:43,322 - backend.orchestration.agent_factory - INFO - Indexed agent from database: Returns Processing Agent (ID: b49871a0-9ce8-483b-9be8-3c7df82cbb52)
+2025-04-13 19:16:43,840 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-04-13 19:16:43,841 - backend.orchestration.embedding_service - INFO - Generated embedding in 0.52s (API calls: 7)
+2025-04-13 19:16:43,841 - backend.orchestration.agent_vector_store - INFO - Indexed agent: Store Locator Agent (ID: d5a080ae-70f2-4641-aa82-9fba3fcb4d2d)
+2025-04-13 19:16:43,842 - backend.orchestration.agent_vector_store - INFO - Agent data store now contains 7 agents
+2025-04-13 19:16:43,842 - backend.orchestration.agent_vector_store - INFO - Agent IDs in store: ['d5e22e3a-1d83-49bf-baef-52c8f4d55a87', 'f2feabb7-2279-4feb-875a-3c7f58105ac9', 'f3056c69-a490-4336-8721-31912669a48d', 'd421645a-5e90-4c0e-9776-58af67d45f60', '9b65b143-699d-425f-84bf-e92f4634b972', 'b49871a0-9ce8-483b-9be8-3c7df82cbb52', 'd5a080ae-70f2-4641-aa82-9fba3fcb4d2d']
+2025-04-13 19:16:43,842 - backend.orchestration.agent_factory - INFO - Indexed agent from database: Store Locator Agent (ID: d5a080ae-70f2-4641-aa82-9fba3fcb4d2d)
+2025-04-13 19:16:43,842 - backend.orchestration.agent_factory - INFO - Loaded 7 agents from database into vector store
+2025-04-13 19:16:43,842 - backend.services.optimized_brain_service - INFO - Loaded 7 agents from database/test data
+2025-04-13 19:16:43,842 - backend.services.optimized_brain_service - INFO - Vector store contains 7 agents
+2025-04-13 19:16:43,842 - backend.services.optimized_brain_service - INFO - Agent IDs in vector store: ['d5e22e3a-1d83-49bf-baef-52c8f4d55a87', 'f2feabb7-2279-4feb-875a-3c7f58105ac9', 'f3056c69-a490-4336-8721-31912669a48d', 'd421645a-5e90-4c0e-9776-58af67d45f60', '9b65b143-699d-425f-84bf-e92f4634b972', 'b49871a0-9ce8-483b-9be8-3c7df82cbb52', 'd5a080ae-70f2-4641-aa82-9fba3fcb4d2d']
+2025-04-13 19:16:43,842 - backend.services.optimized_brain_service - INFO - Found General Conversation Agent: General Conversation Agent
+2025-04-13 19:16:43,843 - backend.services.optimized_brain_service - INFO - Found Guardrails Agent: Guardrails Agent
+2025-04-13 19:16:43,843 - backend.services.optimized_brain_service - INFO - Optimized brain service initialized successfully
+2025-04-13 19:16:43,843 - backend.services.optimized_dependencies - INFO - OptimizedBrainService initialized successfully
+2025-04-13 19:16:43,845 - backend.endpoints.optimized_chat - INFO - Chat request: Hi (session: sess_abcdef)
+2025-04-13 19:16:43,845 - backend.orchestration.agent_router - INFO - Starting route_and_prepare for query: Hi...
+2025-04-13 19:16:43,845 - backend.orchestration.agent_router - INFO - Vector store contains 7 agents
+2025-04-13 19:16:43,845 - backend.orchestration.agent_router - INFO - Available agent IDs: ['d5e22e3a-1d83-49bf-baef-52c8f4d55a87', 'f2feabb7-2279-4feb-875a-3c7f58105ac9', 'f3056c69-a490-4336-8721-31912669a48d', 'd421645a-5e90-4c0e-9776-58af67d45f60', '9b65b143-699d-425f-84bf-e92f4634b972', 'b49871a0-9ce8-483b-9be8-3c7df82cbb52', 'd5a080ae-70f2-4641-aa82-9fba3fcb4d2d']
+2025-04-13 19:16:43,846 - backend.orchestration.agent_router - INFO - Query seems conversational: Hi
+2025-04-13 19:16:43,846 - backend.orchestration.agent_router - INFO - Found General Conversation Agent: General Conversation Agent
+2025-04-13 19:16:43,846 - backend.orchestration.agent_router - INFO - Selected general conversation agent with confidence 0.95
+2025-04-13 19:16:43,846 - backend.services.optimized_brain_service - INFO - Agent selection took 0.00s
+2025-04-13 19:16:43,846 - backend.services.optimized_brain_service - INFO - Selected agent: General Conversation Agent with confidence 0.95
+2025-04-13 19:16:43,846 - backend.services.optimized_brain_service - INFO - Generating response for agent General Conversation Agent with entities: {}
+2025-04-13 19:16:43,847 - backend.services.optimized_brain_service - INFO - Applying guardrails using Guardrails Agent
+2025-04-13 19:16:43,847 - backend.services.optimized_brain_service - INFO - Generating response for agent Guardrails Agent with entities: {'original_response': "I'm the Staples Assistant. How can I help you with your Staples-related needs today?", 'user_query': 'Hi', 'agent_name': 'General Conversation Agent'}
+2025-04-13 19:16:43,847 - backend.services.optimized_brain_service - INFO - Guardrails processing response from General Conversation Agent
+2025-04-13 19:16:43,847 - backend.services.optimized_brain_service - INFO - Applied guardrails to response
+INFO:     127.0.0.1:58616 - "POST /api/v1/chat HTTP/1.1" 200 OK

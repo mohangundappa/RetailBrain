@@ -289,6 +289,42 @@ async def startup_db_client():
             logger.warning("State persistence module not available, skipping initialization")
         except Exception as state_err:
             logger.warning(f"Error initializing state persistence tables: {str(state_err)}")
+            
+        # Preload the brain service to ensure agents are loaded at startup
+        try:
+            # Import individual functions directly from modules
+            from backend.config.config import get_config
+            from backend.memory.factory import get_memory_service
+            from backend.services.optimized_brain_service import OptimizedBrainService
+            
+            # Get configuration
+            config = get_config()
+            
+            # Get memory service
+            memory_service = await get_memory_service()
+            
+            # Initialize the brain service directly
+            db = await anext(get_db())
+            
+            # Create the brain service instance directly
+            brain_service = OptimizedBrainService(
+                db_session=db,
+                config=config,
+                memory_service=memory_service
+            )
+            
+            # Initialize the brain service
+            await brain_service.initialize()
+            
+            # Make sure vector store is populated with agents
+            if hasattr(brain_service, 'agent_factory') and brain_service.agent_factory:
+                logger.info("Pre-loading agents from database into vector store")
+                await brain_service.agent_factory.load_agents_from_database()
+                logger.info("Agents successfully pre-loaded at startup")
+                
+        except Exception as brain_err:
+            logger.warning(f"Error pre-loading brain service: {str(brain_err)}")
+            
     except Exception as e:
         logger.error(f"Error initializing database tables: {str(e)}")
         # Don't raise the exception to allow the application to start

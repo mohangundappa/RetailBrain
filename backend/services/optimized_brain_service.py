@@ -386,7 +386,7 @@ class OptimizedBrainService:
             
             # Special handling for General Conversation Agent
             if "general conversation" in agent.name.lower():
-                # Use template if available
+                # Use template if available for common greetings
                 if templates and "greeting" in templates and message.lower().strip() in ["hi", "hello", "hey"]:
                     return templates["greeting"]
                 
@@ -396,8 +396,60 @@ class OptimizedBrainService:
                 if templates and "help" in templates and "help" in message.lower():
                     return templates["help"]
                 
-                # For longer general conversation, simple response
-                return "I'm the Staples Assistant. How can I help you with your Staples-related needs today?"
+                # For more complex conversations, use the LLM
+                try:
+                    from openai import OpenAI
+                    import os
+                    
+                    # Initialize OpenAI client
+                    client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
+                    
+                    # Craft system prompt for Staples assistant
+                    system_prompt = """
+                    You are the Staples Brain assistant, focused on helping customers with Staples-related questions and needs.
+                    Your expertise covers:
+                    1. Finding products in the Staples catalog
+                    2. Providing information about store locations and hours
+                    3. Helping with order tracking and delivery questions
+                    4. Assisting with account issues like password resets
+                    5. Explaining return policies and procedures
+                    6. Recommending products and solutions for office needs
+                    
+                    Keep responses friendly, concise and business-appropriate. Always identify yourself as the Staples Assistant.
+                    """
+                    
+                    # Get conversation history from context if available
+                    conversation_history = context.get("conversation_history", [])
+                    if not conversation_history:
+                        # If no history is available, create a basic structure
+                        conversation_history = [
+                            {"role": "system", "content": system_prompt},
+                            {"role": "user", "content": message}
+                        ]
+                    else:
+                        # Ensure we have the system prompt at the start
+                        if conversation_history[0].get("role") != "system":
+                            conversation_history.insert(0, {"role": "system", "content": system_prompt})
+                        # Add the current message
+                        conversation_history.append({"role": "user", "content": message})
+                    
+                    # Call the OpenAI API for generation
+                    response = client.chat.completions.create(
+                        model="gpt-4o",  # Use the latest model
+                        messages=conversation_history,
+                        max_tokens=300,
+                        temperature=0.7
+                    )
+                    
+                    # Extract and return the generated text
+                    generated_text = response.choices[0].message.content
+                    logger.info(f"Generated response via LLM for General Conversation Agent: {generated_text[:100]}...")
+                    return generated_text
+                    
+                except Exception as llm_error:
+                    logger.error(f"Error using LLM for General Conversation Agent: {str(llm_error)}")
+                    # Fallback to template response if LLM fails
+                    return "I'm the Staples Assistant. How can I help you with your Staples-related needs today?"
             
             # Reset Password Agent
             if agent.id == "reset_password_id":
