@@ -1,3 +1,6 @@
 #!/bin/bash
-cd frontend
-npm start
+
+# Start frontend React application
+echo "Starting frontend React application..."
+cd "$(dirname "$0")"
+node start_frontend.js

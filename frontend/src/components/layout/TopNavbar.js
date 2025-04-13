@@ -1,117 +1,92 @@
-import React, { useState } from 'react';
-import { Navbar, Nav, NavDropdown, Form, InputGroup, Button } from 'react-bootstrap';
-import FeatherIcon from 'feather-icons-react';
+import React from 'react';
+import { Navbar, Container, Button, Form, InputGroup, Nav, Dropdown } from 'react-bootstrap';
 import { useAppContext } from '../../context/AppContext';
 
 /**
  * Top navigation bar component
- * Includes search, user profile, and global actions
+ * Provides global actions, search, and user menu
  */
-const TopNavbar = () => {
+const TopNavbar = ({ sidebarOpen, toggleSidebar }) => {
   const { state, actions } = useAppContext();
-  const [searchQuery, setSearchQuery] = useState('');
   
-  // Handle search submission
-  const handleSearch = (e) => {
-    e.preventDefault();
-    // Implement global search functionality here
-    console.log('Search query:', searchQuery);
-    
-    // Clear the search input
-    setSearchQuery('');
+  // Mock user data - would come from context in a real app
+  const user = state.user || {
+    name: 'Demo User',
+    avatar: 'https://via.placeholder.com/36',
+    role: 'admin'
+  };
+  
+  // Handle logout
+  const handleLogout = () => {
+    // In a real app, this would call an API and clear auth state
+    actions.addNotification({
+      type: 'info',
+      title: 'Logged Out',
+      message: 'You have been logged out successfully.',
+      autoDismiss: true
+    });
   };
   
   return (
-    <Navbar bg="dark" variant="dark" expand="lg" className="px-3 py-2 border-bottom border-secondary">
-      <Navbar.Brand href="/" className="me-0 me-md-2 d-flex align-items-center">
-        <FeatherIcon icon="cpu" className="me-2" />
-        <span className="d-none d-md-inline">Staples Brain</span>
-      </Navbar.Brand>
-      
-      <div className="d-flex flex-grow-1 justify-content-end justify-content-lg-between">
-        {/* Global search */}
-        <Form className="d-none d-lg-flex mx-4 flex-grow-1" onSubmit={handleSearch}>
-          <InputGroup>
+    <Navbar bg="dark" variant="dark" expand="lg" className="border-bottom">
+      <Container fluid>
+        <Button 
+          variant="link" 
+          className="me-2 text-white p-0" 
+          onClick={toggleSidebar}
+          aria-label="Toggle sidebar"
+        >
+          {/* This would use a proper icon component */}
+          <span className="fs-4">☰</span>
+        </Button>
+        
+        <Navbar.Brand href="#" className="me-auto">
+          {!sidebarOpen && 'Staples Brain'}
+        </Navbar.Brand>
+        
+        <div className="d-none d-md-flex flex-grow-1 justify-content-center mx-5">
+          <InputGroup style={{ maxWidth: '500px' }}>
             <Form.Control
-              type="search"
               placeholder="Search..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="bg-dark-subtle border-secondary text-white"
+              aria-label="Search"
+              className="bg-dark text-white border-secondary"
             />
-            <Button variant="outline-secondary" type="submit">
-              <FeatherIcon icon="search" size={18} />
+            <Button variant="outline-secondary">
+              🔍
             </Button>
           </InputGroup>
-        </Form>
-        
-        {/* Right-aligned items */}
-        <div className="d-flex align-items-center">
-          {/* Theme toggle */}
-          <Button 
-            variant="link" 
-            className="text-white p-1 me-3"
-            onClick={() => actions.setTheme(state.ui.theme === 'dark' ? 'light' : 'dark')}
-            aria-label="Toggle theme"
-          >
-            <FeatherIcon icon={state.ui.theme === 'dark' ? 'sun' : 'moon'} size={20} />
-          </Button>
-          
-          {/* Notifications */}
-          <NavDropdown
-            title={<FeatherIcon icon="bell" size={20} />}
-            id="notifications-dropdown"
-            align="end"
-            className="me-3"
-          >
-            <NavDropdown.Header>Notifications</NavDropdown.Header>
-            <NavDropdown.Item>
-              <div className="notification-item">
-                <strong>System Status:</strong> All agents operational
-                <small className="text-muted d-block">5 min ago</small>
-              </div>
-            </NavDropdown.Item>
-            <NavDropdown.Item>
-              <div className="notification-item">
-                <strong>New Agent Available:</strong> Store Finder v2
-                <small className="text-muted d-block">1 hour ago</small>
-              </div>
-            </NavDropdown.Item>
-            <NavDropdown.Divider />
-            <NavDropdown.Item className="text-center">
-              <small>View all notifications</small>
-            </NavDropdown.Item>
-          </NavDropdown>
-          
-          {/* User profile */}
-          <NavDropdown
-            title={
-              <div className="d-flex align-items-center">
-                <div className="profile-avatar me-2 d-flex align-items-center justify-content-center bg-primary rounded-circle" style={{ width: '32px', height: '32px' }}>
-                  <span>A</span>
-                </div>
-                <span className="d-none d-md-inline">Admin</span>
-              </div>
-            }
-            id="profile-dropdown"
-            align="end"
-          >
-            <NavDropdown.Item href="/profile">
-              <FeatherIcon icon="user" className="me-2" size={16} />
-              Profile
-            </NavDropdown.Item>
-            <NavDropdown.Item href="/preferences">
-              <FeatherIcon icon="settings" className="me-2" size={16} />
-              Preferences
-            </NavDropdown.Item>
-            <NavDropdown.Divider />
-            <NavDropdown.Item href="/logout">
-              <FeatherIcon icon="log-out" className="me-2" size={16} />
-              Sign out
-            </NavDropdown.Item>
-          </NavDropdown>
         </div>
-      </div>
+        
+        <Nav className="ms-auto align-items-center">
+          <Nav.Link href="#" className="px-2" title="Notifications">
+            🔔
+          </Nav.Link>
+          
+          <Nav.Link href="#" className="px-2" title="Help">
+            ❓
+          </Nav.Link>
+          
+          <Dropdown align="end">
+            <Dropdown.Toggle as="a" className="nav-link dropdown-toggle d-flex align-items-center" id="user-dropdown">
+              <img 
+                src={user.avatar} 
+                alt={user.name} 
+                className="rounded-circle me-2" 
+                width="36" 
+                height="36" 
+              />
+              <span className="d-none d-lg-inline">{user.name}</span>
+            </Dropdown.Toggle>
+            
+            <Dropdown.Menu>
+              <Dropdown.Item href="#">Profile</Dropdown.Item>
+              <Dropdown.Item href="#">Settings</Dropdown.Item>
+              <Dropdown.Divider />
+              <Dropdown.Item onClick={handleLogout}>Logout</Dropdown.Item>
+            </Dropdown.Menu>
+          </Dropdown>
+        </Nav>
+      </Container>
     </Navbar>
   );
 };
