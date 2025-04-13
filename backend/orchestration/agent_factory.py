@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.orchestration.agent_definition import AgentDefinition
 from backend.orchestration.agent_definition import PatternCapability, AgentTool, EntityDefinition as OptEntityDefinition
 from backend.orchestration.embedding_service import EmbeddingService
-from backend.orchestration.vector_store import AgentVectorStore
+from backend.orchestration.agent_vector_store import AgentVectorStore
 from backend.orchestration.agent_router import OptimizedAgentRouter
 
 logger = logging.getLogger(__name__)
