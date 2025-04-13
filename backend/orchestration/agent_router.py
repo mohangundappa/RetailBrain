@@ -262,6 +262,15 @@ class OptimizedAgentRouter:
         Returns:
             True if the query seems conversational
         """
+        # Check if this is a password-related query first (exclude from conversational handling)
+        password_terms = ["password", "reset", "forgot", "login", "account", "sign in"]
+        query_lower = query.lower()
+        
+        # If it's a password query, don't treat it as conversational
+        if any(term in query_lower for term in password_terms):
+            logger.info(f"Query contains password-related terms, not treating as conversational: {query}")
+            return False
+            
         # List of conversational words and phrases
         conversational_indicators = [
             'hi', 'hello', 'hey', 'thanks', 'thank', 'bye', 'goodbye', 
@@ -270,12 +279,11 @@ class OptimizedAgentRouter:
         ]
         
         # Check if any of the conversational indicators are in the query
-        query_lower = query.lower()
         for indicator in conversational_indicators:
             if indicator in query_lower:
                 return True
         
-        # Also consider very short queries conversational
+        # Also consider very short queries conversational, except password-related ones
         if len(query.split()) <= 3:
             return True
         
