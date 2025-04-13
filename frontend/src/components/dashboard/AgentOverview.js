@@ -3,6 +3,16 @@ import { Container, Row, Col, Card, Badge, Button, Table } from 'react-bootstrap
 import FeatherIcon from 'feather-icons-react';
 import { useAppContext } from '../../context/AppContext';
 import apiService from '../../api/apiService';
+import axios from 'axios';
+
+// Create direct API client
+const api = axios.create({
+  baseURL: '/api/v1',
+  headers: {
+    'Content-Type': 'application/json',
+  },
+  timeout: 30000, // 30 seconds timeout
+});
 
 const AgentOverview = () => {
   const { agents, setAgents, setLoading, addNotification } = useAppContext();
@@ -11,11 +21,21 @@ const AgentOverview = () => {
   // Create reusable fetchAgents function
   const fetchAgents = async () => {
     try {
+      console.log('AgentOverview: Fetching agents from API...');
       setLoading(true);
-      const response = await apiService.apiCall(apiService.getAgents);
       
-      if (response.success && response.agents) {
-        setAgents(response.agents);
+      // Force a direct API request without using cached data
+      const response = await api.get('/agents');
+      const responseData = response.data;
+      console.log('AgentOverview: API response:', responseData);
+      
+      if (responseData.success && responseData.agents) {
+        console.log('AgentOverview: Setting agents:', responseData.agents);
+        // Find system agents for debugging
+        const systemAgents = responseData.agents.filter(a => a.is_system);
+        console.log('AgentOverview: System agents found:', systemAgents.length, systemAgents);
+        
+        setAgents(responseData.agents);
       } else {
         throw new Error('Failed to fetch agents');
       }
@@ -32,9 +52,10 @@ const AgentOverview = () => {
   };
 
   // Fetch agents on component mount
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     fetchAgents();
-  }, [setAgents, setLoading, addNotification]);
+  }, []);
 
   const handleAgentSelect = async (agent) => {
     try {
