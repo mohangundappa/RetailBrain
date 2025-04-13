@@ -693,13 +693,62 @@ class Mem0:
                 })
                 
         return messages
-    
-    def add_message(
+        
+    async def get_conversation_history(
         self,
-        conversation_id: str,
+        session_id: str,
+        limit: int = 10
+    ) -> List[Dict[str, Any]]:
+        """
+        Get formatted conversation history compatible with LangChain/LangGraph agents.
+        
+        Args:
+            session_id: The session ID (used as conversation ID)
+            limit: Maximum number of messages to return
+            
+        Returns:
+            List of message dictionaries in LangChain/LangGraph compatible format
+            [{"type": "human", "content": "..."}, {"type": "ai", "content": "..."}]
+        """
+        try:
+            # Use the existing method to get messages
+            messages = self.get_conversation_messages(
+                conversation_id=session_id,
+                limit=limit,
+                include_expired=False
+            )
+            
+            # Format messages for LangChain/LangGraph compatibility
+            formatted_messages = []
+            for msg in messages:
+                role = msg.get('role', 'unknown')
+                content = msg.get('content', '')
+                
+                # Map roles to LangChain/LangGraph expected format
+                msg_type = "human"
+                if role == "assistant":
+                    msg_type = "ai"
+                elif role == "system":
+                    msg_type = "system"
+                    
+                formatted_messages.append({
+                    "type": msg_type,
+                    "content": content
+                })
+            
+            # Reverse to get chronological order if needed
+            # formatted_messages.reverse()
+            return formatted_messages
+        except Exception as e:
+            logger.error(f"Error retrieving conversation history: {str(e)}")
+            return []
+    
+    async def add_message(
+        self,
+        session_id: str,
         role: str,
         content: str,
-        session_id: Optional[str] = None,
+        conversation_id: Optional[str] = None,
         agent_id: Optional[str] = None,
         metadata: Optional[Dict[str, Any]] = None
     ) -> str:
@@ -707,16 +756,19 @@ class Mem0:
         Add a message to a conversation.
         
         Args:
-            conversation_id: The conversation ID
+            session_id: The session ID
             role: Message role (user, assistant, system)
             content: Message content
-            session_id: Optional session ID
+            conversation_id: Optional conversation ID (uses session_id if not provided)
             agent_id: Optional agent ID
             metadata: Optional message metadata
             
         Returns:
             Memory entry ID
         """
+        # Use session_id as conversation_id if not provided
+        conversation_id = conversation_id or session_id
+        
         memory = MemoryEntry(
             content=content,
             memory_type=MemoryType.MESSAGE,

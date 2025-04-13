@@ -542,8 +542,37 @@ class GraphBrainService:
                 "agent_descriptions": agent_descriptions
             })
             
-            # Parse the result
-            scores = json.loads(result)
+            # Parse the result with proper error handling
+            try:
+                # Try to clean up the result to ensure valid JSON
+                result = result.strip()
+                # If result starts with backticks (e.g., ```json), clean it up
+                if result.startswith('```'):
+                    # Find the end of the code block
+                    end_backticks = result.rfind('```')
+                    if end_backticks > 3:  # At least one character between start and end
+                        # Extract only the JSON content inside the code block
+                        start_content = result.find('\n', 3)  # Skip first line with ```json
+                        if start_content != -1 and start_content < end_backticks:
+                            result = result[start_content:end_backticks].strip()
+                        else:
+                            # Fallback: just remove the backticks
+                            result = result.replace('```', '').strip()
+                
+                # Parse the JSON
+                scores = json.loads(result)
+            except json.JSONDecodeError as e:
+                logger.error(f"Error parsing agent selection result: {str(e)}")
+                logger.debug(f"Raw result from LLM: {result}")
+                # Fallback to default scores
+                scores = {
+                    "General Conversation Agent": 0.8,
+                    "Package Tracking Agent": 0.2,
+                    "Reset Password Agent": 0.2,
+                    "Store Locator Agent": 0.2,
+                    "Product Information Agent": 0.2,
+                    "Returns Processing Agent": 0.2
+                }
             
             # Find the best scoring agent
             best_agent = None
