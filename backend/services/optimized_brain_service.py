@@ -107,7 +107,8 @@ class OptimizedBrainService:
             from backend.services.graph_brain_service import GraphBrainService
             self._traditional_service = GraphBrainService(
                 db_session=self.db_session,
-                config=self.config
+                config=self.config,
+                memory_service=self.memory_service  # Pass our memory service to traditional service
             )
             # Initialize the service if needed
             if hasattr(self._traditional_service, 'initialize'):
