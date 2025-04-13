@@ -22,7 +22,8 @@ class MemoryConfig:
         self.config = config_dict or {}
         
         # Redis connection settings
-        self.redis_url = self.get_env_or_default("REDIS_URL", "redis://localhost:6379/0")
+        # Use fakeredis:// by default for development, this doesn't require a real Redis server
+        self.redis_url = self.get_env_or_default("REDIS_URL", "fakeredis://mem0:0")
         
         # Memory expiration settings (in seconds)
         self.working_memory_ttl = int(self.get_env_or_default("WORKING_MEMORY_TTL", "300"))  # 5 minutes
