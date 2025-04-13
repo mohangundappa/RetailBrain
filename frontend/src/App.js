@@ -1,30 +1,36 @@
 import React from 'react';
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import { AppProvider } from './context/AppContext';
-import NavigationBar from './components/NavigationBar';
+import AppLayout from './components/layout/AppLayout';
 import HomePage from './pages/HomePage';
 import DocumentationPage from './pages/DocumentationPage';
 import NotFoundPage from './pages/NotFoundPage';
+import './styles/App.css';
+
+// Import future pages (to be implemented)
+// import ChatPage from './pages/ChatPage';
+// import ObservabilityPage from './pages/ObservabilityPage';
+// import AgentBuilderPage from './pages/AgentBuilderPage';
+// import SettingsPage from './pages/SettingsPage';
 
 function App() {
   return (
     <AppProvider>
       <Router>
-        <div className="d-flex flex-column vh-100">
-          <NavigationBar />
-          <main className="flex-grow-1 bg-body">
-            <Routes>
-              <Route path="/" element={<HomePage />} />
-              <Route path="/documentation" element={<DocumentationPage />} />
-              <Route path="*" element={<NotFoundPage />} />
-            </Routes>
-          </main>
-          <footer className="bg-dark text-white text-center py-3">
-            <div className="container">
-              <span>Staples Brain &copy; {new Date().getFullYear()} | Advanced Multi-Agent AI Orchestration Platform</span>
-            </div>
-          </footer>
-        </div>
+        <AppLayout>
+          <Routes>
+            <Route path="/" element={<HomePage />} />
+            <Route path="/documentation" element={<DocumentationPage />} />
+            {/* Future routes */}
+            <Route path="/chat" element={<div className="p-5 text-center">Chat Interface (Coming Soon)</div>} />
+            <Route path="/observability" element={<div className="p-5 text-center">Observability Dashboard (Coming Soon)</div>} />
+            <Route path="/agent-builder" element={<div className="p-5 text-center">Agent Builder Interface (Coming Soon)</div>} />
+            <Route path="/settings" element={<div className="p-5 text-center">Settings Page (Coming Soon)</div>} />
+            <Route path="/admin/users" element={<div className="p-5 text-center">User Management (Coming Soon)</div>} />
+            <Route path="/admin/system" element={<div className="p-5 text-center">System Settings (Coming Soon)</div>} />
+            <Route path="*" element={<NotFoundPage />} />
+          </Routes>
+        </AppLayout>
       </Router>
     </AppProvider>
   );

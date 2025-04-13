@@ -2,7 +2,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import App from './App';
-import './styles/global.css';
+// Note: We don't need to import global.css separately as it's imported in App.css
 
 // Set data-bs-theme attribute on the html element for dark mode
 document.documentElement.setAttribute('data-bs-theme', 'dark');

@@ -1,199 +1,321 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { v4 as uuidv4 } from 'uuid';
-import { chatService, healthService } from '../api/apiService';
+import React, { createContext, useContext, useReducer, useEffect } from 'react';
+import { healthService, agentService } from '../api/apiService';
 
-// Create context
+// Initial state
+const initialState = {
+  // System state
+  systemStatus: {
+    isHealthy: null,
+    loading: true,
+    error: null,
+    lastChecked: null,
+    metrics: {}
+  },
+  
+  // Agents state
+  agents: {
+    list: [],
+    loading: true,
+    error: null,
+    selected: null
+  },
+  
+  // Chat state
+  chat: {
+    sessionId: null,
+    messages: [],
+    loading: false,
+    error: null,
+    activeAgent: null
+  },
+  
+  // UI state
+  ui: {
+    sidebarOpen: true,
+    theme: 'dark',
+    currentPage: 'home',
+    notifications: []
+  },
+  
+  // User state (for future authentication)
+  user: {
+    authenticated: false,
+    preferences: {}
+  }
+};
+
+// Action types
+const ActionTypes = {
+  SET_SYSTEM_STATUS: 'SET_SYSTEM_STATUS',
+  SET_AGENTS: 'SET_AGENTS',
+  SELECT_AGENT: 'SELECT_AGENT',
+  ADD_CHAT_MESSAGE: 'ADD_CHAT_MESSAGE',
+  SET_CHAT_SESSION: 'SET_CHAT_SESSION',
+  SET_CHAT_LOADING: 'SET_CHAT_LOADING',
+  SET_CHAT_ERROR: 'SET_CHAT_ERROR',
+  TOGGLE_SIDEBAR: 'TOGGLE_SIDEBAR',
+  SET_THEME: 'SET_THEME',
+  SET_CURRENT_PAGE: 'SET_CURRENT_PAGE',
+  ADD_NOTIFICATION: 'ADD_NOTIFICATION',
+  REMOVE_NOTIFICATION: 'REMOVE_NOTIFICATION',
+  SET_USER: 'SET_USER'
+};
+
+// Reducer function
+function appReducer(state, action) {
+  switch (action.type) {
+    case ActionTypes.SET_SYSTEM_STATUS:
+      return {
+        ...state,
+        systemStatus: {
+          ...state.systemStatus,
+          ...action.payload,
+          lastChecked: new Date()
+        }
+      };
+    
+    case ActionTypes.SET_AGENTS:
+      return {
+        ...state,
+        agents: {
+          ...state.agents,
+          list: action.payload.agents,
+          loading: false,
+          error: action.payload.error
+        }
+      };
+    
+    case ActionTypes.SELECT_AGENT:
+      return {
+        ...state,
+        agents: {
+          ...state.agents,
+          selected: action.payload
+        }
+      };
+    
+    case ActionTypes.ADD_CHAT_MESSAGE:
+      return {
+        ...state,
+        chat: {
+          ...state.chat,
+          messages: [...state.chat.messages, action.payload]
+        }
+      };
+    
+    case ActionTypes.SET_CHAT_SESSION:
+      return {
+        ...state,
+        chat: {
+          ...state.chat,
+          sessionId: action.payload,
+          messages: []
+        }
+      };
+    
+    case ActionTypes.SET_CHAT_LOADING:
+      return {
+        ...state,
+        chat: {
+          ...state.chat,
+          loading: action.payload
+        }
+      };
+    
+    case ActionTypes.SET_CHAT_ERROR:
+      return {
+        ...state,
+        chat: {
+          ...state.chat,
+          error: action.payload
+        }
+      };
+    
+    case ActionTypes.TOGGLE_SIDEBAR:
+      return {
+        ...state,
+        ui: {
+          ...state.ui,
+          sidebarOpen: !state.ui.sidebarOpen
+        }
+      };
+    
+    case ActionTypes.SET_THEME:
+      return {
+        ...state,
+        ui: {
+          ...state.ui,
+          theme: action.payload
+        }
+      };
+    
+    case ActionTypes.SET_CURRENT_PAGE:
+      return {
+        ...state,
+        ui: {
+          ...state.ui,
+          currentPage: action.payload
+        }
+      };
+    
+    case ActionTypes.ADD_NOTIFICATION:
+      return {
+        ...state,
+        ui: {
+          ...state.ui,
+          notifications: [...state.ui.notifications, { 
+            id: Date.now(), 
+            ...action.payload 
+          }]
+        }
+      };
+    
+    case ActionTypes.REMOVE_NOTIFICATION:
+      return {
+        ...state,
+        ui: {
+          ...state.ui,
+          notifications: state.ui.notifications.filter(
+            notification => notification.id !== action.payload
+          )
+        }
+      };
+    
+    case ActionTypes.SET_USER:
+      return {
+        ...state,
+        user: {
+          ...state.user,
+          ...action.payload
+        }
+      };
+    
+    default:
+      return state;
+  }
+}
+
+// Create the context
 const AppContext = createContext();
 
-// Custom hook for using the context
-export const useAppContext = () => useContext(AppContext);
-
-export const AppProvider = ({ children }) => {
-  // Chat state
-  const [chatState, setChatState] = useState({
-    messages: [],
-    sessionId: localStorage.getItem('sessionId') || null,
-    isLoading: false,
-    error: null
-  });
+// Context provider component
+export function AppProvider({ children }) {
+  const [state, dispatch] = useReducer(appReducer, initialState);
   
-  // System status state
-  const [systemStatus, setSystemStatus] = useState({
-    isLoading: true,
-    isHealthy: true,
-    data: null,
-    error: null
-  });
-  
-  // Fetch system status on initial load
+  // Load system status on initial render
   useEffect(() => {
-    fetchSystemStatus();
+    async function checkSystemStatus() {
+      try {
+        const response = await healthService.getStatus();
+        dispatch({
+          type: ActionTypes.SET_SYSTEM_STATUS,
+          payload: {
+            isHealthy: response.success && response.data?.health === 'healthy',
+            loading: false,
+            error: response.error || null,
+            metrics: response.data?.metrics || {}
+          }
+        });
+      } catch (error) {
+        dispatch({
+          type: ActionTypes.SET_SYSTEM_STATUS,
+          payload: {
+            isHealthy: false,
+            loading: false,
+            error: error.message
+          }
+        });
+      }
+    }
     
-    // Poll system status every 60 seconds
-    const intervalId = setInterval(fetchSystemStatus, 60000);
+    // Initial check
+    checkSystemStatus();
     
-    return () => {
-      clearInterval(intervalId);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // Set up interval for regular checks (every 30 seconds)
+    const interval = setInterval(checkSystemStatus, 30000);
+    
+    return () => clearInterval(interval);
   }, []);
   
-  // Load conversation history if session ID exists
+  // Load agents on initial render
   useEffect(() => {
-    if (chatState.sessionId) {
-      loadConversationHistory();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [chatState.sessionId]);
-  
-  // Fetch system status
-  const fetchSystemStatus = async () => {
-    try {
-      const response = await healthService.getStatus();
-      
-      if (response.success) {
-        setSystemStatus({
-          isLoading: false,
-          isHealthy: response.data.health === 'healthy',
-          data: response.data,
-          error: null
+    async function loadAgents() {
+      try {
+        const response = await agentService.listAgents();
+        dispatch({
+          type: ActionTypes.SET_AGENTS,
+          payload: {
+            agents: response.success ? response.agents : [],
+            error: response.error || null
+          }
         });
-      } else {
-        throw new Error(response.error || 'Failed to fetch system status');
+      } catch (error) {
+        dispatch({
+          type: ActionTypes.SET_AGENTS,
+          payload: {
+            agents: [],
+            error: error.message
+          }
+        });
       }
-    } catch (error) {
-      console.error('Error fetching system status:', error);
-      setSystemStatus({
-        isLoading: false,
-        isHealthy: false,
-        data: null,
-        error: error.message
-      });
-    }
-  };
-  
-  // Load conversation history
-  const loadConversationHistory = useCallback(async () => {
-    if (!chatState.sessionId) return;
-    
-    setChatState((prev) => ({
-      ...prev,
-      isLoading: true,
-      error: null
-    }));
-    
-    try {
-      const response = await chatService.getChatHistory(chatState.sessionId);
-      
-      if (response.success && response.data.messages) {
-        setChatState((prev) => ({
-          ...prev,
-          messages: response.data.messages,
-          isLoading: false
-        }));
-      } else {
-        throw new Error(response.error || 'Failed to load conversation history');
-      }
-    } catch (error) {
-      console.error('Error loading conversation history:', error);
-      setChatState((prev) => ({
-        ...prev,
-        isLoading: false,
-        error: error.message
-      }));
-    }
-  }, [chatState.sessionId]);
-  
-  // Start new conversation
-  const startNewConversation = () => {
-    const newSessionId = uuidv4();
-    localStorage.setItem('sessionId', newSessionId);
-    
-    setChatState({
-      messages: [],
-      sessionId: newSessionId,
-      isLoading: false,
-      error: null
-    });
-  };
-  
-  // Send message
-  const sendMessage = async (message) => {
-    // Create temporary sessionId if none exists
-    const sessionId = chatState.sessionId || uuidv4();
-    
-    if (!chatState.sessionId) {
-      localStorage.setItem('sessionId', sessionId);
-      setChatState((prev) => ({
-        ...prev,
-        sessionId
-      }));
     }
     
-    // Add user message to state immediately
-    const userMessage = {
-      id: uuidv4(),
-      role: 'user',
-      content: message,
-      timestamp: new Date().toISOString()
-    };
-    
-    setChatState((prev) => ({
-      ...prev,
-      messages: [...prev.messages, userMessage],
-      isLoading: true,
-      error: null
-    }));
-    
-    // Send message to API
-    try {
-      const response = await chatService.sendMessage(message, sessionId);
-      
-      if (response.success && response.data) {
-        // Add assistant message to state
-        const assistantMessage = {
-          id: uuidv4(),
-          role: 'assistant',
-          content: response.data.response,
-          metadata: response.data.metadata || null,
-          timestamp: new Date().toISOString()
-        };
-        
-        setChatState((prev) => ({
-          ...prev,
-          messages: [...prev.messages, assistantMessage],
-          isLoading: false
-        }));
-      } else {
-        throw new Error(response.error || 'Failed to process message');
-      }
-    } catch (error) {
-      console.error('Error sending message:', error);
-      
-      // Add error message to chat
-      const errorMessage = {
-        id: uuidv4(),
-        role: 'system',
-        content: `Error: ${error.message}. Please try again.`,
-        timestamp: new Date().toISOString()
-      };
-      
-      setChatState((prev) => ({
-        ...prev,
-        messages: [...prev.messages, errorMessage],
-        isLoading: false,
-        error: error.message
-      }));
-    }
-  };
+    loadAgents();
+  }, []);
   
-  // Context value to be provided to consumers
+  // Context value
   const contextValue = {
-    chatState,
-    systemStatus,
-    loadConversationHistory,
-    startNewConversation,
-    sendMessage
+    state,
+    dispatch,
+    actions: {
+      setSystemStatus: (status) => dispatch({ 
+        type: ActionTypes.SET_SYSTEM_STATUS, 
+        payload: status 
+      }),
+      selectAgent: (agentId) => dispatch({ 
+        type: ActionTypes.SELECT_AGENT, 
+        payload: agentId 
+      }),
+      addChatMessage: (message) => dispatch({ 
+        type: ActionTypes.ADD_CHAT_MESSAGE, 
+        payload: message 
+      }),
+      setChatSession: (sessionId) => dispatch({ 
+        type: ActionTypes.SET_CHAT_SESSION, 
+        payload: sessionId 
+      }),
+      setChatLoading: (isLoading) => dispatch({ 
+        type: ActionTypes.SET_CHAT_LOADING, 
+        payload: isLoading 
+      }),
+      setChatError: (error) => dispatch({ 
+        type: ActionTypes.SET_CHAT_ERROR, 
+        payload: error 
+      }),
+      toggleSidebar: () => dispatch({ 
+        type: ActionTypes.TOGGLE_SIDEBAR 
+      }),
+      setTheme: (theme) => dispatch({ 
+        type: ActionTypes.SET_THEME, 
+        payload: theme 
+      }),
+      setCurrentPage: (page) => dispatch({ 
+        type: ActionTypes.SET_CURRENT_PAGE, 
+        payload: page 
+      }),
+      addNotification: (notification) => dispatch({ 
+        type: ActionTypes.ADD_NOTIFICATION, 
+        payload: notification 
+      }),
+      removeNotification: (id) => dispatch({ 
+        type: ActionTypes.REMOVE_NOTIFICATION, 
+        payload: id 
+      }),
+      setUser: (user) => dispatch({ 
+        type: ActionTypes.SET_USER, 
+        payload: user 
+      })
+    }
   };
   
   return (
@@ -201,4 +323,15 @@ export const AppProvider = ({ children }) => {
       {children}
     </AppContext.Provider>
   );
-};
+}
+
+// Custom hook to use the app context
+export function useAppContext() {
+  const context = useContext(AppContext);
+  if (!context) {
+    throw new Error('useAppContext must be used within an AppProvider');
+  }
+  return context;
+}
+
+export default AppContext;
