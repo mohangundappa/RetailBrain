@@ -1,6 +1,6 @@
 # Staples Brain
 
-An advanced multi-agent AI orchestration platform for intelligent system management, featuring a modular architecture and comprehensive developer tooling.
+An advanced multi-agent AI orchestration platform featuring intelligent computational interactions with a focus on user-centric design and seamless AI communication.
 
 ## Overview
 
@@ -8,12 +8,34 @@ Staples Brain is an AI super-brain agent system specifically designed for Staple
 
 ## Architecture
 
-The system has a simplified architecture with two main components:
+The system has a clean, decoupled architecture with two completely separate components:
 
-1. **Backend**: Pure FastAPI implementation with no Flask/WSGI compatibility layers
-2. **Frontend**: React-based UI for user interactions
+1. **Backend API**: Pure FastAPI implementation that serves JSON responses only
+2. **Frontend**: React-based UI for user interactions that communicates with the backend via API calls
 
-All services are consolidated within the backend component, maintaining a clear separation through a standardized API gateway serving as the primary entry point for all interactions.
+This architecture maintains a strict separation of concerns:
+- Backend focuses solely on providing API endpoints with no UI components
+- Frontend handles all user interface rendering and state management
+- Communication between frontend and backend happens exclusively via HTTP API calls
+
+### Backend API Design
+
+The backend API follows REST principles with these key characteristics:
+- All API endpoints are prefixed with `/api/v1/`
+- API documentation is available at `/api/v1/docs`
+- CORS support allows frontend to communicate from any origin during development
+- No static file serving (except API documentation)
+- JSON-only responses with consistent structure
+- Standard error handling and status codes
+
+### Frontend React Application
+
+The React frontend is built with modern best practices:
+- Context-based state management (React Context API)
+- Responsive components using Bootstrap
+- Custom hooks for API communication and business logic
+- Clean component hierarchy and composition
+- Consistent styling with CSS variables
 
 ### Application Flow
 
@@ -23,8 +45,6 @@ All services are consolidated within the backend component, maintaining a clear 
 4. **Agent Framework**: Specialized agents provide domain-specific handling of user requests.
 5. **Memory System**: The mem0 memory system provides multi-level memory storage (working, short-term, long-term) with both Redis and PostgreSQL backends.
 6. **State Persistence**: Conversation state is maintained for context-aware interactions.
-
-For technical details on the backend architecture, see [backend/README.md](backend/README.md).
 
 ## Key Technologies
 
@@ -92,13 +112,45 @@ staples-brain/
 
 ## Running the Application
 
-```bash
-# Start the application
-python run.py
+### Backend API Server
 
-# Run tests
+```bash
+# Start the backend API server
+python run.py
+```
+
+The backend API will be available at http://localhost:5000 with API documentation at http://localhost:5000/api/v1/docs
+
+### Frontend Development Server
+
+```bash
+# Install frontend dependencies
+cd frontend
+npm install
+
+# Start the frontend development server
+npm start
+```
+
+The frontend development server will be available at http://localhost:3000 and will automatically proxy API requests to the backend.
+
+### Running Tests
+
+```bash
+# Run backend tests
 python run_tests.py
 ```
+
+## Development Setup
+
+1. Start the backend API server using `python run.py`
+2. In a separate terminal, start the frontend development server:
+   ```bash
+   cd frontend
+   npm install  # Only needed first time
+   npm start
+   ```
+3. Access the frontend at http://localhost:3000
 
 ## Environment Variables
 
@@ -106,7 +158,7 @@ The application requires several environment variables to be set. See `.env.exam
 
 ## API Reference
 
-API documentation is available at `/static/documentation` when the server is running.
+API documentation is available at http://localhost:5000/api/v1/docs when the backend server is running.
 
 ## Contributing
 

@@ -1,255 +1,172 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAppContext } from '../context/AppContext';
-import { chatService, agentService } from '../api/apiService';
+import apiService from '../api/apiService';
 
 /**
- * Custom hook for managing chat sessions and interactions with agents
- * Provides a comprehensive interface for chat functionality with automatic history loading
+ * Custom hook for chat functionality
  * 
- * @param {String} initialSessionId - Optional initial session ID
- * @param {String} initialAgentId - Optional initial agent ID
- * @returns {Object} - Chat state and control functions
+ * @returns {Object} Chat utilities and state
  */
-const useChat = (initialSessionId = null, initialAgentId = null) => {
-  const [sessionId, setSessionId] = useState(initialSessionId);
+const useChat = () => {
+  const { setLoading, addNotification, currentConversation, setCurrentConversation } = useAppContext();
   const [messages, setMessages] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [sending, setSending] = useState(false);
-  const [error, setError] = useState(null);
-  const [selectedAgent, setSelectedAgent] = useState(initialAgentId);
-  const [agents, setAgents] = useState([]);
-  const [agentsLoading, setAgentsLoading] = useState(false);
+  const [isSending, setIsSending] = useState(false);
   
-  const { actions } = useAppContext();
-
-  // Load available agents
-  const loadAgents = useCallback(async () => {
-    setAgentsLoading(true);
-    
-    try {
-      const result = await agentService.listAgents();
-      
-      if (result.success && result.agents) {
-        setAgents(result.agents);
-      } else {
-        setError(result.error || 'Failed to load agents');
-        actions.addNotification({
-          type: 'error',
-          title: 'Agent Loading Error',
-          message: result.error || 'Failed to load agents',
-          autoDismiss: true
-        });
-      }
-    } catch (err) {
-      setError(err.message);
-      actions.addNotification({
-        type: 'error',
-        title: 'Agent Loading Error',
-        message: err.message,
-        autoDismiss: true
-      });
-    } finally {
-      setAgentsLoading(false);
+  /**
+   * Load conversation history from API
+   */
+  const loadConversation = useCallback(async (conversationId) => {
+    if (!conversationId && !currentConversation?.id) {
+      return false;
     }
-  }, [actions]);
-
-  // Load chat history
-  const loadChatHistory = useCallback(async (sid) => {
-    if (!sid) return;
     
-    setLoading(true);
+    const targetId = conversationId || currentConversation.id;
     
     try {
-      const result = await chatService.getChatHistory(sid);
+      setLoading(true);
+      const response = await apiService.apiCall(
+        apiService.getConversationHistory,
+        targetId
+      );
       
-      if (result.success && result.data?.messages) {
-        setMessages(result.data.messages);
-      } else {
-        setError(result.error || 'Failed to load chat history');
+      if (response.success && response.data) {
+        setMessages(response.data.messages || []);
+        return true;
       }
-    } catch (err) {
-      setError(err.message);
+      return false;
+    } catch (error) {
+      console.error('Error loading conversation:', error);
+      addNotification({
+        title: 'Error',
+        message: 'Failed to load conversation history',
+        type: 'error'
+      });
+      return false;
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [currentConversation, setLoading, addNotification]);
 
-  // Start a new chat session
-  const startSession = useCallback(async (agentId = null) => {
-    setLoading(true);
-    
+  /**
+   * Start a new conversation
+   */
+  const startConversation = useCallback(async () => {
     try {
-      const result = await chatService.startSession(agentId || selectedAgent);
+      setLoading(true);
+      const response = await apiService.apiCall(apiService.startConversation);
       
-      if (result.success && result.data?.session_id) {
-        setSessionId(result.data.session_id);
-        setMessages([]);
-        setError(null);
-        return result.data.session_id;
-      } else {
-        setError(result.error || 'Failed to start chat session');
-        actions.addNotification({
-          type: 'error',
-          title: 'Session Error',
-          message: result.error || 'Failed to start chat session',
-          autoDismiss: true
-        });
-        return null;
+      if (response.success && response.data) {
+        setCurrentConversation(response.data);
+        setMessages([
+          {
+            id: 'welcome',
+            role: 'assistant',
+            content: 'Hello! I am Staples Brain, your AI assistant. How can I help you today?',
+            timestamp: new Date().toISOString()
+          }
+        ]);
+        return response.data;
       }
-    } catch (err) {
-      setError(err.message);
-      actions.addNotification({
-        type: 'error',
-        title: 'Session Error',
-        message: err.message,
-        autoDismiss: true
+      throw new Error('Failed to start conversation');
+    } catch (error) {
+      console.error('Error starting conversation:', error);
+      addNotification({
+        title: 'Error',
+        message: 'Failed to start a new conversation',
+        type: 'error'
       });
       return null;
     } finally {
       setLoading(false);
     }
-  }, [selectedAgent, actions]);
+  }, [setCurrentConversation, setLoading, addNotification]);
 
-  // End the current chat session
-  const endSession = useCallback(async () => {
-    if (!sessionId) return;
-    
-    setLoading(true);
-    
-    try {
-      const result = await chatService.endSession(sessionId);
-      
-      if (result.success) {
-        setSessionId(null);
-        setMessages([]);
-      } else {
-        setError(result.error || 'Failed to end chat session');
-        actions.addNotification({
-          type: 'error',
-          title: 'Session Error',
-          message: result.error || 'Failed to end chat session',
-          autoDismiss: true
-        });
-      }
-    } catch (err) {
-      setError(err.message);
-      actions.addNotification({
-        type: 'error',
-        title: 'Session Error',
-        message: err.message,
-        autoDismiss: true
-      });
-    } finally {
-      setLoading(false);
-    }
-  }, [sessionId, actions]);
-
-  // Send a message in the current session
-  const sendMessage = useCallback(async (messageText, context = null) => {
-    if (!sessionId) {
-      // Start a new session if one doesn't exist
-      const newSessionId = await startSession();
-      if (!newSessionId) return;
+  /**
+   * Send a message in the current conversation
+   */
+  const sendMessage = useCallback(async (content) => {
+    if (!content.trim() || !currentConversation?.id) {
+      return false;
     }
     
-    setSending(true);
-    
-    // Optimistically add user message to the UI
-    const userMessage = {
-      id: Date.now().toString(),
-      content: messageText,
+    const tempMessage = {
+      id: `temp-${Date.now()}`,
       role: 'user',
-      timestamp: new Date().toISOString()
+      content,
+      timestamp: new Date().toISOString(),
+      pending: true
     };
     
-    setMessages(prevMessages => [...prevMessages, userMessage]);
+    setMessages(prev => [...prev, tempMessage]);
+    setIsSending(true);
     
     try {
-      const result = await chatService.sendMessage(messageText, sessionId, context);
+      const response = await apiService.apiCall(
+        apiService.sendMessage,
+        currentConversation.id,
+        content
+      );
       
-      if (result.success && result.data?.response) {
-        // Add system response to messages
-        const systemMessage = {
-          id: result.data.message_id || Date.now().toString() + '-response',
-          content: result.data.response,
-          role: 'system',
-          timestamp: new Date().toISOString(),
-          metadata: result.data.metadata || {}
-        };
+      if (response.success && response.data) {
+        // Update temp message with real message
+        setMessages(prev => 
+          prev.map(msg => 
+            msg.id === tempMessage.id 
+              ? { ...response.data.userMessage, pending: false } 
+              : msg
+          )
+        );
         
-        setMessages(prevMessages => [...prevMessages, systemMessage]);
-        setError(null);
-        return systemMessage;
-      } else {
-        setError(result.error || 'Failed to send message');
-        actions.addNotification({
-          type: 'error',
-          title: 'Message Error',
-          message: result.error || 'Failed to send message',
-          autoDismiss: true
-        });
-        return null;
+        // Add assistant response if available
+        if (response.data.assistantMessage) {
+          setMessages(prev => [...prev, response.data.assistantMessage]);
+        }
+        
+        return true;
       }
-    } catch (err) {
-      setError(err.message);
-      actions.addNotification({
-        type: 'error',
-        title: 'Message Error',
-        message: err.message,
-        autoDismiss: true
+      
+      throw new Error('Failed to send message');
+    } catch (error) {
+      console.error('Error sending message:', error);
+      
+      // Mark message as failed
+      setMessages(prev => 
+        prev.map(msg => 
+          msg.id === tempMessage.id 
+            ? { ...msg, pending: false, failed: true } 
+            : msg
+        )
+      );
+      
+      addNotification({
+        title: 'Error',
+        message: 'Failed to send message',
+        type: 'error'
       });
-      return null;
+      
+      return false;
     } finally {
-      setSending(false);
+      setIsSending(false);
     }
-  }, [sessionId, startSession, actions]);
+  }, [currentConversation, addNotification]);
 
-  // Select an agent
-  const selectAgent = useCallback((agentId) => {
-    setSelectedAgent(agentId);
-    
-    // Reset the session when changing agents
-    if (sessionId) {
-      endSession().then(() => {
-        startSession(agentId);
-      });
-    }
-  }, [sessionId, endSession, startSession]);
-
-  // Load agents on mount
+  // Initialize chat when hook is first used
   useEffect(() => {
-    loadAgents();
-  }, [loadAgents]);
-
-  // Load chat history when session ID changes
-  useEffect(() => {
-    if (sessionId) {
-      loadChatHistory(sessionId);
+    if (currentConversation?.id) {
+      loadConversation();
+    } else {
+      startConversation();
     }
-  }, [sessionId, loadChatHistory]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return {
-    // State
-    sessionId,
     messages,
-    loading,
-    sending,
-    error,
-    selectedAgent,
-    agents,
-    agentsLoading,
-    
-    // Actions
+    isSending,
     sendMessage,
-    startSession,
-    endSession,
-    selectAgent,
-    loadAgents,
-    loadChatHistory,
-    
-    // Direct state setters
-    setMessages,
-    setError
+    startConversation,
+    loadConversation,
+    currentConversation
   };
 };
 
