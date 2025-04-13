@@ -95,6 +95,7 @@ const AgentOverview = () => {
                     <tr>
                       <th>Name</th>
                       <th>Type</th>
+                      <th>Category</th>
                       <th>Status</th>
                       <th>Actions</th>
                     </tr>
@@ -102,8 +103,35 @@ const AgentOverview = () => {
                   <tbody>
                     {agents.map((agent, index) => (
                       <tr key={agent.id || index}>
-                        <td>{agent.name}</td>
+                        <td>
+                          {agent.name}
+                          {agent.is_system && (
+                            <Badge bg="info" className="ms-2">System</Badge>
+                          )}
+                        </td>
                         <td>{agent.type || 'Standard'}</td>
+                        <td>
+                          {(() => {
+                            const type = agent.type?.toLowerCase() || '';
+                            if (type.includes('package') || type.includes('track')) {
+                              return 'Package Tracking';
+                            } else if (type.includes('password') || type.includes('reset')) {
+                              return 'Account Management';
+                            } else if (type.includes('store') || type.includes('locat')) {
+                              return 'Store Information';
+                            } else if (type.includes('product') || type.includes('info')) {
+                              return 'Product Support';
+                            } else if (type.includes('return')) {
+                              return 'Customer Support';
+                            } else if (type.includes('policy') || type.includes('guard')) {
+                              return 'Policy Enforcement';
+                            } else if (type.includes('llm') || type.includes('conversation')) {
+                              return 'General Conversation';
+                            } else {
+                              return 'Other';
+                            }
+                          })()}
+                        </td>
                         <td>{getStatusBadge(agent.status)}</td>
                         <td>
                           <Button 
