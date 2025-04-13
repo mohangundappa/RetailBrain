@@ -1,0 +1,12 @@
+sation Agent: General Conversation Agent
+2025-04-13 20:03:41,833 - backend.orchestration.agent_router - INFO - Selected general conversation agent with confidence 0.95
+2025-04-13 20:03:41,833 - backend.services.optimized_brain_service - INFO - Agent selection took 0.00s
+2025-04-13 20:03:41,834 - backend.services.optimized_brain_service - INFO - Selected agent: General Conversation Agent with confidence 0.95
+2025-04-13 20:03:41,834 - backend.services.optimized_brain_service - INFO - Generating response for agent General Conversation Agent with entities: {}
+2025-04-13 20:03:41,843 - backend.services.optimized_brain_service - INFO - Calling OpenAI for General Conversation Agent with message: password reset
+2025-04-13 20:03:44,773 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-04-13 20:03:44,774 - backend.services.optimized_brain_service - INFO - Generated response via LLM for General Conversation Agent: I'm here to help with your password reset! If you're having trouble logging into your Staples accoun...
+2025-04-13 20:03:44,774 - backend.services.optimized_brain_service - INFO - Applying guardrails using Guardrails Agent
+2025-04-13 20:03:44,775 - backend.services.optimized_brain_service - INFO - Generating response for agent Guardrails Agent with entities: {'original_response': 'I\'m here to help with your password reset! If you\'re having trouble logging into your Staples account, you can reset your password by following these steps:\n\n1. Go to the Staples login page.\n2. Click on the "Forgot Password?" link.\n3. Enter the email address associated with your account.\n4. Check your email for a password reset link and follow the instructions provided.\n\nIf you encounter any issues during this process, feel free to let me know, and I\'ll be happy to assist further. \n\n- Staples Assistant', 'user_query': 'password reset', 'agent_name': 'General Conversation Agent'}
+2025-04-13 20:03:44,775 - backend.services.optimized_brain_service - INFO - Guardrails processing response from General Conversation Agent
+2025-04-13 20:03:44,775 - backend.services.optimized_brain_service - INFO - Applied guardrails to response
