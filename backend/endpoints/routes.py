@@ -211,18 +211,20 @@ async def list_agents():
             
         response = await _brain.list_agents()
         
-        # Extract just the agent names from the detailed response
-        if response and "agents" in response and isinstance(response["agents"], list):
-            agent_names = [agent.get("name", "") for agent in response["agents"]]
-            return {
-                "success": True,
-                "agents": agent_names
-            }
+        # Process the response to match the expected model format
+        if response and "success" in response and response["success"]:
+            # Check if 'count' exists in response (from GraphBrainService)
+            # but 'metadata' is what's expected in the API model
+            if "count" in response and "metadata" not in response:
+                response["metadata"] = {"count": response.pop("count")}
+            
+            return response
         
         # Fallback to empty list if structure is unexpected
         return {
             "success": True,
-            "agents": []
+            "agents": [],
+            "metadata": {"count": 0}
         }
         
     except Exception as e:
