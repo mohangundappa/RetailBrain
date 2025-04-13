@@ -41,7 +41,7 @@ class OptimizedBrainService:
         Args:
             db_session: Database session
             config: Application configuration
-            memory_service: Optional memory service
+            memory_service: Optional memory service (should be a mem0 instance)
         """
         self.db_session = db_session
         self.config = config or Config()
@@ -283,7 +283,7 @@ class OptimizedBrainService:
         result: Dict[str, Any]
     ) -> None:
         """
-        Update conversation memory.
+        Update conversation memory using the mem0 memory system.
         
         Args:
             session_id: Session ID
@@ -295,20 +295,69 @@ class OptimizedBrainService:
             return
             
         try:
-            # Store information about this interaction
-            await self.memory_service.update_conversation(
-                session_id=session_id,
-                updates={
-                    "last_message": message,
-                    "last_agent_id": agent.id,
-                    "last_agent_name": agent.name,
-                    "current_topic": message,
-                    "last_response": result.get("response", ""),
-                    "last_entities": result.get("entities", {})
-                }
+            # Store conversation data in different memory types
+            # 1. Last message and agent information in working memory (short TTL)
+            await self.memory_service.store(
+                namespace=f"conversation:{session_id}",
+                key="last_interaction",
+                value={
+                    "message": message,
+                    "agent_id": agent.id,
+                    "agent_name": agent.name,
+                    "response": result.get("response", ""),
+                    "timestamp": __import__('time').time()
+                },
+                memory_type="working"  # Short TTL (5 minutes)
             )
+            
+            # 2. Current topic in short-term memory (1-hour TTL)
+            await self.memory_service.store(
+                namespace=f"conversation:{session_id}",
+                key="current_topic", 
+                value=message,
+                memory_type="short_term"  # Longer TTL (1 hour)
+            )
+            
+            # 3. Extracted entities in short-term memory
+            if result.get("entities"):
+                await self.memory_service.store(
+                    namespace=f"conversation:{session_id}",
+                    key="entities",
+                    value=result.get("entities", {}),
+                    memory_type="short_term"
+                )
+                
+            # 4. Add message to conversation history in long-term memory
+            await self.memory_service.store(
+                namespace=f"history:{session_id}",
+                key=f"message:{__import__('time').time()}",
+                value={
+                    "type": "user",
+                    "content": message,
+                    "timestamp": __import__('time').time()
+                },
+                memory_type="long_term"  # Persistent
+            )
+            
+            # 5. Add response to conversation history in long-term memory
+            await self.memory_service.store(
+                namespace=f"history:{session_id}",
+                key=f"response:{__import__('time').time()}",
+                value={
+                    "type": "agent",
+                    "agent_id": agent.id,
+                    "agent_name": agent.name,
+                    "content": result.get("response", ""),
+                    "entities": result.get("entities", {}),
+                    "timestamp": __import__('time').time()
+                },
+                memory_type="long_term"  # Persistent
+            )
+            
+            logger.info(f"Updated memory for session {session_id} with agent {agent.name}")
+            
         except Exception as e:
-            logger.error(f"Error updating memory: {str(e)}")
+            logger.error(f"Error updating memory: {str(e)}", exc_info=True)
             
     async def execute_agent(
         self,

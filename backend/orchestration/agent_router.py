@@ -36,7 +36,7 @@ class OptimizedAgentRouter:
         Args:
             agent_vector_store: Vector store for agent embeddings
             embedding_service: Service for generating embeddings
-            memory_service: Optional service for conversation memory
+            memory_service: Optional service for conversation memory (mem0 instance)
         """
         self.agent_vector_store = agent_vector_store
         self.embedding_service = embedding_service
