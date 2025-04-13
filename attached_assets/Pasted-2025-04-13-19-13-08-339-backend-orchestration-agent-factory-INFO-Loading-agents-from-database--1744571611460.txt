@@ -1,0 +1,27 @@
+2025-04-13 19:13:08,339 - backend.orchestration.agent_factory - INFO - Loading agents from database...
+2025-04-13 19:13:08,934 - backend.orchestration.agent_factory - ERROR - Error converting agent General Conversation Agent: greenlet_spawn has not been called; can't call await_only() here. Was IO attempted in an unexpected place? (Background on this error at: https://sqlalche.me/e/20/xd2s)
+2025-04-13 19:13:08,935 - backend.orchestration.agent_factory - ERROR - Error converting agent Guardrails Agent: greenlet_spawn has not been called; can't call await_only() here. Was IO attempted in an unexpected place? (Background on this error at: https://sqlalche.me/e/20/xd2s)
+2025-04-13 19:13:08,935 - backend.orchestration.agent_factory - ERROR - Error converting agent Package Tracking Agent: greenlet_spawn has not been called; can't call await_only() here. Was IO attempted in an unexpected place? (Background on this error at: https://sqlalche.me/e/20/xd2s)
+2025-04-13 19:13:08,936 - backend.orchestration.agent_factory - ERROR - Error converting agent Product Information Agent: greenlet_spawn has not been called; can't call await_only() here. Was IO attempted in an unexpected place? (Background on this error at: https://sqlalche.me/e/20/xd2s)
+2025-04-13 19:13:08,936 - backend.orchestration.agent_factory - ERROR - Error converting agent Reset Password Agent: greenlet_spawn has not been called; can't call await_only() here. Was IO attempted in an unexpected place? (Background on this error at: https://sqlalche.me/e/20/xd2s)
+2025-04-13 19:13:08,937 - backend.orchestration.agent_factory - ERROR - Error converting agent Returns Processing Agent: greenlet_spawn has not been called; can't call await_only() here. Was IO attempted in an unexpected place? (Background on this error at: https://sqlalche.me/e/20/xd2s)
+2025-04-13 19:13:08,937 - backend.orchestration.agent_factory - ERROR - Error converting agent Store Locator Agent: greenlet_spawn has not been called; can't call await_only() here. Was IO attempted in an unexpected place? (Background on this error at: https://sqlalche.me/e/20/xd2s)
+2025-04-13 19:13:08,937 - backend.orchestration.agent_factory - INFO - Loaded 0 agents from database into vector store
+2025-04-13 19:13:08,937 - backend.services.optimized_brain_service - INFO - Loaded 0 agents from database/test data
+2025-04-13 19:13:08,937 - backend.services.optimized_brain_service - INFO - Vector store contains 0 agents
+2025-04-13 19:13:08,937 - backend.services.optimized_brain_service - WARNING - General Conversation Agent not found in vector store
+2025-04-13 19:13:08,937 - backend.services.optimized_brain_service - WARNING - Guardrails Agent not found in vector store
+2025-04-13 19:13:08,937 - backend.services.optimized_brain_service - INFO - Optimized brain service initialized successfully
+2025-04-13 19:13:08,937 - backend.services.optimized_dependencies - INFO - OptimizedBrainService initialized successfully
+2025-04-13 19:13:08,939 - backend.endpoints.optimized_chat - INFO - Chat request: Hi (session: sess_abcdef)
+2025-04-13 19:13:08,939 - backend.orchestration.agent_router - INFO - Starting route_and_prepare for query: Hi...
+2025-04-13 19:13:08,939 - backend.orchestration.agent_router - INFO - Vector store contains 0 agents
+2025-04-13 19:13:08,939 - backend.orchestration.agent_router - INFO - Query seems conversational: Hi
+2025-04-13 19:13:08,939 - backend.orchestration.agent_vector_store - INFO - Keyword prefilter found 0 agents for: Hi...
+2025-04-13 19:13:08,939 - backend.orchestration.agent_router - INFO - No keyword matches, using full semantic search
+2025-04-13 19:13:08,939 - backend.orchestration.agent_vector_store - WARNING - No agents indexed in the vector store
+2025-04-13 19:13:08,939 - backend.orchestration.agent_router - WARNING - No suitable agent found for query
+2025-04-13 19:13:08,939 - backend.orchestration.agent_router - WARNING - No agent found for query: Hi...
+2025-04-13 19:13:08,941 - backend.services.optimized_brain_service - INFO - Agent selection took 0.00s
+2025-04-13 19:13:08,941 - backend.services.optimized_brain_service - INFO - Selected agent: None with confidence 0.00
+INFO:     127.0.0.1:38194 - "POST /api/v1/chat HTTP/1.1" 200 OK
