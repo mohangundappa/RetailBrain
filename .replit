@@ -35,6 +35,18 @@ task = "shell.exec"
 args = "python run.py"
 waitForPort = 5000
 
+[[workflows.workflow]]
+name = "Start frontend"
+author = "agent"
+
+[workflows.workflow.metadata]
+agentRequireRestartOnSave = false
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd frontend && node serve.js"
+waitForPort = 3001
+
 [[ports]]
 localPort = 3000
 externalPort = 3000
