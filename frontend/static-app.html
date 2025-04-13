@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Staples Brain Dashboard</title>
+    <link href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css" rel="stylesheet">
+    <script src="https://unpkg.com/feather-icons"></script>
+    <style>
+        body {
+            background-color: #1e1e1e;
+            color: #f5f5f5;
+        }
+        .sidebar {
+            background-color: #252526;
+            min-height: 100vh;
+        }
+        .nav-link {
+            color: #cccccc;
+        }
+        .nav-link:hover, .nav-link.active {
+            color: white;
+            background-color: #37373d;
+        }
+        .card {
+            background-color: #2d2d2d;
+            border: 1px solid #3e3e42;
+        }
+        .main-content {
+            padding: 20px;
+        }
+        .top-navbar {
+            background-color: #252526;
+            border-bottom: 1px solid #3e3e42;
+        }
+        .agent-status {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 5px;
+        }
+        .status-active {
+            background-color: #28a745;
+        }
+        .status-inactive {
+            background-color: #dc3545;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="row">
+            <!-- Sidebar -->
+            <div class="col-md-2 d-none d-md-block sidebar p-0">
+                <div class="d-flex flex-column p-3">
+                    <h5 class="mb-4 text-center">Staples Brain</h5>
+                    <ul class="nav flex-column">
+                        <li class="nav-item mb-2">
+                            <a href="#dashboard" class="nav-link active rounded">
+                                <i data-feather="home"></i> Dashboard
+                            </a>
+                        </li>
+                        <li class="nav-item mb-2">
+                            <a href="#chat" class="nav-link rounded">
+                                <i data-feather="message-square"></i> Chat
+                            </a>
+                        </li>
+                        <li class="nav-item mb-2">
+                            <a href="#agents" class="nav-link rounded">
+                                <i data-feather="users"></i> Agents
+                            </a>
+                        </li>
+                        <li class="nav-item mb-2">
+                            <a href="#analytics" class="nav-link rounded">
+                                <i data-feather="bar-chart-2"></i> Analytics
+                            </a>
+                        </li>
+                        <li class="nav-item mb-2">
+                            <a href="#settings" class="nav-link rounded">
+                                <i data-feather="settings"></i> Settings
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Main content -->
+            <div class="col-md-10 ms-sm-auto px-4 main-content">
+                <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                    <h1 class="h2">Dashboard</h1>
+                    <div>
+                        <span class="badge bg-primary">Environment: Development</span>
+                    </div>
+                </div>
+
+                <!-- Agent Stats -->
+                <div class="row mb-4">
+                    <div class="col-md-3 mb-4">
+                        <div class="card">
+                            <div class="card-body">
+                                <h5 class="card-title">Total Agents</h5>
+                                <p class="card-text h2" id="total-agents">0</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-4">
+                        <div class="card">
+                            <div class="card-body">
+                                <h5 class="card-title">Active Agents</h5>
+                                <p class="card-text h2" id="active-agents">0</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-4">
+                        <div class="card">
+                            <div class="card-body">
+                                <h5 class="card-title">Total Conversations</h5>
+                                <p class="card-text h2">121</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-4">
+                        <div class="card">
+                            <div class="card-body">
+                                <h5 class="card-title">Memory Usage</h5>
+                                <p class="card-text h2">78%</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Agent List -->
+                <div class="row">
+                    <div class="col-md-12">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5>Available Agents</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-dark">
+                                        <thead>
+                                            <tr>
+                                                <th>Status</th>
+                                                <th>Name</th>
+                                                <th>Type</th>
+                                                <th>Version</th>
+                                                <th>Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="agent-table-body">
+                                            <!-- Agents will be loaded here -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Initialize Feather icons
+        document.addEventListener('DOMContentLoaded', function() {
+            feather.replace();
+            
+            // Fetch agents from the API
+            fetchAgents();
+        });
+
+        function fetchAgents() {
+            // Get the current host (excluding the port) and replace with the API port
+            const apiBaseUrl = window.location.protocol + '//' + window.location.hostname + ':5000';
+            
+            fetch(`${apiBaseUrl}/api/v1/agents`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        displayAgents(data.agents);
+                        updateAgentStats(data.agents);
+                    } else {
+                        console.error('Error fetching agents:', data.error);
+                        // Display placeholder if API fails
+                        displayPlaceholderAgents();
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching agents:', error);
+                    // Display placeholder if API fails
+                    displayPlaceholderAgents();
+                });
+        }
+        
+        function displayPlaceholderAgents() {
+            // Show some placeholder agents if the API is not available
+            const placeholderAgents = [
+                { name: 'Package Tracking', status: 'active', type: 'Customer Support', version: '1.0' },
+                { name: 'Reset Password', status: 'active', type: 'Account Management', version: '1.0' },
+                { name: 'Store Locator', status: 'active', type: 'Information', version: '1.0' },
+                { name: 'Product Info', status: 'inactive', type: 'Product Support', version: '1.0' },
+                { name: 'Returns Processing', status: 'active', type: 'Customer Support', version: '1.0' }
+            ];
+            
+            displayAgents(placeholderAgents);
+            updateAgentStats(placeholderAgents);
+        }
+
+        function displayAgents(agents) {
+            const tableBody = document.getElementById('agent-table-body');
+            tableBody.innerHTML = '';
+            
+            agents.forEach(agent => {
+                const row = document.createElement('tr');
+                
+                const statusCell = document.createElement('td');
+                const statusDot = document.createElement('span');
+                statusDot.className = `agent-status ${agent.status === 'active' ? 'status-active' : 'status-inactive'}`;
+                statusCell.appendChild(statusDot);
+                statusCell.appendChild(document.createTextNode(agent.status || 'Unknown'));
+                
+                const nameCell = document.createElement('td');
+                nameCell.textContent = agent.name;
+                
+                const typeCell = document.createElement('td');
+                typeCell.textContent = agent.type || 'Standard';
+                
+                const versionCell = document.createElement('td');
+                versionCell.textContent = agent.version || '1.0';
+                
+                const actionsCell = document.createElement('td');
+                const viewBtn = document.createElement('button');
+                viewBtn.className = 'btn btn-sm btn-outline-info me-2';
+                viewBtn.textContent = 'View';
+                
+                const testBtn = document.createElement('button');
+                testBtn.className = 'btn btn-sm btn-outline-primary';
+                testBtn.textContent = 'Test';
+                
+                actionsCell.appendChild(viewBtn);
+                actionsCell.appendChild(testBtn);
+                
+                row.appendChild(statusCell);
+                row.appendChild(nameCell);
+                row.appendChild(typeCell);
+                row.appendChild(versionCell);
+                row.appendChild(actionsCell);
+                
+                tableBody.appendChild(row);
+            });
+        }
+
+        function updateAgentStats(agents) {
+            document.getElementById('total-agents').textContent = agents.length;
+            
+            const activeAgents = agents.filter(agent => agent.status === 'active').length;
+            document.getElementById('active-agents').textContent = activeAgents;
+        }
+    </script>
+</body>
+</html>
