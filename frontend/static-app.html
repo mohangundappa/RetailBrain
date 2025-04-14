@@ -389,6 +389,13 @@
                         })
                         .catch(error => {
                             console.error('Error fetching agents from API:', error);
+                            // Add more detailed error information
+                            console.error('Error details:', {
+                                message: error.message,
+                                name: error.name,
+                                url: apiUrl + cacheBuster,
+                                stack: error.stack
+                            });
                             resolve(false);
                         });
                 } catch (error) {
