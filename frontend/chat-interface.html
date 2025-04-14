@@ -808,6 +808,9 @@
                     conversation_id: currentConversationId
                 };
                 
+                // Log request details
+                console.log('Sending chat message to API:', requestData);
+                
                 // Make the actual API call to the backend
                 fetch('/api/v1/chat', {
                     method: 'POST',

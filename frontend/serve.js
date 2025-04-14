@@ -19,6 +19,9 @@ const server = http.createServer((req, res) => {
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   
+  // Enhance logging for debugging
+  console.log(`Request received: ${req.method} ${req.url}`);
+  
   // Handle OPTIONS request
   if (req.method === 'OPTIONS') {
     res.writeHead(200);
@@ -28,6 +31,7 @@ const server = http.createServer((req, res) => {
   
   // Serve the dashboard
   if (req.url === '/' || req.url === '/index.html') {
+    console.log('Serving dashboard page');
     fs.readFile(path.join(__dirname, 'static-app.html'), (err, data) => {
       if (err) {
         res.writeHead(500);
@@ -43,6 +47,7 @@ const server = http.createServer((req, res) => {
   
   // Serve the context-aware chat interface
   if (req.url === '/chat' || req.url === '/chat.html') {
+    console.log('Serving chat interface page');
     fs.readFile(path.join(__dirname, 'chat-interface.html'), (err, data) => {
       if (err) {
         res.writeHead(500);
@@ -80,15 +85,21 @@ const server = http.createServer((req, res) => {
     
     console.log(`Proxying API request to ${backendHost}:${backendPort}${req.url}`);
     
-    // Copy headers from original request
-    const headers = {...req.headers};
+    // Copy headers from original request but clean them up
+    const headers = {};
+    for (const [key, value] of Object.entries(req.headers)) {
+      // Skip headers that might cause issues when proxying
+      if (['host', 'connection', 'origin', 'referer'].includes(key.toLowerCase())) {
+        continue;
+      }
+      headers[key] = value;
+    }
     
-    // Override specific headers needed for the proxy
+    // Set clean headers needed for the proxy
     headers['host'] = `${backendHost}:${backendPort}`;
-    headers['origin'] = `http://${backendHost}:${backendPort}`;
-    headers['content-type'] = headers['content-type'] || 'application/json';
-    headers['accept'] = 'application/json';
     headers['connection'] = 'keep-alive';
+    headers['content-type'] = 'application/json';
+    headers['accept'] = 'application/json';
     
     // Proxy request to backend API server
     const options = {
