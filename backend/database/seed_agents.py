@@ -48,6 +48,33 @@ async def check_agent_exists(session: AsyncSession, agent_type: str) -> bool:
     return result.scalar_one_or_none() is not None
 
 
+async def check_extraction_pattern_exists(
+    session: AsyncSession, 
+    entity_id: uuid.UUID, 
+    pattern_type: str, 
+    pattern_value: str
+) -> bool:
+    """
+    Check if an entity extraction pattern already exists.
+    
+    Args:
+        session: An async database session
+        entity_id: The entity ID
+        pattern_type: The pattern type (regex, example, etc.)
+        pattern_value: The pattern value
+        
+    Returns:
+        True if the pattern exists, False otherwise
+    """
+    query = select(EntityExtractionPattern).where(
+        EntityExtractionPattern.entity_id == entity_id,
+        EntityExtractionPattern.pattern_type == pattern_type,
+        EntityExtractionPattern.pattern_value == pattern_value
+    )
+    result = await session.execute(query)
+    return result.scalar_one_or_none() is not None
+
+
 async def seed_package_tracking_agent(session: AsyncSession) -> None:
     """
     Seed the database with the package tracking agent.
@@ -263,7 +290,19 @@ async def seed_package_tracking_agent(session: AsyncSession) -> None:
         )
     ]
     for pattern in extraction_patterns:
-        session.add(pattern)
+        # Check if pattern already exists
+        pattern_exists = await check_extraction_pattern_exists(
+            session, 
+            pattern.entity_id, 
+            pattern.pattern_type, 
+            pattern.pattern_value
+        )
+        
+        if not pattern_exists:
+            session.add(pattern)
+            logger.info(f"Added extraction pattern: {pattern.pattern_type} for entity {pattern.entity_id}")
+        else:
+            logger.info(f"Extraction pattern already exists: {pattern.pattern_type} for entity {pattern.entity_id}")
 
 
 async def seed_reset_password_agent(session: AsyncSession) -> None:

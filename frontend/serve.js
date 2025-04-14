@@ -45,17 +45,23 @@ const server = http.createServer((req, res) => {
     return;
   }
   
-  // Serve the context-aware chat interface
-  if (req.url === '/chat' || req.url === '/chat.html') {
-    console.log('Serving chat interface page');
+  // Serve the context-aware chat interface - use exact URL matching to prevent bleed-through to backend
+  if (req.url === '/chat' || req.url === '/chat.html' || req.url === '/chat/') {
+    console.log('Serving chat interface page from frontend server');
     fs.readFile(path.join(__dirname, 'chat-interface.html'), (err, data) => {
       if (err) {
+        console.error('Error reading chat-interface.html:', err);
         res.writeHead(500);
         res.end('Error loading chat-interface.html');
         return;
       }
       
-      res.writeHead(200, { 'Content-Type': 'text/html' });
+      // Set content-type explicitly
+      res.writeHead(200, { 
+        'Content-Type': 'text/html',
+        'X-Content-Type-Options': 'nosniff',
+        'Cache-Control': 'no-store'
+      });
       res.end(data);
     });
     return;
@@ -78,6 +84,8 @@ const server = http.createServer((req, res) => {
   
   // Proxy API requests to backend server
   if (req.url.startsWith('/api/')) {
+    console.log(`API request received: ${req.method} ${req.url}`);
+    
     // Get backend hostname and port from environment or use defaults
     // For Replit, we need to use 127.0.0.1 instead of localhost to avoid DNS resolution issues
     const backendHost = '127.0.0.1';
@@ -101,7 +109,7 @@ const server = http.createServer((req, res) => {
     headers['content-type'] = 'application/json';
     headers['accept'] = 'application/json';
     
-    // Proxy request to backend API server
+    // Create proxy request to backend API server
     const options = {
       hostname: backendHost,
       port: backendPort,
@@ -110,6 +118,13 @@ const server = http.createServer((req, res) => {
       headers: headers,
       timeout: 30000 // 30 second timeout
     };
+    
+    // Log complete options for debugging
+    console.log('Proxy request options:', {
+      url: `${backendHost}:${backendPort}${req.url}`,
+      method: req.method,
+      headers: headers
+    });
     
     // Create proxy request to backend
     const proxyReq = http.request(options, (proxyRes) => {
@@ -126,102 +141,18 @@ const server = http.createServer((req, res) => {
     proxyReq.on('error', (error) => {
       console.error(`Error proxying request to ${options.hostname}:${options.port}${req.url}:`, error.message);
       
-      // For API requests to /agents, provide a mock response with system agents included
-      if (req.url === '/api/v1/agents') {
-        console.log('Returning cached agents response since backend is unavailable');
-        
-        // Check if we're running in a development environment
-        const isDev = process.env.NODE_ENV !== 'production';
-        
-        // Find the port that the real API is running on
-        const expectedPort = process.env.BACKEND_PORT || BACKEND_PORT;
-        console.log(`The backend API should be running on port ${expectedPort}, but we couldn't connect. Please check if the backend server is running.`);
-        
-        // Return a fallback response with the list of agents - this should include the system agents
-        res.writeHead(200, { 'Content-Type': 'application/json' });
-        
-        // Try to make a direct HTTP request to the backend at a different port to see if it's running
-        // We'll only use port 5000 for the backend API as requested
-        const tryBackendPorts = [5000];
-        console.log(`Trying to find backend on ports: ${tryBackendPorts.join(', ')}`);
-        
-        let portFound = false;
-        let portChecks = 0;
-        
-        // Check each port
-        tryBackendPorts.forEach(portToCheck => {
-          console.log(`Trying direct connection to backend on port ${portToCheck}`);
-          const testReq = http.request({
-            hostname: '127.0.0.1',
-            port: portToCheck,
-            path: '/api/v1/agents',
-            method: 'GET',
-            timeout: 5000, // Add a timeout to avoid hanging connections
-            headers: {
-              'Accept': 'application/json',
-              'Host': `127.0.0.1:${portToCheck}`,
-              'Connection': 'keep-alive'
-            }
-          }, (testRes) => {
-            // If we get a response, read it and proxy it back
-            let data = '';
-            testRes.on('data', (chunk) => {
-              data += chunk;
-            });
-            
-            testRes.on('end', () => {
-              if (!portFound) {
-                portFound = true;
-                console.log(`✅ Found working backend API on port ${portToCheck}!`);
-                console.log(`Updating BACKEND_PORT environment variable to ${portToCheck}`);
-                BACKEND_PORT = portToCheck;
-                process.env.BACKEND_PORT = portToCheck.toString();
-                
-                // Write to port file for future use
-                try {
-                  fs.writeFileSync(backendPortFile, portToCheck.toString());
-                  console.log(`Updated ${backendPortFile} with new port ${portToCheck}`);
-                } catch (e) {
-                  console.error(`Failed to write port file: ${e.message}`);
-                }
-                
-                // Forward the successful response
-                res.end(data);
-              }
-            });
-          });
-          
-          testReq.on('error', () => {
-            portChecks++;
-            // If we've checked all ports and none worked, return an error
-            if (portChecks === tryBackendPorts.length && !portFound) {
-              console.log('❌ Could not find backend API on any port');
-              res.end(JSON.stringify({
-                success: false,
-                error: 'Backend service unavailable',
-                message: `Cannot connect to backend. Tried ports ${tryBackendPorts.join(', ')}. Please restart the backend API server.`
-              }));
-            }
-          });
-          
-          testReq.end();
-        });
-      } else {
-        // Return a fallback response when backend is unavailable for other endpoints
-        res.writeHead(502, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({
-          success: false,
-          error: 'Backend service unavailable',
-          message: `Cannot connect to backend at ${options.hostname}:${options.port}. Please check if the API server is running.`
-        }));
-      }
+      // Return a fallback response when backend is unavailable
+      res.writeHead(502, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({
+        success: false,
+        error: 'Backend service unavailable',
+        message: `Cannot connect to backend at ${options.hostname}:${options.port}. Please check if the API server is running.`
+      }));
     });
     
     // Forward request body to backend
     if (req.method === 'POST' || req.method === 'PUT') {
-      let body = '';
       req.on('data', (chunk) => {
-        body += chunk.toString();
         proxyReq.write(chunk);
       });
       
@@ -234,8 +165,6 @@ const server = http.createServer((req, res) => {
     
     return;
   }
-  
-  // No need for specific path handling - all API requests are proxied to backend
   
   // For any other request, return 404
   res.writeHead(404);

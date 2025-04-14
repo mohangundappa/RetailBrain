@@ -210,6 +210,8 @@ async def root():
         "api_prefix": API_PREFIX
     }
 
+# We'll add our frontend path handling to the existing 404 handler below
+
 
 # API Routes
 # All endpoints are now routed through the optimized routers

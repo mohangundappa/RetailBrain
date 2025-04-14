@@ -522,10 +522,146 @@
                 // Load conversation history from localStorage
                 loadConversationHistory();
                 
+                // Load available agents from the API
+                fetchAgentsFromAPI();
+                
                 // Start a new conversation if none exists
                 if (!currentConversationId) {
                     startNewConversation();
                 }
+            }
+            
+            // Function to fetch agents from the API
+            function fetchAgentsFromAPI() {
+                return new Promise((resolve) => {
+                    try {
+                        // Get the API URL (same origin to avoid CORS)
+                        const apiUrl = '/api/v1/agents';
+                        console.log('API URL:', apiUrl);
+                        
+                        console.log('Fetching agents from API:', apiUrl);
+                        
+                        // Add cache buster
+                        const cacheBuster = `?t=${new Date().getTime()}`;
+                        
+                        fetch(apiUrl + cacheBuster, {
+                                method: 'GET',
+                                headers: {
+                                    'Accept': 'application/json',
+                                    'Cache-Control': 'no-cache'
+                                },
+                                credentials: 'same-origin'
+                            })
+                            .then(response => {
+                                if (!response.ok) {
+                                    throw new Error(`Status: ${response.status}`);
+                                }
+                                return response.json();
+                            })
+                            .then(data => {
+                                console.log('API response:', data);
+                                
+                                if (data.success && data.agents) {
+                                    // Update observability view with the fetched agents
+                                    updateAvailableAgents(data.agents);
+                                    
+                                    // Show total agents including system agents
+                                    const systemAgents = data.agents.filter(a => a.is_system === true);
+                                    console.log(`Loaded ${data.agents.length} agents (including ${systemAgents.length} system agents)`);
+                                    
+                                    resolve(true);
+                                } else {
+                                    console.error('API response not successful:', data.error || 'Unknown error');
+                                    resolve(false);
+                                }
+                            })
+                            .catch(error => {
+                                console.error('Error fetching agents from API:', error);
+                                // Add more detailed error information
+                                console.error('Error details:', {
+                                    message: error.message,
+                                    name: error.name,
+                                    url: apiUrl + cacheBuster,
+                                    stack: error.stack
+                                });
+                                
+                                console.log('Initial API fetch failed, using placeholder data');
+                                updateAvailableAgents(getPlaceholderAgents());
+                                resolve(false);
+                            });
+                    } catch (error) {
+                        console.error('Exception in fetchAgentsFromAPI:', error);
+                        updateAvailableAgents(getPlaceholderAgents());
+                        resolve(false);
+                    }
+                });
+            }
+            
+            // Function to get placeholder agents when API is unavailable
+            function getPlaceholderAgents() {
+                return [
+                    {
+                        id: 'placeholder-1',
+                        name: 'Store Locator Agent',
+                        type: 'KNOWLEDGE',
+                        is_system: false,
+                        description: 'Helps users find Staples stores.'
+                    },
+                    {
+                        id: 'placeholder-2',
+                        name: 'Package Tracking Agent',
+                        type: 'TRACKER',
+                        is_system: false,
+                        description: 'Tracks package deliveries.'
+                    },
+                    {
+                        id: 'placeholder-3',
+                        name: 'General Conversation Agent',
+                        type: 'SMALL_TALK',
+                        is_system: true,
+                        description: 'Handles general conversations.'
+                    }
+                ];
+            }
+            
+            // Function to update the available agents in the UI
+            function updateAvailableAgents(agents) {
+                // Get the container that shows selected agent in observability view
+                const selectedAgentContainer = document.getElementById('selected-agent');
+                if (!selectedAgentContainer) return;
+                
+                // Clear existing content
+                selectedAgentContainer.innerHTML = '';
+                
+                // Sort agents: regular agents first, then system agents
+                const sortedAgents = agents.sort((a, b) => {
+                    // First sort by system flag (non-system first)
+                    if (a.is_system !== b.is_system) {
+                        return a.is_system ? 1 : -1;
+                    }
+                    // Then sort by name
+                    return a.name.localeCompare(b.name);
+                });
+                
+                // Add each agent to the UI with confidence bars
+                sortedAgents.forEach((agent, index) => {
+                    // Calculate a fake confidence score for demonstration
+                    const confidence = index === 0 ? 78 : (100 - (index * 15)) > 10 ? (100 - (index * 15)) : 10;
+                    
+                    const agentDiv = document.createElement('div');
+                    agentDiv.className = 'd-flex align-items-center mb-2';
+                    agentDiv.innerHTML = `
+                        <div class="me-2">
+                            <span class="badge ${index === 0 ? 'bg-info' : 'bg-secondary'}">${agent.name}</span>
+                        </div>
+                        <div class="progress flex-grow-1" style="height: 8px;">
+                            <div class="progress-bar ${index === 0 ? 'bg-info' : 'bg-secondary'}" role="progressbar" style="width: ${confidence}%"></div>
+                        </div>
+                        <div class="ms-2 small">${confidence}%</div>
+                    `;
+                    
+                    selectedAgentContainer.appendChild(agentDiv);
+                });
             }
             
             function handleChatSubmit(e) {

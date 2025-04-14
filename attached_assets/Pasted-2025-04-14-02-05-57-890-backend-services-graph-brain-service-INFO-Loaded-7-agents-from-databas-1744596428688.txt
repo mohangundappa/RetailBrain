@@ -1,0 +1,19 @@
+2025-04-14 02:05:57,890 - backend.services.graph_brain_service - INFO - Loaded 7 agents from database
+2025-04-14 02:05:57,890 - backend.services.graph_brain_service - INFO - Registered agent: Package Tracking Agent (ID: f3056c69-a490-4336-8721-31912669a48d)
+2025-04-14 02:05:57,890 - backend.services.graph_brain_service - INFO - Registered agent: Reset Password Agent (ID: 9b65b143-699d-425f-84bf-e92f4634b972)
+2025-04-14 02:05:57,890 - backend.services.graph_brain_service - INFO - Registered agent: Store Locator Agent (ID: d5a080ae-70f2-4641-aa82-9fba3fcb4d2d)
+2025-04-14 02:05:57,891 - backend.services.graph_brain_service - INFO - Registered agent: Product Information Agent (ID: d421645a-5e90-4c0e-9776-58af67d45f60)
+2025-04-14 02:05:57,891 - backend.services.graph_brain_service - INFO - Registered agent: Returns Processing Agent (ID: b49871a0-9ce8-483b-9be8-3c7df82cbb52)
+2025-04-14 02:05:57,891 - backend.services.graph_brain_service - INFO - Registered agent: Guardrails Agent (ID: f2feabb7-2279-4feb-875a-3c7f58105ac9)
+2025-04-14 02:05:57,891 - backend.services.graph_brain_service - INFO - Registered agent: General Conversation Agent (ID: d5e22e3a-1d83-49bf-baef-52c8f4d55a87)
+/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/langgraph/graph/state.py:92: UserWarning: Invalid state_schema: typing.Dict. Expected a type or Annotated[type, reducer]. Please provide a valid schema to ensure correct updates.
+ See: https://langchain-ai.github.io/langgraph/reference/graphs/#stategraph
+  warnings.warn(
+2025-04-14 02:05:57,902 - backend.services.graph_brain_service - INFO - Created LangGraph workflow graph with 3 nodes
+2025-04-14 02:05:57,903 - backend.services.graph_brain_service - INFO - Graph Brain Service initialized successfully
+2025-04-14 02:05:57,903 - staples_brain - INFO - Agents successfully pre-loaded during brain service initialization
+INFO:     Application startup complete.
+INFO:     172.31.128.60:40998 - "GET / HTTP/1.1" 200 OK
+INFO:     172.31.128.60:40998 - "GET / HTTP/1.1" 200 OK
+INFO:     172.31.128.60:40998 - "GET / HTTP/1.1" 200 OK
+INFO:     172.31.128.60:47806 - "GET /chat HTTP/1.1" 404 Not Found
