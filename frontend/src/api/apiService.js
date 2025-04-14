@@ -43,7 +43,11 @@ api.interceptors.response.use(
 const apiService = {
   // Agent endpoints
   async getAgents() {
-    const response = await api.get('/agents');
+    console.log('Making API call to /agents endpoint');
+    const response = await api.get('/agents', {
+      params: { t: new Date().getTime() } // Add cache buster
+    });
+    console.log('Response received from /agents:', response.data);
     return response.data;
   },
 

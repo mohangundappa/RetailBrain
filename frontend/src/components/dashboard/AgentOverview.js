@@ -144,13 +144,14 @@ const AgentOverview = () => {
               </div>
               <div>
                 <Button 
-                  variant="outline-primary" 
+                  variant="primary" 
                   size="sm" 
                   onClick={() => fetchAgents(true)}
                   disabled={refreshing}
+                  className="px-3 py-2"
                 >
-                  <FeatherIcon icon={refreshing ? "loader" : "refresh-cw"} size={16} className={`me-1 ${refreshing ? 'spin' : ''}`} />
-                  {refreshing ? 'Refreshing...' : 'Refresh'}
+                  <FeatherIcon icon={refreshing ? "loader" : "refresh-cw"} size={18} className={`me-2 ${refreshing ? 'spin' : ''}`} />
+                  {refreshing ? 'Refreshing...' : 'Refresh Now'}
                 </Button>
               </div>
             </Card.Header>
