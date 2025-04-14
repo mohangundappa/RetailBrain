@@ -74,11 +74,21 @@ const server = http.createServer((req, res) => {
   // Proxy API requests to backend server
   if (req.url.startsWith('/api/')) {
     // Get backend hostname and port from environment or use defaults
-    // Use localhost for client connections, not 0.0.0.0
-    const backendHost = process.env.BACKEND_HOST || 'localhost';
+    // Always use localhost for client connections, not 0.0.0.0
+    const backendHost = 'localhost';
     const backendPort = process.env.BACKEND_PORT || BACKEND_PORT;
     
     console.log(`Proxying API request to ${backendHost}:${backendPort}${req.url}`);
+    
+    // Copy headers from original request
+    const headers = {...req.headers};
+    
+    // Override specific headers needed for the proxy
+    headers['host'] = `${backendHost}:${backendPort}`;
+    headers['origin'] = `http://${backendHost}:${backendPort}`;
+    headers['content-type'] = headers['content-type'] || 'application/json';
+    headers['accept'] = 'application/json';
+    headers['connection'] = 'keep-alive';
     
     // Proxy request to backend API server
     const options = {
@@ -86,10 +96,8 @@ const server = http.createServer((req, res) => {
       port: backendPort,
       path: req.url,
       method: req.method,
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json'
-      }
+      headers: headers,
+      timeout: 30000 // 30 second timeout
     };
     
     // Create proxy request to backend

@@ -362,7 +362,14 @@
                     // Add cache buster
                     const cacheBuster = `?t=${new Date().getTime()}`;
                     
-                    fetch(apiUrl + cacheBuster)
+                    fetch(apiUrl + cacheBuster, {
+                            method: 'GET',
+                            headers: {
+                                'Accept': 'application/json',
+                                'Cache-Control': 'no-cache'
+                            },
+                            credentials: 'same-origin'
+                        })
                         .then(response => {
                             if (!response.ok) {
                                 throw new Error(`Status: ${response.status}`);

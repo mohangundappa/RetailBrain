@@ -812,9 +812,12 @@
                 fetch('/api/v1/chat', {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'Cache-Control': 'no-cache'
                     },
-                    body: JSON.stringify(requestData)
+                    body: JSON.stringify(requestData),
+                    credentials: 'same-origin'
                 })
                 .then(response => {
                     if (!response.ok) {
@@ -866,6 +869,14 @@
                 })
                 .catch(error => {
                     console.error('Error sending message:', error);
+                    
+                    // Add more detailed error information
+                    console.error('Error details:', {
+                        message: error.message,
+                        name: error.name,
+                        url: '/api/v1/chat',
+                        stack: error.stack
+                    });
                     
                     // Display error message to user
                     addMessageToUI('assistant', 'I apologize, but there was a network error. Please check your connection and try again.', {
