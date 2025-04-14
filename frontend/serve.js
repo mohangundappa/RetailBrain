@@ -9,6 +9,12 @@ const BACKEND_PORT = 5000;
 process.env.BACKEND_PORT = BACKEND_PORT.toString();
 console.log(`Using backend port ${BACKEND_PORT} as requested`);
 
+// Import the mock observability API if needed
+const { setupMockObservabilityRoutes } = require('./mock-observability-api');
+
+// Flag to enable mock observability API when real API isn't available
+const ENABLE_MOCK_API = true;
+
 // For reference, port file location
 const backendPortFile = path.join(__dirname, '..', 'backend_port.txt');
 
@@ -67,6 +73,28 @@ const server = http.createServer((req, res) => {
     return;
   }
   
+  // Serve the advanced chat interface with observability features
+  if (req.url === '/advanced-chat' || req.url === '/advanced-chat.html' || req.url === '/advanced-chat/') {
+    console.log('Serving advanced chat interface with observability features');
+    fs.readFile(path.join(__dirname, 'advanced-chat.html'), (err, data) => {
+      if (err) {
+        console.error('Error reading advanced-chat.html:', err);
+        res.writeHead(500);
+        res.end('Error loading advanced-chat.html');
+        return;
+      }
+      
+      // Set content-type explicitly
+      res.writeHead(200, { 
+        'Content-Type': 'text/html',
+        'X-Content-Type-Options': 'nosniff',
+        'Cache-Control': 'no-store'
+      });
+      res.end(data);
+    });
+    return;
+  }
+  
   // Serve the agent routing architecture diagram
   if (req.url === '/routing-architecture' || req.url === '/agent_routing_architecture.html') {
     fs.readFile(path.join(__dirname, 'agent_routing_architecture.html'), (err, data) => {
@@ -85,6 +113,25 @@ const server = http.createServer((req, res) => {
   // Proxy API requests to backend server
   if (req.url.startsWith('/api/')) {
     console.log(`API request received: ${req.method} ${req.url}`);
+    
+    // Check if this is the observability endpoint and we should use mock data
+    if (ENABLE_MOCK_API && req.url.startsWith('/api/v1/chat/observability/')) {
+      const conversationId = req.url.split('/').pop();
+      console.log(`Using mock observability data for conversation: ${conversationId}`);
+      
+      // Return mock observability data for demonstration
+      const mockData = require('./mock-observability-api').generateMockObservabilityData(conversationId);
+      
+      // Simulate network delay
+      setTimeout(() => {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({
+          success: true,
+          data: mockData
+        }));
+      }, 500);
+      return;
+    }
     
     // Get backend hostname and port from environment or use defaults
     // For Replit, we need to use 127.0.0.1 instead of localhost to avoid DNS resolution issues
@@ -140,6 +187,22 @@ const server = http.createServer((req, res) => {
     // Handle errors
     proxyReq.on('error', (error) => {
       console.error(`Error proxying request to ${options.hostname}:${options.port}${req.url}:`, error.message);
+      
+      // If this is an observability endpoint and we have mock data enabled, use that
+      if (ENABLE_MOCK_API && req.url.startsWith('/api/v1/chat/observability/')) {
+        const conversationId = req.url.split('/').pop();
+        console.log(`Using mock observability data after backend error for conversation: ${conversationId}`);
+        
+        // Return mock observability data for demonstration
+        const mockData = require('./mock-observability-api').generateMockObservabilityData(conversationId);
+        
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({
+          success: true,
+          data: mockData
+        }));
+        return;
+      }
       
       // Return a fallback response when backend is unavailable
       res.writeHead(502, { 'Content-Type': 'application/json' });

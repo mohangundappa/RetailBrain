@@ -1,416 +1,232 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-bs-theme="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Staples Brain Dashboard</title>
-    <link href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css" rel="stylesheet">
-    <script src="https://unpkg.com/feather-icons"></script>
+    <title>Staples Brain - Customer Engagement AI</title>
+    <link rel="stylesheet" href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <style>
         body {
-            background-color: #1e1e1e;
-            color: #f5f5f5;
-        }
-        .sidebar {
-            background-color: #252526;
             min-height: 100vh;
         }
-        .nav-link {
-            color: #cccccc;
+        
+        .dashboard-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem 1rem;
         }
-        .nav-link:hover, .nav-link.active {
-            color: white;
-            background-color: #37373d;
+        
+        .header {
+            margin-bottom: 2rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding-bottom: 1rem;
         }
+        
         .card {
-            background-color: #2d2d2d;
-            border: 1px solid #3e3e42;
-        }
-        .main-content {
-            padding: 20px;
-        }
-        .top-navbar {
-            background-color: #252526;
-            border-bottom: 1px solid #3e3e42;
-        }
-        .agent-status {
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-            display: inline-block;
-            margin-right: 5px;
-        }
-        .status-active {
-            background-color: #28a745;
-        }
-        .status-inactive {
-            background-color: #dc3545;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            margin-bottom: 1.5rem;
+            height: 100%;
         }
         
-        /* Spinner animation */
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
         }
         
-        .spinner {
-            animation: spin 1s linear infinite;
-            display: inline-block;
+        .card-icon {
+            font-size: 2rem;
+            margin-bottom: 1rem;
+            color: var(--bs-info);
+        }
+        
+        .agent-card {
+            border-left: 4px solid var(--bs-primary);
+        }
+        
+        .footer {
+            margin-top: 3rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            text-align: center;
+        }
+        
+        .stats-container {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 0.5rem;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        
+        .stat-item {
+            text-align: center;
+            padding: 1rem;
+        }
+        
+        .stat-value {
+            font-size: 2rem;
+            font-weight: bold;
+            margin-bottom: 0.25rem;
+        }
+        
+        .stat-label {
+            font-size: 0.9rem;
+            color: var(--bs-secondary);
         }
     </style>
 </head>
 <body>
-    <div class="container-fluid">
-        <div class="row">
-            <!-- Sidebar -->
-            <div class="col-md-2 d-none d-md-block sidebar p-0">
-                <div class="d-flex flex-column p-3">
-                    <h5 class="mb-4 text-center">Staples Brain</h5>
-                    <ul class="nav flex-column">
-                        <li class="nav-item mb-2">
-                            <a href="#dashboard" class="nav-link active rounded">
-                                <i data-feather="home"></i> Dashboard
-                            </a>
-                        </li>
-                        <li class="nav-item mb-2">
-                            <a href="/chat" class="nav-link rounded">
-                                <i data-feather="message-square"></i> Chat Interface
-                            </a>
-                        </li>
-                        <li class="nav-item mb-2">
-                            <a href="#agents" class="nav-link rounded">
-                                <i data-feather="users"></i> Agents
-                            </a>
-                        </li>
-                        <li class="nav-item mb-2">
-                            <a href="#analytics" class="nav-link rounded">
-                                <i data-feather="bar-chart-2"></i> Analytics
-                            </a>
-                        </li>
-                        <li class="nav-item mb-2">
-                            <a href="#settings" class="nav-link rounded">
-                                <i data-feather="settings"></i> Settings
-                            </a>
-                        </li>
-                    </ul>
+    <div class="dashboard-container">
+        <div class="header">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1>Staples Brain</h1>
+                    <p class="text-muted">AI-powered Customer Engagement Platform</p>
+                </div>
+                <div>
+                    <span class="badge bg-success">System Online</span>
                 </div>
             </div>
-
-            <!-- Main content -->
-            <div class="col-md-10 ms-sm-auto px-4 main-content">
-                <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-                    <h1 class="h2">Dashboard</h1>
-                    <div>
-                        <span class="badge bg-primary">Environment: Development</span>
+        </div>
+        
+        <div class="stats-container">
+            <div class="row">
+                <div class="col-md-3 col-6">
+                    <div class="stat-item">
+                        <div class="stat-value text-primary">7</div>
+                        <div class="stat-label">Active Agents</div>
                     </div>
                 </div>
-
-                <!-- Agent Stats -->
-                <div class="row mb-4">
-                    <div class="col-md-3 mb-4">
-                        <div class="card">
-                            <div class="card-body">
-                                <h5 class="card-title">Total Agents</h5>
-                                <p class="card-text h2" id="total-agents">0</p>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-3 mb-4">
-                        <div class="card">
-                            <div class="card-body">
-                                <h5 class="card-title">Active Agents</h5>
-                                <p class="card-text h2" id="active-agents">0</p>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-3 mb-4">
-                        <div class="card">
-                            <div class="card-body">
-                                <h5 class="card-title">Total Conversations</h5>
-                                <p class="card-text h2">121</p>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-3 mb-4">
-                        <div class="card">
-                            <div class="card-body">
-                                <h5 class="card-title">Memory Usage</h5>
-                                <p class="card-text h2">78%</p>
-                            </div>
-                        </div>
+                <div class="col-md-3 col-6">
+                    <div class="stat-item">
+                        <div class="stat-value text-success">98.5%</div>
+                        <div class="stat-label">System Uptime</div>
                     </div>
                 </div>
-
-                <!-- Agent List -->
-                <div class="row">
-                    <div class="col-md-12">
-                        <div class="card">
-                            <div class="card-header d-flex justify-content-between align-items-center">
-                                <div>
-                                    <h5 class="mb-0">Available Agents</h5>
-                                    <small class="text-muted" id="last-refresh-time"></small>
-                                </div>
-                                <button class="btn btn-primary" onclick="refreshAgents()">
-                                    <i data-feather="refresh-cw" class="me-1"></i> Refresh Now
-                                </button>
-                            </div>
-                            <div class="card-body">
-                                <div class="table-responsive">
-                                    <table class="table table-dark">
-                                        <thead>
-                                            <tr>
-                                                <th>Name</th>
-                                                <th>Category</th>
-                                                <th>Version</th>
-                                                <th>Actions</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody id="agent-table-body">
-                                            <!-- Agents will be loaded here -->
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        </div>
+                <div class="col-md-3 col-6">
+                    <div class="stat-item">
+                        <div class="stat-value text-info">2.1s</div>
+                        <div class="stat-label">Avg. Response Time</div>
+                    </div>
+                </div>
+                <div class="col-md-3 col-6">
+                    <div class="stat-item">
+                        <div class="stat-value text-warning">94%</div>
+                        <div class="stat-label">Success Rate</div>
                     </div>
                 </div>
             </div>
         </div>
+        
+        <h3 class="mb-4">Features & Interfaces</h3>
+        
+        <div class="row">
+            <div class="col-lg-4 col-md-6">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <div class="card-icon">
+                            <i class="bi bi-chat-dots"></i>
+                        </div>
+                        <h5 class="card-title">Simple Chat Interface</h5>
+                        <p class="card-text">Basic chat interface for interacting with Staples Brain.</p>
+                        <a href="/chat" class="btn btn-outline-primary mt-3">
+                            <i class="bi bi-arrow-right-circle me-2"></i>
+                            Launch Chat
+                        </a>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-lg-4 col-md-6">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <div class="card-icon">
+                            <i class="bi bi-layout-sidebar-reverse"></i>
+                        </div>
+                        <h5 class="card-title">Advanced Chat with Observability</h5>
+                        <p class="card-text">Split-screen chat interface with real-time observability features.</p>
+                        <a href="/advanced-chat" class="btn btn-outline-info mt-3">
+                            <i class="bi bi-arrow-right-circle me-2"></i>
+                            Launch Advanced Chat
+                        </a>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-lg-4 col-md-6">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <div class="card-icon">
+                            <i class="bi bi-diagram-3"></i>
+                        </div>
+                        <h5 class="card-title">Routing Architecture</h5>
+                        <p class="card-text">View the agent routing architecture diagram.</p>
+                        <a href="/routing-architecture" class="btn btn-outline-secondary mt-3">
+                            <i class="bi bi-arrow-right-circle me-2"></i>
+                            View Diagram
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <h3 class="mb-4 mt-5">Active Specialized Agents</h3>
+        
+        <div class="row">
+            <div class="col-lg-4 col-md-6">
+                <div class="card agent-card h-100">
+                    <div class="card-body">
+                        <h5 class="card-title">Store Locator Agent</h5>
+                        <p class="card-text">Helps users find the nearest Staples store locations based on geographic queries.</p>
+                        <span class="badge bg-success">Active</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-lg-4 col-md-6">
+                <div class="card agent-card h-100">
+                    <div class="card-body">
+                        <h5 class="card-title">Package Tracking Agent</h5>
+                        <p class="card-text">Provides order status and package tracking information to customers.</p>
+                        <span class="badge bg-success">Active</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-lg-4 col-md-6">
+                <div class="card agent-card h-100">
+                    <div class="card-body">
+                        <h5 class="card-title">Reset Password Agent</h5>
+                        <p class="card-text">Guides users through the process of resetting their account passwords.</p>
+                        <span class="badge bg-success">Active</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-lg-4 col-md-6">
+                <div class="card agent-card h-100">
+                    <div class="card-body">
+                        <h5 class="card-title">Product Information Agent</h5>
+                        <p class="card-text">Provides detailed information about product specifications, pricing, and availability.</p>
+                        <span class="badge bg-success">Active</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-lg-4 col-md-6">
+                <div class="card agent-card h-100">
+                    <div class="card-body">
+                        <h5 class="card-title">Returns Processing Agent</h5>
+                        <p class="card-text">Assists customers with product returns and exchange procedures.</p>
+                        <span class="badge bg-success">Active</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p class="text-muted">Staples Brain • AI Customer Engagement Platform • April 2025</p>
+        </div>
     </div>
-
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-        // Initialize Feather icons
-        document.addEventListener('DOMContentLoaded', function() {
-            feather.replace();
-            
-            // Fetch agents from the API
-            fetchAgents();
-        });
-
-        function fetchAgents() {
-            // Try to fetch agents from the API first
-            fetchAgentsFromAPI()
-                .then(success => {
-                    if (!success) {
-                        console.log('Initial API fetch failed, using placeholder data');
-                        displayPlaceholderAgents();
-                    }
-                    
-                    // Set initial refresh time
-                    if (!document.getElementById('last-refresh-time').textContent) {
-                        const now = new Date();
-                        document.getElementById('last-refresh-time').textContent = `Last updated: ${now.toLocaleTimeString()}`;
-                    }
-                });
-        }
-        
-        function displayPlaceholderAgents() {
-            // Show some placeholder agents if the API is not available
-            const placeholderAgents = [
-                { name: 'Package Tracking Agent', status: 'active', type: 'TRACKER', legacy_type: 'package_tracking', version: '1.0', is_system: false },
-                { name: 'Reset Password Agent', status: 'active', type: 'PROCESS', legacy_type: 'reset_password', version: '1.0', is_system: false },
-                { name: 'Store Locator Agent', status: 'active', type: 'KNOWLEDGE', legacy_type: 'store_locator', version: '1.0', is_system: false },
-                { name: 'Product Information Agent', status: 'active', type: 'KNOWLEDGE', legacy_type: 'product_info', version: '1.0', is_system: false },
-                { name: 'Returns Processing Agent', status: 'active', type: 'PROCESS', legacy_type: 'returns_processing', version: '1.0', is_system: false },
-                { name: 'Guardrails Agent', status: 'active', type: 'BUILT_IN', legacy_type: 'policy-enforcer', version: '1.0', is_system: true },
-                { name: 'General Conversation Agent', status: 'active', type: 'SMALL_TALK', legacy_type: 'llm-driven', version: '1.0', is_system: true }
-            ];
-            
-            displayAgents(placeholderAgents);
-            updateAgentStats(placeholderAgents);
-        }
-
-        function displayAgents(agents) {
-            const tableBody = document.getElementById('agent-table-body');
-            tableBody.innerHTML = '';
-            
-            agents.forEach(agent => {
-                const row = document.createElement('tr');
-                
-                const statusCell = document.createElement('td');
-                const statusDot = document.createElement('span');
-                statusDot.className = `agent-status ${agent.status === 'active' ? 'status-active' : 'status-inactive'}`;
-                statusCell.appendChild(statusDot);
-                statusCell.appendChild(document.createTextNode(agent.status || 'Unknown'));
-                
-                const nameCell = document.createElement('td');
-                nameCell.textContent = agent.name;
-                
-                // Add system badge if this is a system agent
-                if (agent.is_system) {
-                    const badge = document.createElement('span');
-                    badge.className = 'badge bg-info ms-2';
-                    badge.textContent = 'System';
-                    nameCell.appendChild(badge);
-                }
-                
-                // Add category cell
-                const categoryCell = document.createElement('td');
-                // Just show the category name without badge styling
-                let categoryName = agent.type || 'Standard';
-                categoryCell.textContent = categoryName;
-                
-                // Show legacy type if available
-                const typeCell = document.createElement('td');
-                if (agent.legacy_type) {
-                    typeCell.textContent = agent.legacy_type;
-                } else {
-                    // Extract legacy type from name if possible
-                    const name = agent.name.toLowerCase();
-                    if (name.includes('package') || name.includes('tracking')) {
-                        typeCell.textContent = 'package_tracking';
-                    } else if (name.includes('password') || name.includes('reset')) {
-                        typeCell.textContent = 'reset_password';
-                    } else if (name.includes('store') || name.includes('locat')) {
-                        typeCell.textContent = 'store_locator';
-                    } else if (name.includes('product') || name.includes('info')) {
-                        typeCell.textContent = 'product_info';
-                    } else if (name.includes('return')) {
-                        typeCell.textContent = 'returns_processing';
-                    } else if (name.includes('guardrails')) {
-                        typeCell.textContent = 'policy-enforcer';
-                    } else if (name.includes('conversation')) {
-                        typeCell.textContent = 'llm-driven';
-                    } else {
-                        typeCell.textContent = 'custom';
-                    }
-                }
-                
-                const versionCell = document.createElement('td');
-                versionCell.textContent = agent.version || '1.0';
-                
-                const actionsCell = document.createElement('td');
-                const viewBtn = document.createElement('button');
-                viewBtn.className = 'btn btn-sm btn-outline-info me-2';
-                viewBtn.textContent = 'View';
-                
-                const testBtn = document.createElement('button');
-                testBtn.className = 'btn btn-sm btn-outline-primary';
-                testBtn.textContent = 'Test';
-                
-                actionsCell.appendChild(viewBtn);
-                actionsCell.appendChild(testBtn);
-                
-                row.appendChild(nameCell);
-                row.appendChild(categoryCell);
-                row.appendChild(versionCell);
-                row.appendChild(actionsCell);
-                
-                tableBody.appendChild(row);
-            });
-        }
-
-        function updateAgentStats(agents) {
-            document.getElementById('total-agents').textContent = agents.length;
-            
-            const activeAgents = agents.filter(agent => agent.status === 'active').length;
-            document.getElementById('active-agents').textContent = activeAgents;
-            
-            // Update last refresh time
-            const now = new Date();
-            document.getElementById('last-refresh-time').textContent = `Last updated: ${now.toLocaleTimeString()}`;
-        }
-        
-        // Function to handle refresh button click
-        function refreshAgents() {
-            // Get the refresh button and update its state
-            const refreshBtn = document.querySelector('.card-header button');
-            
-            // Disable button and show loading state
-            if (refreshBtn) {
-                refreshBtn.disabled = true;
-                refreshBtn.innerHTML = '<i data-feather="loader" class="spinner me-1"></i> Refreshing...';
-                // Re-initialize feather icons for the spinner
-                feather.replace();
-            }
-            
-            // Attempt to fetch agents from the API
-            fetchAgentsFromAPI()
-                .then(success => {
-                    console.log('Refresh complete, success:', success);
-                    
-                    // If API call fails, use placeholder data
-                    if (!success) {
-                        console.log('Using placeholder data as fallback');
-                        displayPlaceholderAgents();
-                    }
-                })
-                .finally(() => {
-                    // Re-enable button and restore original state
-                    if (refreshBtn) {
-                        setTimeout(() => {
-                            refreshBtn.disabled = false;
-                            refreshBtn.innerHTML = '<i data-feather="refresh-cw" class="me-1"></i> Refresh Now';
-                            // Re-initialize feather icons
-                            feather.replace();
-                        }, 500); // Add a small delay for better UX
-                    }
-                });
-        }
-        
-        // Function to fetch agents from the API
-        function fetchAgentsFromAPI() {
-            return new Promise((resolve) => {
-                try {
-                    // Get the correct API URL (same origin to avoid CORS)
-                    const apiUrl = '/api/v1/agents';
-                    console.log('API URL:', apiUrl);
-                    
-                    console.log('Fetching agents from API:', apiUrl);
-                    
-                    // Add cache buster
-                    const cacheBuster = `?t=${new Date().getTime()}`;
-                    
-                    fetch(apiUrl + cacheBuster, {
-                            method: 'GET',
-                            headers: {
-                                'Accept': 'application/json',
-                                'Cache-Control': 'no-cache'
-                            },
-                            credentials: 'same-origin'
-                        })
-                        .then(response => {
-                            if (!response.ok) {
-                                throw new Error(`Status: ${response.status}`);
-                            }
-                            return response.json();
-                        })
-                        .then(data => {
-                            console.log('API response:', data);
-                            
-                            if (data.success && data.agents) {
-                                // Update UI with the fetched agents
-                                displayAgents(data.agents);
-                                updateAgentStats(data.agents);
-                                
-                                // Show total agents including system agents
-                                const systemAgents = data.agents.filter(a => a.is_system === true);
-                                console.log(`Loaded ${data.agents.length} agents (including ${systemAgents.length} system agents)`);
-                                
-                                resolve(true);
-                            } else {
-                                console.error('API response not successful:', data.error || 'Unknown error');
-                                resolve(false);
-                            }
-                        })
-                        .catch(error => {
-                            console.error('Error fetching agents from API:', error);
-                            // Add more detailed error information
-                            console.error('Error details:', {
-                                message: error.message,
-                                name: error.name,
-                                url: apiUrl + cacheBuster,
-                                stack: error.stack
-                            });
-                            resolve(false);
-                        });
-                } catch (error) {
-                    console.error('Exception in fetchAgentsFromAPI:', error);
-                    resolve(false);
-                }
-            });
-        }
-    </script>
 </body>
 </html>
