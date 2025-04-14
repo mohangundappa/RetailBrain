@@ -101,7 +101,7 @@ class DatabaseAgent(LangGraphAgent):
         # All LLM-based agents need the OpenAI model
         if self.agent_type in ["LLM", "LLM-DRIVEN", "PACKAGE_TRACKING", "RESET_PASSWORD", 
                               "STORE_LOCATOR", "PRODUCT_INFO", "RETURNS_PROCESSING", 
-                              "POLICY-ENFORCER"]:
+                              "POLICY-ENFORCER", "SMALL_TALK"]:
             # Initialize LLM
             try:
                 self.llm = ChatOpenAI(
@@ -197,7 +197,7 @@ class DatabaseAgent(LangGraphAgent):
         # but could have specialized configuration, prompts, etc.
         elif self.agent_type in ["LLM-DRIVEN", "PACKAGE_TRACKING", "RESET_PASSWORD", 
                                 "STORE_LOCATOR", "PRODUCT_INFO", "RETURNS_PROCESSING", 
-                                "POLICY-ENFORCER"]:
+                                "POLICY-ENFORCER", "SMALL_TALK"]:
             return await self._process_with_llm(message, session_id, context)
         else:
             logger.warning(f"Unknown agent type: {self.agent_type}, defaulting to LLM")
