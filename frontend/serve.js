@@ -1,6 +1,7 @@
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
+const url = require('url');
 
 const PORT = process.env.PORT || 3001;
 
@@ -19,8 +20,14 @@ const server = http.createServer((req, res) => {
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   
+  // Parse URL and query parameters
+  const parsedUrl = url.parse(req.url, true);
+  const pathname = parsedUrl.pathname;
+  const query = parsedUrl.query;
+  
   // Enhance logging for debugging
   console.log(`Request received: ${req.method} ${req.url}`);
+  console.log(`Parsed pathname: ${pathname}, Query params:`, query);
   
   // Handle OPTIONS request
   if (req.method === 'OPTIONS') {
@@ -30,7 +37,7 @@ const server = http.createServer((req, res) => {
   }
   
   // Serve the dashboard
-  if (req.url === '/' || req.url === '/index.html') {
+  if (pathname === '/' || pathname === '/index.html') {
     console.log('Serving dashboard page');
     fs.readFile(path.join(__dirname, 'static-app.html'), (err, data) => {
       if (err) {
@@ -46,7 +53,7 @@ const server = http.createServer((req, res) => {
   }
   
   // Serve the context-aware chat interface - use exact URL matching to prevent bleed-through to backend
-  if (req.url === '/chat' || req.url === '/chat.html' || req.url === '/chat/') {
+  if (pathname === '/chat' || pathname === '/chat.html' || pathname === '/chat/') {
     console.log('Serving simple chat interface page from frontend server');
     fs.readFile(path.join(__dirname, 'simple-chat.html'), (err, data) => {
       if (err) {
@@ -68,7 +75,7 @@ const server = http.createServer((req, res) => {
   }
   
   // Serve the agent routing architecture diagram
-  if (req.url === '/routing-architecture' || req.url === '/agent_routing_architecture.html') {
+  if (pathname === '/routing-architecture' || pathname === '/agent_routing_architecture.html') {
     fs.readFile(path.join(__dirname, 'agent_routing_architecture.html'), (err, data) => {
       if (err) {
         res.writeHead(500);
@@ -82,8 +89,11 @@ const server = http.createServer((req, res) => {
     return;
   }
   
-  // Serve the test page
-  if (req.url === '/test' || req.url === '/test.html') {
+  // Serve the test page - check pathname and query parameters
+  if (pathname === '/test' || 
+      pathname === '/test.html' || 
+      (pathname === '/' && (query.frontend_page === 'test' || query.page === 'test'))) {
+    
     console.log('Serving test page');
     fs.readFile(path.join(__dirname, 'test.html'), (err, data) => {
       if (err) {
