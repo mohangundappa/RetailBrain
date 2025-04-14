@@ -972,23 +972,51 @@
                         updateObservabilityData('entity', message);
                         
                         setTimeout(() => {
-                            updateObservabilityData('agent', message);
+                            // Update agent information in the observability UI
+                            // Create simple observability data from the response
+                            const simpleObservability = {
+                                agent_name: data.agent,
+                                conversation_id: data.session_id || currentConversationId
+                            };
+                            
+                            updateObservabilityData('agent', message, simpleObservability);
                             
                             setTimeout(() => {
                                 updateObservabilityData('response', message);
                                 
                                 // Add the assistant's response to the UI
-                                const responseContent = data.data.response || 'I apologize, but I cannot respond at the moment.';
+                                const responseContent = data.response || 'I apologize, but I cannot respond at the moment.';
+                                
+                                // Create a simple observability object if none is provided
+                                const observabilityData = {
+                                    conversation_id: data.session_id || currentConversationId,
+                                    message: message,
+                                    response: responseContent,
+                                    agent: data.agent,
+                                    timestamp: new Date().toISOString()
+                                };
                                 
                                 // Pass the observability data to the message UI for expandable details
                                 addMessageToUI('assistant', responseContent, {
-                                    timestamp: new Date().toISOString()
-                                }, data.data.observability);
+                                    timestamp: new Date().toISOString(),
+                                    agent: data.agent
+                                }, observabilityData);
                                 
-                                // Also update the right-side observability panel if available
-                                if (data.data.observability) {
-                                    updateRawData(data.data.observability);
-                                    updateSelectedAgentView(data.data.observability);
+                                // Also update the right-side observability panel
+                                updateRawData(observabilityData);
+                                
+                                // Update selected agent in the observability view
+                                const selectedAgent = {
+                                    name: data.agent,
+                                    confidence: 100
+                                };
+                                updateSelectedAgentView(selectedAgent);
+                                
+                                // Store the session_id from the response if available
+                                if (data.session_id) {
+                                    currentConversationId = data.session_id;
+                                    // Save to localStorage
+                                    localStorage.setItem('currentConversationId', currentConversationId);
                                 }
                                 
                                 // Update conversation in history
@@ -997,7 +1025,7 @@
                         }, 500);
                     } else {
                         // Handle error response
-                        addMessageToUI('assistant', 'I apologize, but there was an error processing your request. Please try again.', {
+                        addMessageToUI('assistant', data.error || 'I apologize, but there was an error processing your request. Please try again.', {
                             timestamp: new Date().toISOString()
                         });
                         console.error('API error:', data.error);
@@ -1027,8 +1055,10 @@
                 });
             }
             
-            function updateObservabilityData(stage, message) {
+            function updateObservabilityData(stage, message, data) {
                 const processingFlow = document.getElementById('processing-flow');
+                if (!processingFlow) return;
+                
                 const stages = processingFlow.querySelectorAll('.processing-stage');
                 
                 // Map stages to indices
@@ -1057,9 +1087,16 @@
                         stageEl.classList.add('active');
                         badge.className = 'badge bg-warning';
                         badge.textContent = 'In Progress';
-                        stageEl.querySelector('.stage-content').innerHTML = 
-                            '<div class="spinner-border spinner-border-sm text-info mt-2" role="status">' +
-                            '<span class="visually-hidden">Loading...</span></div>';
+                        
+                        // For agent stage, use the agent name if available
+                        if (index === 2 && data && data.agent_name) {
+                            stageEl.querySelector('.stage-content').innerHTML = 
+                                `<small class="text-muted">Selected: ${data.agent_name}</small>`;
+                        } else {
+                            stageEl.querySelector('.stage-content').innerHTML = 
+                                '<div class="spinner-border spinner-border-sm text-info mt-2" role="status">' +
+                                '<span class="visually-hidden">Loading...</span></div>';
+                        }
                     } else {
                         // Future stages are pending
                         stageEl.classList.remove('active');
@@ -1125,50 +1162,78 @@
             }
             
             function updateSelectedAgentView(data) {
-                if (!data || !data.processing || !data.processing.intent_detection || !data.processing.agent_selection) {
-                    return;
-                }
-                
-                // Update the agent selection section with real data
+                // Update the agent selection section
                 const selectedAgentContainer = document.getElementById('selected-agent');
+                if (!selectedAgentContainer) return;
                 
                 // Clear existing content
                 selectedAgentContainer.innerHTML = '';
                 
-                // Get intents from the data
-                const intents = data.processing.intent_detection.intents || [];
-                const selectedIntent = data.processing.intent_detection.selected_intent;
-                const selectedAgent = data.processing.agent_selection.selected_agent;
-                
-                // Sort intents by confidence (highest first)
-                intents.sort((a, b) => b.confidence - a.confidence);
-                
-                // Add each intent with confidence bar
-                intents.forEach(intent => {
-                    const confidence = Math.round(intent.confidence * 100);
-                    const isSelected = intent.intent === selectedIntent;
+                // Handle both complex observability data and simple agent data
+                if (data && typeof data === 'object') {
+                    // Simple agent data case (the format we now get from the API)
+                    if (data.name) {
+                        const agentDiv = document.createElement('div');
+                        agentDiv.className = 'd-flex align-items-center mb-2';
+                        
+                        const confidence = data.confidence || 100;
+                        
+                        agentDiv.innerHTML = `
+                            <div class="me-2">
+                                <span class="badge bg-info">${data.name}</span>
+                            </div>
+                            <div class="progress flex-grow-1" style="height: 8px;">
+                                <div class="progress-bar bg-info" role="progressbar" style="width: ${confidence}%"></div>
+                            </div>
+                            <div class="ms-2 small">${confidence}%</div>
+                        `;
+                        
+                        selectedAgentContainer.appendChild(agentDiv);
+                        return;
+                    }
                     
-                    const intentDiv = document.createElement('div');
-                    intentDiv.className = 'd-flex align-items-center mb-2';
-                    
-                    intentDiv.innerHTML = `
-                        <div class="me-2">
-                            <span class="badge ${isSelected ? 'bg-info' : 'bg-secondary'}">${intent.intent}</span>
-                        </div>
-                        <div class="progress flex-grow-1" style="height: 8px;">
-                            <div class="progress-bar ${isSelected ? 'bg-info' : 'bg-secondary'}" 
-                                role="progressbar" style="width: ${confidence}%"></div>
-                        </div>
-                        <div class="ms-2 small">${confidence}%</div>
-                    `;
-                    
-                    selectedAgentContainer.appendChild(intentDiv);
-                });
-                
-                // If there are no intents, show a message
-                if (intents.length === 0) {
-                    selectedAgentContainer.innerHTML = '<div class="text-muted">No intent data available</div>';
+                    // Complex observability data case (legacy format)
+                    if (data.processing && data.processing.intent_detection && data.processing.agent_selection) {
+                        // Get intents from the data
+                        const intents = data.processing.intent_detection.intents || [];
+                        const selectedIntent = data.processing.intent_detection.selected_intent;
+                        const selectedAgent = data.processing.agent_selection.selected_agent;
+                        
+                        // Sort intents by confidence (highest first)
+                        intents.sort((a, b) => b.confidence - a.confidence);
+                        
+                        // Add each intent with confidence bar
+                        intents.forEach(intent => {
+                            const confidence = Math.round(intent.confidence * 100);
+                            const isSelected = intent.intent === selectedIntent;
+                            
+                            const intentDiv = document.createElement('div');
+                            intentDiv.className = 'd-flex align-items-center mb-2';
+                            
+                            intentDiv.innerHTML = `
+                                <div class="me-2">
+                                    <span class="badge ${isSelected ? 'bg-info' : 'bg-secondary'}">${intent.intent}</span>
+                                </div>
+                                <div class="progress flex-grow-1" style="height: 8px;">
+                                    <div class="progress-bar ${isSelected ? 'bg-info' : 'bg-secondary'}" 
+                                        role="progressbar" style="width: ${confidence}%"></div>
+                                </div>
+                                <div class="ms-2 small">${confidence}%</div>
+                            `;
+                            
+                            selectedAgentContainer.appendChild(intentDiv);
+                        });
+                        
+                        // If there are no intents, show a message
+                        if (intents.length === 0) {
+                            selectedAgentContainer.innerHTML = '<div class="text-muted">No intent data available</div>';
+                        }
+                        return;
+                    }
                 }
+                
+                // If we get here, there's no valid data to display
+                selectedAgentContainer.innerHTML = '<div class="text-muted">No agent data available</div>';
             }
             
             function updateConnectionStatus(status) {
