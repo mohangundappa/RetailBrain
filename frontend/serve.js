@@ -74,7 +74,8 @@ const server = http.createServer((req, res) => {
   // Proxy API requests to backend server
   if (req.url.startsWith('/api/')) {
     // Get backend hostname and port from environment or use defaults
-    const backendHost = process.env.BACKEND_HOST || 'localhost';
+    // Use 0.0.0.0 instead of localhost to match server binding address
+    const backendHost = process.env.BACKEND_HOST || '0.0.0.0';
     const backendPort = process.env.BACKEND_PORT || BACKEND_PORT;
     
     console.log(`Proxying API request to ${backendHost}:${backendPort}${req.url}`);
@@ -113,18 +114,7 @@ const server = http.createServer((req, res) => {
         
         // Find the port that the real API is running on
         const expectedPort = process.env.BACKEND_PORT || BACKEND_PORT;
-        console.log(`The backend API should be running on port ${expectedPort}, but we couldn't connect.`);
-        
-        // Execute a shell command to check what's running on the expected port
-        const { exec } = require('child_process');
-        exec(`lsof -i :${expectedPort}`, (err, stdout, stderr) => {
-          if (stdout) {
-            console.log(`Process using port ${expectedPort}:`);
-            console.log(stdout);
-          } else {
-            console.log(`No process found on port ${expectedPort}`);
-          }
-        });
+        console.log(`The backend API should be running on port ${expectedPort}, but we couldn't connect. Backend is running on 0.0.0.0:${expectedPort} (not localhost).`);
         
         // Return a fallback response with the list of agents - this should include the system agents
         res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -140,7 +130,7 @@ const server = http.createServer((req, res) => {
         // Check each port
         tryBackendPorts.forEach(portToCheck => {
           const testReq = http.request({
-            hostname: 'localhost',
+            hostname: '0.0.0.0',
             port: portToCheck,
             path: '/api/v1/agents',
             method: 'GET',
