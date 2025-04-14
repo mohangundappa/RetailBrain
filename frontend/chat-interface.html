@@ -112,6 +112,7 @@
         .message {
             margin-bottom: 20px;
             max-width: 85%;
+            position: relative;
         }
         
         .message-user {
@@ -132,6 +133,56 @@
             font-size: 0.8rem;
             margin-top: 5px;
             color: rgba(255, 255, 255, 0.5);
+        }
+        
+        /* New styles for expandable message observability */
+        .message-flow-toggle {
+            position: absolute;
+            right: 5px;
+            top: 5px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            opacity: 0.6;
+            transition: opacity 0.2s;
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            background-color: rgba(0, 0, 0, 0.2);
+        }
+        
+        .message-flow-toggle:hover {
+            opacity: 1;
+        }
+        
+        .message-flow-container {
+            margin-top: 10px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            padding-top: 10px;
+            font-size: 0.9rem;
+        }
+        
+        .message-flow-container .card {
+            background-color: rgba(0, 0, 0, 0.2);
+            margin-bottom: 8px;
+        }
+        
+        .message-flow-container .card-header {
+            padding: 8px 12px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            border-bottom: none;
+        }
+        
+        .message-flow-container .card-body {
+            padding: 8px 12px;
+            font-size: 0.8rem;
+        }
+        
+        .card-collapsible .card-header {
+            cursor: pointer;
         }
         
         .observability-header {
@@ -295,81 +346,99 @@
                     <div class="observability-content">
                         <div id="flow-view">
                             <div class="agent-selection mb-3">
-                                <h6>Agent Selection</h6>
-                                <div id="selected-agent">
-                                    <div class="d-flex align-items-center mb-2">
-                                        <div class="me-2">
-                                            <span class="badge bg-info">Store Locator</span>
-                                        </div>
-                                        <div class="progress flex-grow-1" style="height: 8px;">
-                                            <div class="progress-bar bg-info" role="progressbar" style="width: 78%"></div>
-                                        </div>
-                                        <div class="ms-2 small">78%</div>
+                                <div class="card card-collapsible">
+                                    <div class="card-header d-flex justify-content-between align-items-center" data-bs-toggle="collapse" data-bs-target="#agentSelectionContent">
+                                        <h6 class="mb-0">Agent Selection</h6>
+                                        <i class="bi bi-chevron-down"></i>
                                     </div>
-                                    
-                                    <div class="d-flex align-items-center mb-2">
-                                        <div class="me-2">
-                                            <span class="badge bg-secondary">Order Tracking</span>
+                                    <div id="agentSelectionContent" class="collapse show">
+                                        <div class="card-body">
+                                            <div id="selected-agent">
+                                                <div class="d-flex align-items-center mb-2">
+                                                    <div class="me-2">
+                                                        <span class="badge bg-info">Store Locator</span>
+                                                    </div>
+                                                    <div class="progress flex-grow-1" style="height: 8px;">
+                                                        <div class="progress-bar bg-info" role="progressbar" style="width: 78%"></div>
+                                                    </div>
+                                                    <div class="ms-2 small">78%</div>
+                                                </div>
+                                                
+                                                <div class="d-flex align-items-center mb-2">
+                                                    <div class="me-2">
+                                                        <span class="badge bg-secondary">Order Tracking</span>
+                                                    </div>
+                                                    <div class="progress flex-grow-1" style="height: 8px;">
+                                                        <div class="progress-bar bg-secondary" role="progressbar" style="width: 12%"></div>
+                                                    </div>
+                                                    <div class="ms-2 small">12%</div>
+                                                </div>
+                                                
+                                                <div class="d-flex align-items-center">
+                                                    <div class="me-2">
+                                                        <span class="badge bg-secondary">Password Reset</span>
+                                                    </div>
+                                                    <div class="progress flex-grow-1" style="height: 8px;">
+                                                        <div class="progress-bar bg-secondary" role="progressbar" style="width: 10%"></div>
+                                                    </div>
+                                                    <div class="ms-2 small">10%</div>
+                                                </div>
+                                            </div>
                                         </div>
-                                        <div class="progress flex-grow-1" style="height: 8px;">
-                                            <div class="progress-bar bg-secondary" role="progressbar" style="width: 12%"></div>
-                                        </div>
-                                        <div class="ms-2 small">12%</div>
-                                    </div>
-                                    
-                                    <div class="d-flex align-items-center">
-                                        <div class="me-2">
-                                            <span class="badge bg-secondary">Password Reset</span>
-                                        </div>
-                                        <div class="progress flex-grow-1" style="height: 8px;">
-                                            <div class="progress-bar bg-secondary" role="progressbar" style="width: 10%"></div>
-                                        </div>
-                                        <div class="ms-2 small">10%</div>
                                     </div>
                                 </div>
                             </div>
                             
-                            <div class="processing-flow">
-                                <h6>Processing Flow</h6>
-                                <div class="flow-container" id="processing-flow">
-                                    <div class="processing-stage active">
-                                        <div class="stage-header">
-                                            <strong>Intent Detection</strong>
-                                            <span class="badge bg-success">Completed</span>
-                                        </div>
-                                        <div class="stage-content">
-                                            <small class="text-muted">Identified: Store Locator Intent</small>
-                                        </div>
+                            <div class="processing-flow mb-3">
+                                <div class="card card-collapsible">
+                                    <div class="card-header d-flex justify-content-between align-items-center" data-bs-toggle="collapse" data-bs-target="#processingFlowContent">
+                                        <h6 class="mb-0">Processing Flow</h6>
+                                        <i class="bi bi-chevron-down"></i>
                                     </div>
-                                    
-                                    <div class="processing-stage active">
-                                        <div class="stage-header">
-                                            <strong>Entity Extraction</strong>
-                                            <span class="badge bg-success">Completed</span>
-                                        </div>
-                                        <div class="stage-content">
-                                            <small class="text-muted">Extracted: Location=Boston, Type=Store</small>
-                                        </div>
-                                    </div>
-                                    
-                                    <div class="processing-stage active">
-                                        <div class="stage-header">
-                                            <strong>Agent Selection</strong>
-                                            <span class="badge bg-success">Completed</span>
-                                        </div>
-                                        <div class="stage-content">
-                                            <small class="text-muted">Selected: Store Locator Agent</small>
-                                        </div>
-                                    </div>
-                                    
-                                    <div class="processing-stage">
-                                        <div class="stage-header">
-                                            <strong>Response Generation</strong>
-                                            <span class="badge bg-warning">In Progress</span>
-                                        </div>
-                                        <div class="stage-content">
-                                            <div class="spinner-border spinner-border-sm text-info mt-2" role="status">
-                                                <span class="visually-hidden">Loading...</span>
+                                    <div id="processingFlowContent" class="collapse show">
+                                        <div class="card-body">
+                                            <div class="flow-container" id="processing-flow">
+                                                <div class="processing-stage active">
+                                                    <div class="stage-header">
+                                                        <strong>Intent Detection</strong>
+                                                        <span class="badge bg-success">Completed</span>
+                                                    </div>
+                                                    <div class="stage-content">
+                                                        <small class="text-muted">Identified: Store Locator Intent</small>
+                                                    </div>
+                                                </div>
+                                                
+                                                <div class="processing-stage active">
+                                                    <div class="stage-header">
+                                                        <strong>Entity Extraction</strong>
+                                                        <span class="badge bg-success">Completed</span>
+                                                    </div>
+                                                    <div class="stage-content">
+                                                        <small class="text-muted">Extracted: Location=Boston, Type=Store</small>
+                                                    </div>
+                                                </div>
+                                                
+                                                <div class="processing-stage active">
+                                                    <div class="stage-header">
+                                                        <strong>Agent Selection</strong>
+                                                        <span class="badge bg-success">Completed</span>
+                                                    </div>
+                                                    <div class="stage-content">
+                                                        <small class="text-muted">Selected: Store Locator Agent</small>
+                                                    </div>
+                                                </div>
+                                                
+                                                <div class="processing-stage">
+                                                    <div class="stage-header">
+                                                        <strong>Response Generation</strong>
+                                                        <span class="badge bg-warning">In Progress</span>
+                                                    </div>
+                                                    <div class="stage-content">
+                                                        <div class="spinner-border spinner-border-sm text-info mt-2" role="status">
+                                                            <span class="visually-hidden">Loading...</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -517,43 +586,83 @@
             }
             
             function sendMessageToBackend(message) {
-                // In a real implementation, this would call the backend API
-                // For now, we'll simulate a response for demonstration purposes
-                
-                // Simulate response delay
+                // Set the connection status to sending
                 updateConnectionStatus('sending');
+                
+                // Update observability to show we are processing the intent
                 updateObservabilityData('intent', message);
                 
-                setTimeout(() => {
-                    updateObservabilityData('entity', message);
+                // Prepare the request data
+                const requestData = {
+                    message: message,
+                    session_id: currentConversationId,
+                    show_observability: true
+                };
+                
+                // Make the actual API call to the backend
+                fetch('/api/v1/chat', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(requestData)
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('API response:', data);
                     
-                    setTimeout(() => {
-                        updateObservabilityData('agent', message);
+                    if (data.success) {
+                        // Sequential updates to the observability UI to show progress
+                        updateObservabilityData('entity', message);
                         
                         setTimeout(() => {
-                            updateObservabilityData('response', message);
+                            updateObservabilityData('agent', message);
                             
                             setTimeout(() => {
-                                // Simulate receiving a response
-                                const response = getSimulatedResponse(message);
+                                updateObservabilityData('response', message);
                                 
-                                // Add assistant message to UI
-                                addMessageToUI('assistant', response.content, {
+                                // Add the assistant's response to the UI
+                                const responseContent = data.data.response || 'I apologize, but I cannot respond at the moment.';
+                                addMessageToUI('assistant', responseContent, {
                                     timestamp: new Date().toISOString()
                                 });
                                 
-                                // Update observability with final data
-                                updateRawData(response.observability);
-                                
-                                // Update connection status
-                                updateConnectionStatus('connected');
+                                // Update the raw observability data if available
+                                if (data.data.observability) {
+                                    updateRawData(data.data.observability);
+                                }
                                 
                                 // Update conversation in history
-                                updateConversationHistory(message, response.content);
-                            }, 1000);
-                        }, 800);
-                    }, 600);
-                }, 500);
+                                updateConversationHistory(message, responseContent);
+                            }, 500);
+                        }, 500);
+                    } else {
+                        // Handle error response
+                        addMessageToUI('assistant', 'I apologize, but there was an error processing your request. Please try again.', {
+                            timestamp: new Date().toISOString()
+                        });
+                        console.error('API error:', data.error);
+                    }
+                    
+                    // Set connection status back to connected
+                    updateConnectionStatus('connected');
+                })
+                .catch(error => {
+                    console.error('Error sending message:', error);
+                    
+                    // Display error message to user
+                    addMessageToUI('assistant', 'I apologize, but there was a network error. Please check your connection and try again.', {
+                        timestamp: new Date().toISOString()
+                    });
+                    
+                    // Set connection status to error
+                    updateConnectionStatus('error');
+                });
             }
             
             function updateObservabilityData(stage, message) {
