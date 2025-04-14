@@ -47,12 +47,12 @@ const server = http.createServer((req, res) => {
   
   // Serve the context-aware chat interface - use exact URL matching to prevent bleed-through to backend
   if (req.url === '/chat' || req.url === '/chat.html' || req.url === '/chat/') {
-    console.log('Serving chat interface page from frontend server');
-    fs.readFile(path.join(__dirname, 'chat-interface.html'), (err, data) => {
+    console.log('Serving simple chat interface page from frontend server');
+    fs.readFile(path.join(__dirname, 'simple-chat.html'), (err, data) => {
       if (err) {
-        console.error('Error reading chat-interface.html:', err);
+        console.error('Error reading simple-chat.html:', err);
         res.writeHead(500);
-        res.end('Error loading chat-interface.html');
+        res.end('Error loading simple-chat.html');
         return;
       }
       

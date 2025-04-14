@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Staples Brain - Simple Chat</title>
+    <link rel="stylesheet" href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <style>
+        body {
+            min-height: 100vh;
+            overflow: hidden;
+        }
+        
+        .chat-container {
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .chat-header {
+            padding: 1rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 1rem;
+        }
+        
+        .chat-input-container {
+            padding: 1rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .message {
+            margin-bottom: 1rem;
+            padding: 0.75rem;
+            border-radius: 0.5rem;
+            max-width: 80%;
+        }
+        
+        .message-user {
+            background-color: rgba(13, 110, 253, 0.2);
+            align-self: flex-end;
+            margin-left: auto;
+        }
+        
+        .message-assistant {
+            background-color: rgba(32, 32, 32, 0.5);
+            align-self: flex-start;
+        }
+        
+        .agent-badge {
+            font-size: 0.75rem;
+            margin-bottom: 0.25rem;
+        }
+        
+        .status-indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 5px;
+        }
+        
+        .status-connected {
+            background-color: var(--bs-success);
+        }
+        
+        .status-disconnected {
+            background-color: var(--bs-danger);
+        }
+        
+        .status-sending {
+            background-color: var(--bs-warning);
+        }
+    </style>
+</head>
+<body>
+    <div class="chat-container">
+        <div class="chat-header d-flex justify-content-between align-items-center">
+            <div>
+                <h4 class="mb-0">Staples Brain</h4>
+                <div class="text-muted small">AI Customer Assistant</div>
+            </div>
+            <div class="d-flex align-items-center">
+                <span class="me-2">Status:</span>
+                <span class="badge bg-success" id="connection-status">
+                    <span class="status-indicator status-connected"></span>
+                    Connected
+                </span>
+                <a href="/" class="btn btn-sm btn-outline-secondary ms-3">
+                    <i class="bi bi-house"></i> Dashboard
+                </a>
+            </div>
+        </div>
+        
+        <div class="chat-messages" id="chat-messages">
+            <!-- Messages will be added here -->
+            <div class="message message-assistant">
+                <div class="agent-badge">
+                    <span class="badge bg-info">System</span>
+                </div>
+                <div>Hello! I'm the Staples Brain assistant. How can I help you today?</div>
+            </div>
+        </div>
+        
+        <div class="chat-input-container">
+            <form id="chat-form" class="d-flex">
+                <input type="text" id="chat-input" class="form-control me-2" placeholder="Type your message..." autocomplete="off">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-send"></i>
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // DOM Elements
+        const chatForm = document.getElementById('chat-form');
+        const chatInput = document.getElementById('chat-input');
+        const chatMessages = document.getElementById('chat-messages');
+        const connectionStatus = document.getElementById('connection-status');
+        
+        // Variables
+        let currentConversationId = 'conv_' + Date.now();
+
+        // Event Listeners
+        document.addEventListener('DOMContentLoaded', () => {
+            // Focus the input field when the page loads
+            chatInput.focus();
+        });
+        
+        chatForm.addEventListener('submit', handleChatSubmit);
+        
+        // Functions
+        function handleChatSubmit(e) {
+            e.preventDefault();
+            const message = chatInput.value.trim();
+            if (!message) return;
+            
+            // Add user message to UI
+            addMessageToUI('user', message);
+            chatInput.value = '';
+            
+            // Update status to sending
+            updateConnectionStatus('sending');
+            
+            // Send message to backend
+            sendMessageToBackend(message);
+        }
+        
+        function addMessageToUI(role, content, metadata = {}) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message message-${role}`;
+            
+            let messageContent = '';
+            
+            // For assistant messages, add the agent name as a badge if available
+            if (role === 'assistant' && metadata.agent) {
+                messageContent += `
+                    <div class="agent-badge">
+                        <span class="badge bg-info">${metadata.agent}</span>
+                    </div>
+                `;
+            }
+            
+            // Format message content (simple markdown-like support)
+            let formattedContent = content;
+            // Basic markdown support - code blocks
+            formattedContent = formattedContent.replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>');
+            // Basic markdown support - inline code
+            formattedContent = formattedContent.replace(/`([^`]+)`/g, '<code>$1</code>');
+            
+            messageContent += `<div>${formattedContent}</div>`;
+            
+            // Add timestamp if available
+            if (metadata.timestamp) {
+                const time = new Date(metadata.timestamp).toLocaleTimeString();
+                messageContent += `<div class="text-muted small mt-1">${time}</div>`;
+            }
+            
+            messageDiv.innerHTML = messageContent;
+            chatMessages.appendChild(messageDiv);
+            
+            // Scroll to bottom
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+        
+        function sendMessageToBackend(message) {
+            // Prepare the request data
+            const requestData = {
+                message: message,
+                conversation_id: currentConversationId
+            };
+            
+            // Log request details
+            console.log('Sending chat message to API:', requestData);
+            
+            // Make the API call to the backend
+            fetch('/api/v1/chat', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'Cache-Control': 'no-cache'
+                },
+                body: JSON.stringify(requestData)
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`Network response was not ok: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('API response:', data);
+                
+                // Update connection status to connected
+                updateConnectionStatus('connected');
+                
+                if (data.success) {
+                    // Add the assistant's response to the UI
+                    const responseContent = data.response || 'I apologize, but I cannot respond at the moment.';
+                    
+                    // Pass the metadata including agent name
+                    addMessageToUI('assistant', responseContent, {
+                        timestamp: new Date().toISOString(),
+                        agent: data.agent
+                    });
+                    
+                    // Store the session_id from the response if available
+                    if (data.session_id) {
+                        currentConversationId = data.session_id;
+                    }
+                } else {
+                    // Handle error response
+                    addMessageToUI('assistant', data.error || 'I apologize, but there was an error processing your request. Please try again.', {
+                        timestamp: new Date().toISOString()
+                    });
+                    console.error('API error:', data.error);
+                }
+            })
+            .catch(error => {
+                console.error('Error sending message:', error);
+                
+                // Display error message to user
+                addMessageToUI('assistant', 'I apologize, but there was a network error. Please check your connection and try again.', {
+                    timestamp: new Date().toISOString()
+                });
+                
+                // Update connection status to error
+                updateConnectionStatus('disconnected');
+            });
+        }
+        
+        function updateConnectionStatus(status) {
+            const statusIndicator = connectionStatus.querySelector('.status-indicator');
+            
+            switch(status) {
+                case 'connected':
+                    connectionStatus.className = 'badge bg-success';
+                    connectionStatus.innerHTML = '<span class="status-indicator status-connected"></span> Connected';
+                    break;
+                case 'sending':
+                    connectionStatus.className = 'badge bg-warning';
+                    connectionStatus.innerHTML = '<span class="status-indicator status-sending"></span> Sending...';
+                    break;
+                case 'disconnected':
+                    connectionStatus.className = 'badge bg-danger';
+                    connectionStatus.innerHTML = '<span class="status-indicator status-disconnected"></span> Disconnected';
+                    break;
+                default:
+                    connectionStatus.className = 'badge bg-secondary';
+                    connectionStatus.innerHTML = '<span class="status-indicator"></span> Unknown';
+            }
+        }
+    </script>
+</body>
+</html>
