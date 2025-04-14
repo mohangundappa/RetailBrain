@@ -4,17 +4,39 @@ import FeatherIcon from 'feather-icons-react';
 import { useAppContext } from '../../context/AppContext';
 import apiService from '../../api/apiService';
 
+// Add CSS for spinner animation
+const styles = `
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+  
+  .spin {
+    animation: spin 1s linear infinite;
+    display: inline-block;
+  }
+`;
+
 // We'll use a direct request rather than Axios to see what's happening
 
 const AgentOverview = () => {
   const { agents, setAgents, setLoading, addNotification } = useAppContext();
   const [selectedAgent, setSelectedAgent] = useState(null);
 
+  // State to track last refresh time
+  const [lastRefresh, setLastRefresh] = useState(new Date());
+  const [refreshing, setRefreshing] = useState(false);
+
   // Create reusable fetchAgents function
-  const fetchAgents = async () => {
+  const fetchAgents = async (showAlert = true) => {
     try {
       console.log('AgentOverview: Fetching agents from API...');
       setLoading(true);
+      setRefreshing(true);
+      
+      // Make API call to fetch agents with cache-busting query param
+      const timestamp = new Date().getTime();
+      console.log(`Fetching agents with cache-buster: ${timestamp}`);
       
       // Use the apiService instead of direct axios
       console.log('Using apiService to make the call...');
@@ -32,15 +54,26 @@ const AgentOverview = () => {
         setAgents(response.agents);
         console.log('Updated agents in state to:', response.agents.length, 'agents');
         
-        // Show an alert with information
-        alert(`Successfully loaded ${response.agents.length} agents (including ${systemAgents.length} system agents)`);
+        // Update last refresh time
+        const now = new Date();
+        setLastRefresh(now);
+        
+        // Show a notification for successful refresh
+        if (showAlert) {
+          addNotification({
+            title: 'Available Agents Updated',
+            message: `Successfully loaded ${response.agents.length} agents (including ${systemAgents.length} system agents)`,
+            type: 'success',
+            duration: 3000
+          });
+        }
       } else {
         throw new Error('API call succeeded but response was not successful');
       }
     } catch (error) {
       console.error('Error fetching agents:', error);
       console.log('Error fetching agents stack:', error.stack);
-      alert('Error loading agents: ' + error.message);
+      
       addNotification({
         title: 'Error',
         message: 'Failed to load agents. Please try again later. Error: ' + error.message,
@@ -48,6 +81,7 @@ const AgentOverview = () => {
       });
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
 
@@ -94,21 +128,29 @@ const AgentOverview = () => {
 
   return (
     <Container fluid className="p-4">
+      {/* Add the CSS style tag for the spinner animation */}
+      <style>{styles}</style>
       <h1 className="h3 mb-4">Agent Overview</h1>
       
       <Row>
         <Col md={12} lg={selectedAgent ? 6 : 12}>
           <Card className="mb-4">
             <Card.Header className="bg-transparent d-flex justify-content-between align-items-center">
-              <h5 className="mb-0">Available Agents</h5>
+              <div>
+                <h5 className="mb-0">Available Agents</h5>
+                <small className="text-muted">
+                  Last updated: {lastRefresh.toLocaleTimeString()}
+                </small>
+              </div>
               <div>
                 <Button 
                   variant="outline-primary" 
                   size="sm" 
-                  onClick={fetchAgents}
+                  onClick={() => fetchAgents(true)}
+                  disabled={refreshing}
                 >
-                  <FeatherIcon icon="refresh-cw" size={16} className="me-1" />
-                  Refresh
+                  <FeatherIcon icon={refreshing ? "loader" : "refresh-cw"} size={16} className={`me-1 ${refreshing ? 'spin' : ''}`} />
+                  {refreshing ? 'Refreshing...' : 'Refresh'}
                 </Button>
               </div>
             </Card.Header>
