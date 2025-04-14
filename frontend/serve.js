@@ -74,8 +74,8 @@ const server = http.createServer((req, res) => {
   // Proxy API requests to backend server
   if (req.url.startsWith('/api/')) {
     // Get backend hostname and port from environment or use defaults
-    // Always use localhost for client connections, not 0.0.0.0
-    const backendHost = 'localhost';
+    // For Replit, we need to use 127.0.0.1 instead of localhost to avoid DNS resolution issues
+    const backendHost = '127.0.0.1';
     const backendPort = process.env.BACKEND_PORT || BACKEND_PORT;
     
     console.log(`Proxying API request to ${backendHost}:${backendPort}${req.url}`);
@@ -138,7 +138,7 @@ const server = http.createServer((req, res) => {
         // Check each port
         tryBackendPorts.forEach(portToCheck => {
           const testReq = http.request({
-            hostname: 'localhost',
+            hostname: '127.0.0.1',
             port: portToCheck,
             path: '/api/v1/agents',
             method: 'GET',
