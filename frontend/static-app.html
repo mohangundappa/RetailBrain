@@ -161,7 +161,6 @@
                                             <tr>
                                                 <th>Name</th>
                                                 <th>Category</th>
-                                                <th>Type</th>
                                                 <th>Version</th>
                                                 <th>Actions</th>
                                             </tr>
@@ -248,31 +247,9 @@
                 
                 // Add category cell
                 const categoryCell = document.createElement('td');
-                // Format the category badge based on agent type
-                const categoryBadge = document.createElement('span');
-                categoryBadge.className = 'badge';
-                
-                // Add a different color based on the agent type
+                // Just show the category name without badge styling
                 let categoryName = agent.type || 'Standard';
-                let badgeClass = 'bg-secondary';
-                
-                if (categoryName === 'BUILT_IN') {
-                    badgeClass = 'bg-info';
-                } else if (categoryName === 'KNOWLEDGE') {
-                    badgeClass = 'bg-primary';
-                } else if (categoryName === 'PROCESS') {
-                    badgeClass = 'bg-success';
-                } else if (categoryName === 'TRACKER') {
-                    badgeClass = 'bg-warning text-dark';
-                } else if (categoryName === 'SMALL_TALK') {
-                    badgeClass = 'bg-light text-dark';
-                } else if (categoryName === 'FALLBACK') {
-                    badgeClass = 'bg-danger';
-                }
-                
-                categoryBadge.className += ' ' + badgeClass;
-                categoryBadge.textContent = categoryName;
-                categoryCell.appendChild(categoryBadge);
+                categoryCell.textContent = categoryName;
                 
                 // Show legacy type if available
                 const typeCell = document.createElement('td');
@@ -317,7 +294,6 @@
                 
                 row.appendChild(nameCell);
                 row.appendChild(categoryCell);
-                row.appendChild(typeCell);
                 row.appendChild(versionCell);
                 row.appendChild(actionsCell);
                 
