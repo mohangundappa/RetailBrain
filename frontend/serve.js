@@ -102,6 +102,8 @@ const server = http.createServer((req, res) => {
     
     // Create proxy request to backend
     const proxyReq = http.request(options, (proxyRes) => {
+      console.log(`Got response from backend: status ${proxyRes.statusCode}`);
+      
       // Set response headers
       res.writeHead(proxyRes.statusCode, proxyRes.headers);
       
@@ -137,12 +139,18 @@ const server = http.createServer((req, res) => {
         
         // Check each port
         tryBackendPorts.forEach(portToCheck => {
+          console.log(`Trying direct connection to backend on port ${portToCheck}`);
           const testReq = http.request({
             hostname: '127.0.0.1',
             port: portToCheck,
             path: '/api/v1/agents',
             method: 'GET',
-            headers: {'Accept': 'application/json'}
+            timeout: 5000, // Add a timeout to avoid hanging connections
+            headers: {
+              'Accept': 'application/json',
+              'Host': `127.0.0.1:${portToCheck}`,
+              'Connection': 'keep-alive'
+            }
           }, (testRes) => {
             // If we get a response, read it and proxy it back
             let data = '';
