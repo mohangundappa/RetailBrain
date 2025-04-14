@@ -541,9 +541,14 @@
                 sendMessageToBackend(message);
             }
             
-            function addMessageToUI(role, content, metadata = {}) {
+            function addMessageToUI(role, content, metadata = {}, observabilityData = null) {
                 const messageDiv = document.createElement('div');
                 messageDiv.className = `message message-${role}`;
+                messageDiv.dataset.messageId = 'msg-' + Date.now();
+                
+                // Create message content container
+                const contentDiv = document.createElement('div');
+                contentDiv.className = 'message-content';
                 
                 // Create message content with support for markdown-like formatting
                 let formattedContent = content;
@@ -554,7 +559,8 @@
                 // Basic markdown support - inline code
                 formattedContent = formattedContent.replace(/`([^`]+)`/g, '<code>$1</code>');
                 
-                messageDiv.innerHTML = formattedContent;
+                contentDiv.innerHTML = formattedContent;
+                messageDiv.appendChild(contentDiv);
                 
                 // Add metadata if available
                 if (metadata.timestamp) {
@@ -565,10 +571,214 @@
                     messageDiv.appendChild(metaDiv);
                 }
                 
+                // For assistant messages, add the flow toggle button and observability container
+                if (role === 'assistant' && observabilityData) {
+                    // Add toggle button
+                    const toggleBtn = document.createElement('button');
+                    toggleBtn.className = 'message-flow-toggle';
+                    toggleBtn.innerHTML = '<i class="bi bi-chevron-down"></i>';
+                    toggleBtn.title = 'Show message flow details';
+                    
+                    // Create flow container (initially hidden)
+                    const flowContainer = document.createElement('div');
+                    flowContainer.className = 'message-flow-container collapse';
+                    flowContainer.id = `flow-${messageDiv.dataset.messageId}`;
+                    
+                    // Add observability data
+                    flowContainer.innerHTML = createMessageObservabilityHTML(observabilityData);
+                    
+                    // Add click event to toggle button
+                    toggleBtn.addEventListener('click', () => {
+                        // Toggle the collapse class
+                        if (flowContainer.classList.contains('show')) {
+                            flowContainer.classList.remove('show');
+                            toggleBtn.innerHTML = '<i class="bi bi-chevron-down"></i>';
+                        } else {
+                            flowContainer.classList.add('show');
+                            toggleBtn.innerHTML = '<i class="bi bi-chevron-up"></i>';
+                        }
+                    });
+                    
+                    messageDiv.appendChild(toggleBtn);
+                    messageDiv.appendChild(flowContainer);
+                }
+                
                 chatMessages.appendChild(messageDiv);
                 
                 // Scroll to bottom
                 chatMessages.scrollTop = chatMessages.scrollHeight;
+                
+                return messageDiv;
+            }
+            
+            function createMessageObservabilityHTML(observabilityData) {
+                if (!observabilityData) return '<div class="text-muted small">No flow data available</div>';
+                
+                let html = '';
+                
+                // Intent Detection section
+                if (observabilityData.processing && observabilityData.processing.intent_detection) {
+                    html += `
+                    <div class="card card-collapsible mb-2">
+                        <div class="card-header d-flex justify-content-between align-items-center" data-bs-toggle="collapse" data-bs-target="#intent-${observabilityData.conversation_id}">
+                            <span>Intent Detection</span>
+                            <i class="bi bi-chevron-down"></i>
+                        </div>
+                        <div id="intent-${observabilityData.conversation_id}" class="collapse">
+                            <div class="card-body p-2">
+                                <div class="small text-muted mb-1">Detected Intents:</div>
+                                <ul class="list-unstyled mb-0">`;
+                    
+                    // Add intents with confidence scores
+                    if (observabilityData.processing.intent_detection.intents && 
+                        observabilityData.processing.intent_detection.intents.length > 0) {
+                        observabilityData.processing.intent_detection.intents.forEach(intent => {
+                            const confidence = Math.round(intent.confidence * 100);
+                            const isSelected = intent.intent === observabilityData.processing.intent_detection.selected_intent;
+                            html += `
+                            <li class="d-flex align-items-center mb-1 ${isSelected ? 'fw-bold' : ''}">
+                                <div class="me-2">${intent.intent}</div>
+                                <div class="progress flex-grow-1" style="height: 5px;">
+                                    <div class="progress-bar ${isSelected ? 'bg-info' : 'bg-secondary'}" 
+                                         role="progressbar" 
+                                         style="width: ${confidence}%"></div>
+                                </div>
+                                <div class="ms-2 small">${confidence}%</div>
+                            </li>`;
+                        });
+                    } else {
+                        html += `<li class="text-muted">No intent data available</li>`;
+                    }
+                    
+                    html += `
+                                </ul>
+                            </div>
+                        </div>
+                    </div>`;
+                }
+                
+                // Entity Extraction section
+                if (observabilityData.processing && observabilityData.processing.entity_extraction) {
+                    html += `
+                    <div class="card card-collapsible mb-2">
+                        <div class="card-header d-flex justify-content-between align-items-center" data-bs-toggle="collapse" data-bs-target="#entity-${observabilityData.conversation_id}">
+                            <span>Entity Extraction</span>
+                            <i class="bi bi-chevron-down"></i>
+                        </div>
+                        <div id="entity-${observabilityData.conversation_id}" class="collapse">
+                            <div class="card-body p-2">`;
+                    
+                    // Add entities
+                    if (observabilityData.processing.entity_extraction.entities && 
+                        observabilityData.processing.entity_extraction.entities.length > 0) {
+                        html += `<table class="table table-sm table-dark mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>Type</th>
+                                        <th>Value</th>
+                                        <th>Confidence</th>
+                                    </tr>
+                                </thead>
+                                <tbody>`;
+                        
+                        observabilityData.processing.entity_extraction.entities.forEach(entity => {
+                            const confidence = entity.confidence ? Math.round(entity.confidence * 100) + '%' : 'N/A';
+                            html += `
+                            <tr>
+                                <td>${entity.type}</td>
+                                <td>${entity.value}</td>
+                                <td>${confidence}</td>
+                            </tr>`;
+                        });
+                        
+                        html += `</tbody></table>`;
+                    } else {
+                        html += `<div class="text-muted">No entities extracted</div>`;
+                    }
+                    
+                    html += `
+                            </div>
+                        </div>
+                    </div>`;
+                }
+                
+                // Agent Selection section
+                if (observabilityData.processing && observabilityData.processing.agent_selection) {
+                    html += `
+                    <div class="card card-collapsible mb-2">
+                        <div class="card-header d-flex justify-content-between align-items-center" data-bs-toggle="collapse" data-bs-target="#agent-${observabilityData.conversation_id}">
+                            <span>Agent Selection</span>
+                            <i class="bi bi-chevron-down"></i>
+                        </div>
+                        <div id="agent-${observabilityData.conversation_id}" class="collapse">
+                            <div class="card-body p-2">
+                                <div class="mb-1">
+                                    <span class="badge bg-info">${observabilityData.processing.agent_selection.selected_agent || 'Unknown'}</span>
+                                    ${observabilityData.processing.agent_selection.version ? 
+                                        `<span class="badge bg-secondary ms-1">v${observabilityData.processing.agent_selection.version}</span>` : ''}
+                                </div>
+                                ${observabilityData.processing.agent_selection.reasoning ? 
+                                    `<div class="small text-muted">${observabilityData.processing.agent_selection.reasoning}</div>` : ''}
+                            </div>
+                        </div>
+                    </div>`;
+                }
+                
+                // Add execution graph if available
+                if (observabilityData.processing && observabilityData.processing.execution_graph) {
+                    html += `
+                    <div class="card card-collapsible mb-2">
+                        <div class="card-header d-flex justify-content-between align-items-center" data-bs-toggle="collapse" data-bs-target="#graph-${observabilityData.conversation_id}">
+                            <span>Execution Graph</span>
+                            <i class="bi bi-chevron-down"></i>
+                        </div>
+                        <div id="graph-${observabilityData.conversation_id}" class="collapse">
+                            <div class="card-body p-2">
+                                <div class="small text-muted mb-1">Node sequence:</div>
+                                <div class="d-flex align-items-center">`;
+                    
+                    // Show execution graph nodes
+                    if (observabilityData.processing.execution_graph.nodes && 
+                        observabilityData.processing.execution_graph.nodes.length > 0) {
+                        const currentNode = observabilityData.processing.execution_graph.current_node;
+                        observabilityData.processing.execution_graph.nodes.forEach((node, index) => {
+                            const isActive = node === currentNode;
+                            html += `
+                            <div class="me-1">
+                                <span class="badge ${isActive ? 'bg-info' : 'bg-secondary'}">${node}</span>
+                            </div>`;
+                            
+                            // Add arrow except for last item
+                            if (index < observabilityData.processing.execution_graph.nodes.length - 1) {
+                                html += `<div class="me-1"><i class="bi bi-arrow-right"></i></div>`;
+                            }
+                        });
+                    } else {
+                        html += `<div class="text-muted">No execution graph data available</div>`;
+                    }
+                    
+                    html += `
+                                </div>
+                            </div>
+                        </div>
+                    </div>`;
+                }
+                
+                // Final section for full data (technical view)
+                html += `
+                <div class="card card-collapsible">
+                    <div class="card-header d-flex justify-content-between align-items-center" data-bs-toggle="collapse" data-bs-target="#raw-${observabilityData.conversation_id}">
+                        <span>Raw Data</span>
+                        <i class="bi bi-chevron-down"></i>
+                    </div>
+                    <div id="raw-${observabilityData.conversation_id}" class="collapse">
+                        <div class="card-body p-2">
+                            <pre class="mb-0 bg-dark p-2 rounded" style="max-height: 200px; overflow: auto; font-size: 0.8rem;">${JSON.stringify(observabilityData, null, 2)}</pre>
+                        </div>
+                    </div>
+                </div>`;
+                
+                return html;
             }
             
             function toggleView(view) {
@@ -628,13 +838,16 @@
                                 
                                 // Add the assistant's response to the UI
                                 const responseContent = data.data.response || 'I apologize, but I cannot respond at the moment.';
+                                
+                                // Pass the observability data to the message UI for expandable details
                                 addMessageToUI('assistant', responseContent, {
                                     timestamp: new Date().toISOString()
-                                });
+                                }, data.data.observability);
                                 
-                                // Update the raw observability data if available
+                                // Also update the right-side observability panel if available
                                 if (data.data.observability) {
                                     updateRawData(data.data.observability);
+                                    updateSelectedAgentView(data.data.observability);
                                 }
                                 
                                 // Update conversation in history
@@ -760,6 +973,53 @@
             function updateRawData(data) {
                 const rawDataContent = document.getElementById('raw-data-content');
                 rawDataContent.textContent = JSON.stringify(data, null, 2);
+            }
+            
+            function updateSelectedAgentView(data) {
+                if (!data || !data.processing || !data.processing.intent_detection || !data.processing.agent_selection) {
+                    return;
+                }
+                
+                // Update the agent selection section with real data
+                const selectedAgentContainer = document.getElementById('selected-agent');
+                
+                // Clear existing content
+                selectedAgentContainer.innerHTML = '';
+                
+                // Get intents from the data
+                const intents = data.processing.intent_detection.intents || [];
+                const selectedIntent = data.processing.intent_detection.selected_intent;
+                const selectedAgent = data.processing.agent_selection.selected_agent;
+                
+                // Sort intents by confidence (highest first)
+                intents.sort((a, b) => b.confidence - a.confidence);
+                
+                // Add each intent with confidence bar
+                intents.forEach(intent => {
+                    const confidence = Math.round(intent.confidence * 100);
+                    const isSelected = intent.intent === selectedIntent;
+                    
+                    const intentDiv = document.createElement('div');
+                    intentDiv.className = 'd-flex align-items-center mb-2';
+                    
+                    intentDiv.innerHTML = `
+                        <div class="me-2">
+                            <span class="badge ${isSelected ? 'bg-info' : 'bg-secondary'}">${intent.intent}</span>
+                        </div>
+                        <div class="progress flex-grow-1" style="height: 8px;">
+                            <div class="progress-bar ${isSelected ? 'bg-info' : 'bg-secondary'}" 
+                                role="progressbar" style="width: ${confidence}%"></div>
+                        </div>
+                        <div class="ms-2 small">${confidence}%</div>
+                    `;
+                    
+                    selectedAgentContainer.appendChild(intentDiv);
+                });
+                
+                // If there are no intents, show a message
+                if (intents.length === 0) {
+                    selectedAgentContainer.innerHTML = '<div class="text-muted">No intent data available</div>';
+                }
             }
             
             function updateConnectionStatus(status) {

@@ -43,10 +43,10 @@ const server = http.createServer((req, res) => {
   
   // Serve the context-aware chat interface
   if (req.url === '/chat' || req.url === '/chat.html') {
-    fs.readFile(path.join(__dirname, 'context-chat.html'), (err, data) => {
+    fs.readFile(path.join(__dirname, 'chat-interface.html'), (err, data) => {
       if (err) {
         res.writeHead(500);
-        res.end('Error loading context-chat.html');
+        res.end('Error loading chat-interface.html');
         return;
       }
       
