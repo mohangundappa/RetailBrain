@@ -1,0 +1,833 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Staples Brain - Advanced Chat</title>
+    <link rel="stylesheet" href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <style>
+        body {
+            min-height: 100vh;
+            overflow: hidden;
+        }
+        
+        .main-container {
+            height: 100vh;
+            display: flex;
+        }
+        
+        .chat-container {
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+            border-right: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .observability-container {
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            width: 0;
+            overflow: hidden;
+            transition: width 0.3s ease;
+        }
+        
+        .observability-container.expanded {
+            width: 40%;
+        }
+        
+        .chat-header {
+            padding: 1rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 1rem;
+        }
+        
+        .chat-input-container {
+            padding: 1rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .message {
+            margin-bottom: 1rem;
+            padding: 0.75rem;
+            border-radius: 0.5rem;
+            max-width: 80%;
+        }
+        
+        .message-user {
+            background-color: rgba(13, 110, 253, 0.2);
+            align-self: flex-end;
+            margin-left: auto;
+        }
+        
+        .message-assistant {
+            background-color: rgba(32, 32, 32, 0.5);
+            align-self: flex-start;
+        }
+        
+        .agent-badge {
+            font-size: 0.75rem;
+            margin-bottom: 0.25rem;
+        }
+        
+        .status-indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 5px;
+        }
+        
+        .status-connected {
+            background-color: var(--bs-success);
+        }
+        
+        .status-disconnected {
+            background-color: var(--bs-danger);
+        }
+        
+        .status-sending {
+            background-color: var(--bs-warning);
+        }
+        
+        .toggle-observability {
+            cursor: pointer;
+            transition: transform 0.3s ease;
+        }
+        
+        .toggle-observability.active {
+            transform: rotate(180deg);
+        }
+        
+        .observability-header {
+            padding: 1rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .observability-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 1rem;
+        }
+        
+        .accordion-button::after {
+            margin-left: 0.5rem;
+        }
+        
+        .timeline-item {
+            position: relative;
+            padding-left: 20px;
+            margin-bottom: 15px;
+        }
+        
+        .timeline-item::before {
+            content: "";
+            position: absolute;
+            left: 0;
+            top: 5px;
+            height: 10px;
+            width: 10px;
+            border-radius: 50%;
+            background-color: var(--bs-info);
+        }
+        
+        .timeline-item::after {
+            content: "";
+            position: absolute;
+            left: 4px;
+            top: 15px;
+            bottom: -15px;
+            width: 2px;
+            background-color: var(--bs-secondary);
+        }
+        
+        .timeline-item:last-child::after {
+            display: none;
+        }
+        
+        .timeline-time {
+            font-size: 0.75rem;
+            color: var(--bs-secondary);
+        }
+        
+        .timeline-title {
+            font-weight: bold;
+            margin: 0 0 5px;
+        }
+        
+        .timeline-content {
+            font-size: 0.875rem;
+        }
+        
+        pre {
+            background-color: rgba(0, 0, 0, 0.2);
+            padding: 0.75rem;
+            border-radius: 0.25rem;
+            overflow-x: auto;
+        }
+        
+        code {
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 0.9em;
+        }
+        
+        @media (max-width: 768px) {
+            .main-container {
+                flex-direction: column;
+            }
+            
+            .chat-container {
+                height: 50vh;
+                border-right: none;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            }
+            
+            .observability-container {
+                height: 50vh;
+                width: 100% !important;
+            }
+            
+            .observability-container.expanded {
+                height: 50vh;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="main-container">
+        <div class="chat-container">
+            <div class="chat-header d-flex justify-content-between align-items-center">
+                <div>
+                    <h4 class="mb-0">Staples Brain</h4>
+                    <div class="text-muted small">AI Customer Assistant</div>
+                </div>
+                <div class="d-flex align-items-center">
+                    <span class="me-2">Status:</span>
+                    <span class="badge bg-success" id="connection-status">
+                        <span class="status-indicator status-connected"></span>
+                        Connected
+                    </span>
+                    <button class="btn btn-sm btn-outline-info ms-3 toggle-observability" id="toggle-observability" title="Toggle Observability Panel">
+                        <i class="bi bi-layout-sidebar-reverse"></i>
+                    </button>
+                    <a href="/" class="btn btn-sm btn-outline-secondary ms-2">
+                        <i class="bi bi-house"></i> Dashboard
+                    </a>
+                </div>
+            </div>
+            
+            <div class="chat-messages" id="chat-messages">
+                <!-- Messages will be added here -->
+                <div class="message message-assistant">
+                    <div class="agent-badge">
+                        <span class="badge bg-info">System</span>
+                    </div>
+                    <div>Hello! I'm the Staples Brain assistant. How can I help you today?</div>
+                </div>
+            </div>
+            
+            <div class="chat-input-container">
+                <form id="chat-form" class="d-flex">
+                    <input type="text" id="chat-input" class="form-control me-2" placeholder="Type your message..." autocomplete="off">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-send"></i>
+                    </button>
+                </form>
+            </div>
+        </div>
+        
+        <div class="observability-container" id="observability-container">
+            <div class="observability-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Observability</h5>
+                <div>
+                    <button class="btn btn-sm btn-outline-secondary refresh-observability" id="refresh-observability" title="Refresh Observability Data">
+                        <i class="bi bi-arrow-repeat"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <div class="observability-content" id="observability-content">
+                <div class="alert alert-info mb-3">
+                    <i class="bi bi-info-circle me-2"></i>
+                    Send a message to see the observability data for the conversation.
+                </div>
+                
+                <!-- Observability data will be loaded here -->
+                <div id="obs-placeholder">
+                    <div class="accordion" id="observabilityAccordion">
+                        <!-- This will be populated with observability data -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // DOM Elements
+        const chatForm = document.getElementById('chat-form');
+        const chatInput = document.getElementById('chat-input');
+        const chatMessages = document.getElementById('chat-messages');
+        const connectionStatus = document.getElementById('connection-status');
+        const toggleObservabilityBtn = document.getElementById('toggle-observability');
+        const observabilityContainer = document.getElementById('observability-container');
+        const refreshObservabilityBtn = document.getElementById('refresh-observability');
+        const observabilityContent = document.getElementById('observability-content');
+        const observabilityAccordion = document.getElementById('observabilityAccordion');
+        
+        // Variables
+        let currentConversationId = 'conv_' + Date.now();
+        let isObservabilityExpanded = false;
+        
+        // Event Listeners
+        document.addEventListener('DOMContentLoaded', () => {
+            // Focus the input field when the page loads
+            chatInput.focus();
+        });
+        
+        chatForm.addEventListener('submit', handleChatSubmit);
+        
+        toggleObservabilityBtn.addEventListener('click', () => {
+            isObservabilityExpanded = !isObservabilityExpanded;
+            
+            if (isObservabilityExpanded) {
+                observabilityContainer.classList.add('expanded');
+                toggleObservabilityBtn.classList.add('active');
+            } else {
+                observabilityContainer.classList.remove('expanded');
+                toggleObservabilityBtn.classList.remove('active');
+            }
+        });
+        
+        refreshObservabilityBtn.addEventListener('click', () => {
+            fetchObservabilityData(currentConversationId);
+        });
+        
+        // Functions
+        function handleChatSubmit(e) {
+            e.preventDefault();
+            const message = chatInput.value.trim();
+            if (!message) return;
+            
+            // Add user message to UI
+            addMessageToUI('user', message);
+            chatInput.value = '';
+            
+            // Update status to sending
+            updateConnectionStatus('sending');
+            
+            // Send message to backend
+            sendMessageToBackend(message);
+        }
+        
+        function addMessageToUI(role, content, metadata = {}) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message message-${role}`;
+            
+            let messageContent = '';
+            
+            // For assistant messages, add the agent name as a badge if available
+            if (role === 'assistant' && metadata.agent) {
+                messageContent += `
+                    <div class="agent-badge">
+                        <span class="badge bg-info">${metadata.agent}</span>
+                    </div>
+                `;
+            }
+            
+            // Format message content (simple markdown-like support)
+            let formattedContent = content;
+            // Basic markdown support - code blocks
+            formattedContent = formattedContent.replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>');
+            // Basic markdown support - inline code
+            formattedContent = formattedContent.replace(/`([^`]+)`/g, '<code>$1</code>');
+            
+            messageContent += `<div>${formattedContent}</div>`;
+            
+            // Add timestamp if available
+            if (metadata.timestamp) {
+                const time = new Date(metadata.timestamp).toLocaleTimeString();
+                messageContent += `<div class="text-muted small mt-1">${time}</div>`;
+            }
+            
+            messageDiv.innerHTML = messageContent;
+            chatMessages.appendChild(messageDiv);
+            
+            // Scroll to bottom
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+        
+        function sendMessageToBackend(message) {
+            // Prepare the request data
+            const requestData = {
+                message: message,
+                session_id: currentConversationId
+            };
+            
+            // Log request details
+            console.log('Sending chat message to API:', requestData);
+            
+            // Make the API call to the backend - direct to the main API router endpoint
+            fetch('/api/v1/chat', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'Cache-Control': 'no-cache'
+                },
+                body: JSON.stringify(requestData)
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`Network response was not ok: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('API response:', data);
+                
+                // Update connection status to connected
+                updateConnectionStatus('connected');
+                
+                if (data.success) {
+                    // Add the assistant's response to the UI
+                    const responseContent = data.response || 'I apologize, but I cannot respond at the moment.';
+                    
+                    // Pass the metadata including agent name
+                    addMessageToUI('assistant', responseContent, {
+                        timestamp: new Date().toISOString(),
+                        agent: data.agent
+                    });
+                    
+                    // Store the session_id from the response if available
+                    if (data.session_id) {
+                        currentConversationId = data.session_id;
+                    }
+                    
+                    // Fetch observability data after receiving response
+                    setTimeout(() => {
+                        fetchObservabilityData(currentConversationId);
+                    }, 1000); // Small delay to ensure data is available
+                    
+                    // If observability is not expanded, suggest expanding it
+                    if (!isObservabilityExpanded) {
+                        showObservabilityNotification();
+                    }
+                } else {
+                    // Handle error response
+                    addMessageToUI('assistant', data.error || 'I apologize, but there was an error processing your request. Please try again.', {
+                        timestamp: new Date().toISOString()
+                    });
+                    console.error('API error:', data.error);
+                }
+            })
+            .catch(error => {
+                console.error('Error sending message:', error);
+                
+                // Display error message to user
+                addMessageToUI('assistant', 'I apologize, but there was a network error. Please check your connection and try again.', {
+                    timestamp: new Date().toISOString()
+                });
+                
+                // Update connection status to error
+                updateConnectionStatus('disconnected');
+            });
+        }
+        
+        function updateConnectionStatus(status) {
+            const statusIndicator = connectionStatus.querySelector('.status-indicator');
+            
+            switch(status) {
+                case 'connected':
+                    connectionStatus.className = 'badge bg-success';
+                    connectionStatus.innerHTML = '<span class="status-indicator status-connected"></span> Connected';
+                    break;
+                case 'sending':
+                    connectionStatus.className = 'badge bg-warning';
+                    connectionStatus.innerHTML = '<span class="status-indicator status-sending"></span> Sending...';
+                    break;
+                case 'disconnected':
+                    connectionStatus.className = 'badge bg-danger';
+                    connectionStatus.innerHTML = '<span class="status-indicator status-disconnected"></span> Disconnected';
+                    break;
+                default:
+                    connectionStatus.className = 'badge bg-secondary';
+                    connectionStatus.innerHTML = '<span class="status-indicator"></span> Unknown';
+            }
+        }
+        
+        function fetchObservabilityData(conversationId) {
+            if (!conversationId) return;
+            
+            const url = `/api/v1/chat/observability/${conversationId}`;
+            
+            // Show loading state
+            observabilityContent.innerHTML = `
+                <div class="text-center py-5">
+                    <div class="spinner-border text-info" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <div class="mt-3">Loading observability data...</div>
+                </div>
+            `;
+            
+            fetch(url)
+                .then(response => response.json())
+                .then(data => {
+                    console.log('Observability data:', data);
+                    
+                    if (data.success && data.data) {
+                        renderObservabilityData(data.data);
+                    } else {
+                        // Show error or empty state
+                        observabilityContent.innerHTML = `
+                            <div class="alert alert-warning">
+                                <i class="bi bi-exclamation-triangle me-2"></i>
+                                ${data.error || 'No observability data available for this conversation.'}
+                            </div>
+                        `;
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching observability data:', error);
+                    observabilityContent.innerHTML = `
+                        <div class="alert alert-danger">
+                            <i class="bi bi-exclamation-circle me-2"></i>
+                            Failed to fetch observability data: ${error.message}
+                        </div>
+                    `;
+                });
+        }
+        
+        function renderObservabilityData(data) {
+            // Clear the current content
+            observabilityContent.innerHTML = '';
+            
+            // Create the accordion container
+            const accordionElement = document.createElement('div');
+            accordionElement.className = 'accordion';
+            accordionElement.id = 'observabilityAccordion';
+            
+            // Add header information
+            const headerElement = document.createElement('div');
+            headerElement.className = 'card mb-3';
+            headerElement.innerHTML = `
+                <div class="card-header">
+                    <strong>Conversation ID:</strong> ${data.conversation_id}
+                </div>
+                <div class="card-body">
+                    <p class="card-text">
+                        <strong>Timestamp:</strong> ${new Date(data.timestamp).toLocaleString()}
+                    </p>
+                </div>
+            `;
+            observabilityContent.appendChild(headerElement);
+            
+            // Add Intents & Entity Recognition section
+            const intentSection = createAccordionItem(
+                'intentRecognition',
+                'Intent & Entity Recognition',
+                renderIntentSection(data.processing)
+            );
+            accordionElement.appendChild(intentSection);
+            
+            // Add Agent Selection section
+            const agentSection = createAccordionItem(
+                'agentSelection',
+                'Agent Selection & Reasoning',
+                renderAgentSection(data.processing)
+            );
+            accordionElement.appendChild(agentSection);
+            
+            // Add Execution Timeline section
+            const timelineSection = createAccordionItem(
+                'executionTimeline',
+                'Execution Timeline',
+                renderTimelineSection(data.processing)
+            );
+            accordionElement.appendChild(timelineSection);
+            
+            // Add User Request section
+            const requestSection = createAccordionItem(
+                'userRequest',
+                'User Request Details',
+                renderRequestSection(data.request)
+            );
+            accordionElement.appendChild(requestSection);
+            
+            // Add the accordion to the content container
+            observabilityContent.appendChild(accordionElement);
+            
+            // Initialize the Bootstrap accordion
+            const accordionItems = accordionElement.querySelectorAll('.accordion-collapse');
+            // Open the first accordion item by default
+            if (accordionItems.length > 0) {
+                accordionItems[0].classList.add('show');
+            }
+        }
+        
+        function createAccordionItem(id, title, content) {
+            const itemElement = document.createElement('div');
+            itemElement.className = 'accordion-item';
+            itemElement.innerHTML = `
+                <h2 class="accordion-header">
+                    <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#${id}" aria-expanded="true" aria-controls="${id}">
+                        ${title}
+                    </button>
+                </h2>
+                <div id="${id}" class="accordion-collapse collapse" data-bs-parent="#observabilityAccordion">
+                    <div class="accordion-body">
+                        ${content}
+                    </div>
+                </div>
+            `;
+            return itemElement;
+        }
+        
+        function renderIntentSection(processingData) {
+            if (!processingData || !processingData.intent_detection) {
+                return '<div class="alert alert-warning">No intent data available</div>';
+            }
+            
+            const intentData = processingData.intent_detection;
+            const entityData = processingData.entity_extraction || {};
+            
+            let html = `
+                <div class="mb-3">
+                    <h6>Detected Intents</h6>
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Intent</th>
+                                    <th>Confidence</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+            `;
+            
+            // Add intents if available
+            if (intentData.intents && Object.keys(intentData.intents).length > 0) {
+                for (const [intent, confidence] of Object.entries(intentData.intents)) {
+                    const isSelected = intent === intentData.selected_intent;
+                    html += `
+                        <tr${isSelected ? ' class="table-primary"' : ''}>
+                            <td>${intent}${isSelected ? ' <span class="badge bg-success ms-2">Selected</span>' : ''}</td>
+                            <td>${typeof confidence === 'number' ? (confidence * 100).toFixed(2) + '%' : confidence}</td>
+                        </tr>
+                    `;
+                }
+            } else {
+                html += `
+                    <tr>
+                        <td colspan="2">No intents detected</td>
+                    </tr>
+                `;
+            }
+            
+            html += `
+                        </tbody>
+                    </table>
+                </div>
+            `;
+            
+            // Add entities section if available
+            html += `
+                <div class="mt-4">
+                    <h6>Extracted Entities</h6>
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Entity</th>
+                                    <th>Value</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+            `;
+            
+            if (entityData.entities && Object.keys(entityData.entities).length > 0) {
+                for (const [entity, value] of Object.entries(entityData.entities)) {
+                    html += `
+                        <tr>
+                            <td>${entity}</td>
+                            <td>${value}</td>
+                        </tr>
+                    `;
+                }
+            } else {
+                html += `
+                    <tr>
+                        <td colspan="2">No entities extracted</td>
+                    </tr>
+                `;
+            }
+            
+            html += `
+                        </tbody>
+                    </table>
+                </div>
+            `;
+            
+            return html;
+        }
+        
+        function renderAgentSection(processingData) {
+            if (!processingData || !processingData.agent_selection) {
+                return '<div class="alert alert-warning">No agent selection data available</div>';
+            }
+            
+            const agentData = processingData.agent_selection;
+            
+            let html = `
+                <div class="card mb-3">
+                    <div class="card-body">
+                        <h6 class="card-title">Selected Agent</h6>
+                        <div class="d-flex align-items-center">
+                            <span class="badge bg-info me-2">${agentData.selected_agent || 'Unknown'}</span>
+                            <span class="text-muted">Version: ${agentData.version || 'N/A'}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Add personalization info
+            html += `
+                <div class="card mb-3">
+                    <div class="card-body">
+                        <h6 class="card-title">Personalization</h6>
+                        <p class="card-text">
+                            <span class="badge ${agentData.personalization_applied ? 'bg-success' : 'bg-secondary'}">
+                                ${agentData.personalization_applied ? 'Applied' : 'Not Applied'}
+                            </span>
+                        </p>
+                    </div>
+                </div>
+            `;
+            
+            // Add reasoning if available
+            if (agentData.reasoning) {
+                html += `
+                    <div class="card">
+                        <div class="card-body">
+                            <h6 class="card-title">Agent Selection Reasoning</h6>
+                            <pre class="mb-0"><code>${agentData.reasoning}</code></pre>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            return html;
+        }
+        
+        function renderTimelineSection(processingData) {
+            if (!processingData || !processingData.execution_graph) {
+                return '<div class="alert alert-warning">No timeline data available</div>';
+            }
+            
+            const timelineData = processingData.execution_graph;
+            
+            let html = `
+                <div class="timeline-container">
+            `;
+            
+            if (timelineData.execution_path && timelineData.execution_path.length > 0) {
+                for (const step of timelineData.execution_path) {
+                    const startTime = new Date(step.start_time);
+                    const endTime = new Date(step.end_time);
+                    const duration = (endTime - startTime) / 1000; // Duration in seconds
+                    
+                    html += `
+                        <div class="timeline-item">
+                            <div class="timeline-time text-muted">
+                                ${startTime.toLocaleTimeString()} - ${endTime.toLocaleTimeString()} 
+                                (${duration.toFixed(2)}s)
+                            </div>
+                            <h6 class="timeline-title">${step.node.charAt(0).toUpperCase() + step.node.slice(1)}</h6>
+                            <div class="timeline-content">
+                                ${getNodeDescription(step.node)}
+                            </div>
+                        </div>
+                    `;
+                }
+            } else {
+                html += `<div class="alert alert-warning">No execution path data available</div>`;
+            }
+            
+            html += `</div>`;
+            return html;
+        }
+        
+        function getNodeDescription(nodeName) {
+            const descriptions = {
+                'intent': 'Analyzed user message to determine the primary intent and purpose.',
+                'entity': 'Extracted key entities and specific information from the message.',
+                'agent': 'Selected and prepared the most appropriate specialized agent to handle the request.',
+                'response': 'Generated the final response based on the agent\'s processing.'
+            };
+            
+            return descriptions[nodeName] || `Processed the ${nodeName} step.`;
+        }
+        
+        function renderRequestSection(requestData) {
+            if (!requestData) {
+                return '<div class="alert alert-warning">No request data available</div>';
+            }
+            
+            let html = `
+                <div class="card mb-3">
+                    <div class="card-body">
+                        <h6 class="card-title">User Message</h6>
+                        <p class="card-text">${requestData.message || 'No message content'}</p>
+                    </div>
+                </div>
+            `;
+            
+            // Add context info
+            html += `
+                <div class="card">
+                    <div class="card-body">
+                        <h6 class="card-title">Context Information</h6>
+                        <p class="card-text">
+                            <span class="badge ${requestData.has_context ? 'bg-success' : 'bg-secondary'}">
+                                Context ${requestData.has_context ? 'Present' : 'Not Present'}
+                            </span>
+                        </p>
+                    </div>
+                </div>
+            `;
+            
+            return html;
+        }
+        
+        function showObservabilityNotification() {
+            // Create a notification to suggest expanding the observability panel
+            const notificationDiv = document.createElement('div');
+            notificationDiv.className = 'alert alert-info alert-dismissible fade show mt-3';
+            notificationDiv.innerHTML = `
+                <i class="bi bi-info-circle me-2"></i>
+                Observability data is available. <button class="btn btn-sm btn-outline-info ms-2" id="show-observability">Show Details</button>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            `;
+            
+            observabilityContent.prepend(notificationDiv);
+            
+            // Add click event for the show button
+            document.getElementById('show-observability').addEventListener('click', () => {
+                if (!isObservabilityExpanded) {
+                    observabilityContainer.classList.add('expanded');
+                    toggleObservabilityBtn.classList.add('active');
+                    isObservabilityExpanded = true;
+                }
+                notificationDiv.remove();
+            });
+        }
+    </script>
+</body>
+</html>
