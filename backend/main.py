@@ -51,35 +51,30 @@ async def init_db():
         logger.error(f"Error initializing database: {str(e)}", exc_info=True)
         raise
 
-def find_free_port(start_port=5000, max_attempts=100):
+def check_port_available(port=5000):
     """
-    Find a free port starting from the given port.
+    Check if the specified port is available.
     
     Args:
-        start_port: The port to start searching from
-        max_attempts: Maximum number of ports to try
+        port: The port to check
     
     Returns:
-        int: A free port number
+        bool: True if the port is available, False otherwise
     """
     import socket
     
-    for port_offset in range(max_attempts):
-        test_port = start_port + port_offset
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        try:
-            sock.bind(('0.0.0.0', test_port))
-            sock.close()
-            return test_port
-        except OSError:
-            logger.warning(f"Port {test_port} is already in use")
-            continue
-        finally:
-            sock.close()
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    try:
+        sock.bind(('0.0.0.0', port))
+        sock.close()
+        return True
+    except OSError:
+        logger.warning(f"Port {port} is already in use")
+        return False
+    finally:
+        sock.close()
     
-    # If we get here, we couldn't find a free port
-    logger.error(f"Could not find a free port after {max_attempts} attempts")
-    return start_port
+    return False
 
 def run_api(app_instance=None, reload=None):
     """
@@ -91,22 +86,26 @@ def run_api(app_instance=None, reload=None):
     """
     # Get host and port from environment or use defaults
     host = os.environ.get("API_HOST", "0.0.0.0")
-    requested_port = int(os.environ.get("API_PORT", 5000))
     
-    # Find a free port if the requested one is in use
-    port = find_free_port(start_port=requested_port)
-    if port != requested_port:
-        logger.warning(f"Requested port {requested_port} is in use. Using port {port} instead.")
+    # User requested to use only port 5000 for the backend
+    port = 5000
+    
+    # Check if the port is available
+    is_available = check_port_available(port)
+    
+    if not is_available:
+        logger.warning(f"Port {port} is already in use")
+        logger.error("Please stop any services using port 5000 and try again")
         
-        # Save the port to an environment variable for other components to use
-        os.environ["BACKEND_PORT"] = str(port)
-        os.environ["API_PORT"] = str(port)
-        
-        # Also write to a file that the frontend can read
-        port_file = Path(ROOT_DIR) / "backend_port.txt"
-        with open(port_file, "w") as f:
-            f.write(str(port))
-        logger.info(f"Wrote port information to {port_file}")
+    # Save the port to an environment variable for other components to use
+    os.environ["BACKEND_PORT"] = str(port)
+    os.environ["API_PORT"] = str(port)
+    
+    # Also write to a file that the frontend can read
+    port_file = Path(ROOT_DIR) / "backend_port.txt"
+    with open(port_file, "w") as f:
+        f.write(str(port))
+    logger.info(f"Wrote port information to {port_file}")
     
     # Determine if reload should be enabled
     should_reload = reload
@@ -137,36 +136,14 @@ def run_api(app_instance=None, reload=None):
             )
     except OSError as e:
         if "Address already in use" in str(e):
-            logger.error(f"Port {port} is already in use despite our best efforts to find a free port")
-            # Try one more time with a random high port
-            import random
-            random_port = random.randint(8000, 9000)
-            logger.info(f"Trying again with random port {random_port}")
+            logger.error(f"Port {port} is already in use despite our check")
+            logger.error("Please stop any other services using port 5000 and try again.")
             
-            os.environ["BACKEND_PORT"] = str(random_port)
-            os.environ["API_PORT"] = str(random_port)
+            # We'll only use the requested ports (3000, 3001, 5000) as specified
+            logger.info("Per user request, we'll only use ports 3000, 3001, and 5000.")
             
-            # Update the port file
-            port_file = Path(ROOT_DIR) / "backend_port.txt"
-            with open(port_file, "w") as f:
-                f.write(str(random_port))
-            
-            # Try again with the new port
-            if should_reload:
-                uvicorn.run(
-                    "backend.api_gateway:app",
-                    host=host,
-                    port=random_port,
-                    reload=True
-                )
-            else:
-                application = app_instance or app
-                uvicorn.run(
-                    application,
-                    host=host,
-                    port=random_port,
-                    reload=False
-                )
+            # Exit with an error code
+            sys.exit(1)
         else:
             raise
 

@@ -4,23 +4,13 @@ const path = require('path');
 
 const PORT = process.env.PORT || 3001;
 
-// Try to read backend port from file if it exists
-let BACKEND_PORT = process.env.BACKEND_PORT || 5000;
-const backendPortFile = path.join(__dirname, '..', 'backend_port.txt');
+// We'll use port 5000 for the backend as requested by the user
+const BACKEND_PORT = 5000;
+process.env.BACKEND_PORT = BACKEND_PORT.toString();
+console.log(`Using backend port ${BACKEND_PORT} as requested`);
 
-try {
-  if (fs.existsSync(backendPortFile)) {
-    const portFileContent = fs.readFileSync(backendPortFile, 'utf8').trim();
-    if (portFileContent && !isNaN(parseInt(portFileContent))) {
-      BACKEND_PORT = parseInt(portFileContent);
-      console.log(`Found backend port ${BACKEND_PORT} from file`);
-      // Update environment variable
-      process.env.BACKEND_PORT = BACKEND_PORT.toString();
-    }
-  }
-} catch (error) {
-  console.error('Error reading backend port file:', error.message);
-}
+// For reference, port file location
+const backendPortFile = path.join(__dirname, '..', 'backend_port.txt');
 
 // Create a simple HTTP server
 const server = http.createServer((req, res) => {
@@ -140,8 +130,8 @@ const server = http.createServer((req, res) => {
         res.writeHead(200, { 'Content-Type': 'application/json' });
         
         // Try to make a direct HTTP request to the backend at a different port to see if it's running
-        // We'll try a range of ports to see if we can find the API
-        const tryBackendPorts = [5000, 5001, 5002, 5003, 5004, 5005];
+        // We'll only use port 5000 for the backend API as requested
+        const tryBackendPorts = [5000];
         console.log(`Trying to find backend on ports: ${tryBackendPorts.join(', ')}`);
         
         let portFound = false;
