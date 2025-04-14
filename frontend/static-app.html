@@ -161,6 +161,7 @@
                                             <tr>
                                                 <th>Status</th>
                                                 <th>Name</th>
+                                                <th>Category</th>
                                                 <th>Type</th>
                                                 <th>Version</th>
                                                 <th>Actions</th>
@@ -209,13 +210,13 @@
         function displayPlaceholderAgents() {
             // Show some placeholder agents if the API is not available
             const placeholderAgents = [
-                { name: 'Package Tracking Agent', status: 'active', type: 'PACKAGE_TRACKING', version: '1.0', is_system: false },
-                { name: 'Reset Password Agent', status: 'active', type: 'RESET_PASSWORD', version: '1.0', is_system: false },
-                { name: 'Store Locator Agent', status: 'active', type: 'STORE_LOCATOR', version: '1.0', is_system: false },
-                { name: 'Product Information Agent', status: 'active', type: 'PRODUCT_INFO', version: '1.0', is_system: false },
-                { name: 'Returns Processing Agent', status: 'active', type: 'RETURNS_PROCESSING', version: '1.0', is_system: false },
-                { name: 'Guardrails Agent', status: 'active', type: 'POLICY-ENFORCER', version: '1.0', is_system: true },
-                { name: 'General Conversation Agent', status: 'active', type: 'LLM-DRIVEN', version: '1.0', is_system: true }
+                { name: 'Package Tracking Agent', status: 'active', type: 'TRACKER', legacy_type: 'package_tracking', version: '1.0', is_system: false },
+                { name: 'Reset Password Agent', status: 'active', type: 'PROCESS', legacy_type: 'reset_password', version: '1.0', is_system: false },
+                { name: 'Store Locator Agent', status: 'active', type: 'KNOWLEDGE', legacy_type: 'store_locator', version: '1.0', is_system: false },
+                { name: 'Product Information Agent', status: 'active', type: 'KNOWLEDGE', legacy_type: 'product_info', version: '1.0', is_system: false },
+                { name: 'Returns Processing Agent', status: 'active', type: 'PROCESS', legacy_type: 'returns_processing', version: '1.0', is_system: false },
+                { name: 'Guardrails Agent', status: 'active', type: 'BUILT_IN', legacy_type: 'policy-enforcer', version: '1.0', is_system: true },
+                { name: 'General Conversation Agent', status: 'active', type: 'SMALL_TALK', legacy_type: 'llm-driven', version: '1.0', is_system: true }
             ];
             
             displayAgents(placeholderAgents);
@@ -246,8 +247,59 @@
                     nameCell.appendChild(badge);
                 }
                 
+                // Add category cell
+                const categoryCell = document.createElement('td');
+                // Format the category badge based on agent type
+                const categoryBadge = document.createElement('span');
+                categoryBadge.className = 'badge';
+                
+                // Add a different color based on the agent type
+                let categoryName = agent.type || 'Standard';
+                let badgeClass = 'bg-secondary';
+                
+                if (categoryName === 'BUILT_IN') {
+                    badgeClass = 'bg-info';
+                } else if (categoryName === 'KNOWLEDGE') {
+                    badgeClass = 'bg-primary';
+                } else if (categoryName === 'PROCESS') {
+                    badgeClass = 'bg-success';
+                } else if (categoryName === 'TRACKER') {
+                    badgeClass = 'bg-warning text-dark';
+                } else if (categoryName === 'SMALL_TALK') {
+                    badgeClass = 'bg-light text-dark';
+                } else if (categoryName === 'FALLBACK') {
+                    badgeClass = 'bg-danger';
+                }
+                
+                categoryBadge.className += ' ' + badgeClass;
+                categoryBadge.textContent = categoryName;
+                categoryCell.appendChild(categoryBadge);
+                
+                // Show legacy type if available
                 const typeCell = document.createElement('td');
-                typeCell.textContent = agent.type || 'Standard';
+                if (agent.legacy_type) {
+                    typeCell.textContent = agent.legacy_type;
+                } else {
+                    // Extract legacy type from name if possible
+                    const name = agent.name.toLowerCase();
+                    if (name.includes('package') || name.includes('tracking')) {
+                        typeCell.textContent = 'package_tracking';
+                    } else if (name.includes('password') || name.includes('reset')) {
+                        typeCell.textContent = 'reset_password';
+                    } else if (name.includes('store') || name.includes('locat')) {
+                        typeCell.textContent = 'store_locator';
+                    } else if (name.includes('product') || name.includes('info')) {
+                        typeCell.textContent = 'product_info';
+                    } else if (name.includes('return')) {
+                        typeCell.textContent = 'returns_processing';
+                    } else if (name.includes('guardrails')) {
+                        typeCell.textContent = 'policy-enforcer';
+                    } else if (name.includes('conversation')) {
+                        typeCell.textContent = 'llm-driven';
+                    } else {
+                        typeCell.textContent = 'custom';
+                    }
+                }
                 
                 const versionCell = document.createElement('td');
                 versionCell.textContent = agent.version || '1.0';
@@ -266,6 +318,7 @@
                 
                 row.appendChild(statusCell);
                 row.appendChild(nameCell);
+                row.appendChild(categoryCell);
                 row.appendChild(typeCell);
                 row.appendChild(versionCell);
                 row.appendChild(actionsCell);

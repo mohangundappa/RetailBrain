@@ -782,6 +782,7 @@ class GraphBrainService:
                     "description": getattr(agent, "description", ""),
                     "type": agent_type,  # Already updated in database
                     "version": getattr(agent, "version", 1),
+                    "status": getattr(agent, "status", "active"),
                     "created_at": getattr(agent, "created_at", datetime.now().isoformat()),
                     "db_driven": True,
                     "loaded": True,
