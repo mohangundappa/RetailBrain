@@ -82,6 +82,22 @@ const server = http.createServer((req, res) => {
     return;
   }
   
+  // Serve the test page
+  if (req.url === '/test' || req.url === '/test.html') {
+    console.log('Serving test page');
+    fs.readFile(path.join(__dirname, 'test.html'), (err, data) => {
+      if (err) {
+        res.writeHead(500);
+        res.end('Error loading test.html');
+        return;
+      }
+      
+      res.writeHead(200, { 'Content-Type': 'text/html' });
+      res.end(data);
+    });
+    return;
+  }
+  
   // Proxy API requests to backend server
   if (req.url.startsWith('/api/')) {
     console.log(`API request received: ${req.method} ${req.url}`);
