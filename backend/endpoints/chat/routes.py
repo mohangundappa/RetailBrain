@@ -14,8 +14,8 @@ from backend.endpoints.chat.models import (
 # Set up logging
 logger = logging.getLogger(__name__)
 
-# Create router
-router = APIRouter(prefix="/chat", tags=["Chat"])
+# Create router - no prefix since it's applied in api_gateway.py
+router = APIRouter(tags=["Chat"])
 
 # Create service instance
 chat_service = ContextEnhancedChatService()
