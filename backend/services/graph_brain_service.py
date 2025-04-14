@@ -768,18 +768,24 @@ class GraphBrainService:
         """
         agent_list = []
         try:
+            # Import agent type mapping
+            from backend.config.agent_constants import AGENT_TYPE_MAPPING, AGENT_TYPE_BUILT_IN, AGENT_TYPE_SMALL_TALK
+            
             for agent_id, agent in self.agents.items():
+                # Get the agent type and ensure it's using our new type system
+                agent_type = getattr(agent, "agent_type", "unknown")
+                
                 # Extract relevant agent information
                 agent_detail = {
                     "id": agent_id,
                     "name": agent.name,
                     "description": getattr(agent, "description", ""),
-                    "type": getattr(agent, "agent_type", "unknown"),
+                    "type": agent_type,  # Already updated in database
                     "version": getattr(agent, "version", 1),
                     "created_at": getattr(agent, "created_at", datetime.now().isoformat()),
                     "db_driven": True,
                     "loaded": True,
-                    "is_system": "guardrails" in agent.name.lower() or "general conversation" in agent.name.lower()
+                    "is_system": agent_type == AGENT_TYPE_BUILT_IN or agent_type == AGENT_TYPE_SMALL_TALK
                 }
                 agent_list.append(agent_detail)
             

@@ -51,8 +51,30 @@ INTENT_AGENT_MAPPING = {
 }
 
 # Agent type constants
+
+# Legacy agent types (kept for backward compatibility)
 PACKAGE_TRACKING_AGENT = "package_tracking"
 RESET_PASSWORD_AGENT = "reset_password"
 STORE_LOCATOR_AGENT = "store_locator"
 PRODUCT_INFO_AGENT = "product_info"
 RETURNS_PROCESSING_AGENT = "returns_processing"
+
+# New agent type classification system
+AGENT_TYPE_BUILT_IN = "BUILT_IN"
+AGENT_TYPE_CUSTOM = "CUSTOM"
+AGENT_TYPE_KNOWLEDGE = "KNOWLEDGE"
+AGENT_TYPE_PROCESS = "PROCESS"
+AGENT_TYPE_TRACKER = "TRACKER"
+AGENT_TYPE_SMALL_TALK = "SMALL_TALK"
+AGENT_TYPE_FALLBACK = "FALLBACK"
+
+# Mapping from legacy types to new classification
+AGENT_TYPE_MAPPING = {
+    "package_tracking": AGENT_TYPE_TRACKER,
+    "reset_password": AGENT_TYPE_PROCESS,
+    "store_locator": AGENT_TYPE_KNOWLEDGE,
+    "product_info": AGENT_TYPE_KNOWLEDGE,
+    "returns_processing": AGENT_TYPE_PROCESS,
+    "policy-enforcer": AGENT_TYPE_BUILT_IN,
+    "llm-driven": AGENT_TYPE_SMALL_TALK
+}
