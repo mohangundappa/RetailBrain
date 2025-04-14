@@ -46,6 +46,17 @@
         .status-inactive {
             background-color: #dc3545;
         }
+        
+        /* Spinner animation */
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .spinner {
+            animation: spin 1s linear infinite;
+            display: inline-block;
+        }
     </style>
 </head>
 <body>
@@ -134,8 +145,14 @@
                 <div class="row">
                     <div class="col-md-12">
                         <div class="card">
-                            <div class="card-header">
-                                <h5>Available Agents</h5>
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h5 class="mb-0">Available Agents</h5>
+                                    <small class="text-muted" id="last-refresh-time"></small>
+                                </div>
+                                <button class="btn btn-primary" onclick="refreshAgents()">
+                                    <i data-feather="refresh-cw" class="me-1"></i> Refresh Now
+                                </button>
                             </div>
                             <div class="card-body">
                                 <div class="table-responsive">
@@ -173,44 +190,32 @@
         });
 
         function fetchAgents() {
-            // In Replit, there might be CORS issues when accessing the API on a different port
-            // For simplicity, we'll use placeholder data directly
-            displayPlaceholderAgents();
-            
-            // This is the code that would be used to fetch real data in production
-            // Kept for reference but not actively used due to CORS limitations in Replit
-            /*
-            // Get the current host (excluding the port) and replace with the API port
-            const apiBaseUrl = window.location.protocol + '//' + window.location.hostname + ':5000';
-            
-            fetch(`${apiBaseUrl}/api/v1/agents`)
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        displayAgents(data.agents);
-                        updateAgentStats(data.agents);
-                    } else {
-                        console.error('Error fetching agents:', data.error);
-                        // Display placeholder if API fails
+            // Try to fetch agents from the API first
+            fetchAgentsFromAPI()
+                .then(success => {
+                    if (!success) {
+                        console.log('Initial API fetch failed, using placeholder data');
                         displayPlaceholderAgents();
                     }
-                })
-                .catch(error => {
-                    console.error('Error fetching agents:', error);
-                    // Display placeholder if API fails
-                    displayPlaceholderAgents();
+                    
+                    // Set initial refresh time
+                    if (!document.getElementById('last-refresh-time').textContent) {
+                        const now = new Date();
+                        document.getElementById('last-refresh-time').textContent = `Last updated: ${now.toLocaleTimeString()}`;
+                    }
                 });
-            */
         }
         
         function displayPlaceholderAgents() {
             // Show some placeholder agents if the API is not available
             const placeholderAgents = [
-                { name: 'Package Tracking', status: 'active', type: 'Customer Support', version: '1.0' },
-                { name: 'Reset Password', status: 'active', type: 'Account Management', version: '1.0' },
-                { name: 'Store Locator', status: 'active', type: 'Information', version: '1.0' },
-                { name: 'Product Info', status: 'inactive', type: 'Product Support', version: '1.0' },
-                { name: 'Returns Processing', status: 'active', type: 'Customer Support', version: '1.0' }
+                { name: 'Package Tracking Agent', status: 'active', type: 'PACKAGE_TRACKING', version: '1.0', is_system: false },
+                { name: 'Reset Password Agent', status: 'active', type: 'RESET_PASSWORD', version: '1.0', is_system: false },
+                { name: 'Store Locator Agent', status: 'active', type: 'STORE_LOCATOR', version: '1.0', is_system: false },
+                { name: 'Product Information Agent', status: 'active', type: 'PRODUCT_INFO', version: '1.0', is_system: false },
+                { name: 'Returns Processing Agent', status: 'active', type: 'RETURNS_PROCESSING', version: '1.0', is_system: false },
+                { name: 'Guardrails Agent', status: 'active', type: 'POLICY-ENFORCER', version: '1.0', is_system: true },
+                { name: 'General Conversation Agent', status: 'active', type: 'LLM-DRIVEN', version: '1.0', is_system: true }
             ];
             
             displayAgents(placeholderAgents);
@@ -232,6 +237,14 @@
                 
                 const nameCell = document.createElement('td');
                 nameCell.textContent = agent.name;
+                
+                // Add system badge if this is a system agent
+                if (agent.is_system) {
+                    const badge = document.createElement('span');
+                    badge.className = 'badge bg-info ms-2';
+                    badge.textContent = 'System';
+                    nameCell.appendChild(badge);
+                }
                 
                 const typeCell = document.createElement('td');
                 typeCell.textContent = agent.type || 'Standard';
@@ -266,6 +279,95 @@
             
             const activeAgents = agents.filter(agent => agent.status === 'active').length;
             document.getElementById('active-agents').textContent = activeAgents;
+            
+            // Update last refresh time
+            const now = new Date();
+            document.getElementById('last-refresh-time').textContent = `Last updated: ${now.toLocaleTimeString()}`;
+        }
+        
+        // Function to handle refresh button click
+        function refreshAgents() {
+            // Get the refresh button and update its state
+            const refreshBtn = document.querySelector('.card-header button');
+            
+            // Disable button and show loading state
+            if (refreshBtn) {
+                refreshBtn.disabled = true;
+                refreshBtn.innerHTML = '<i data-feather="loader" class="spinner me-1"></i> Refreshing...';
+                // Re-initialize feather icons for the spinner
+                feather.replace();
+            }
+            
+            // Attempt to fetch agents from the API
+            fetchAgentsFromAPI()
+                .then(success => {
+                    console.log('Refresh complete, success:', success);
+                    
+                    // If API call fails, use placeholder data
+                    if (!success) {
+                        console.log('Using placeholder data as fallback');
+                        displayPlaceholderAgents();
+                    }
+                })
+                .finally(() => {
+                    // Re-enable button and restore original state
+                    if (refreshBtn) {
+                        setTimeout(() => {
+                            refreshBtn.disabled = false;
+                            refreshBtn.innerHTML = '<i data-feather="refresh-cw" class="me-1"></i> Refresh Now';
+                            // Re-initialize feather icons
+                            feather.replace();
+                        }, 500); // Add a small delay for better UX
+                    }
+                });
+        }
+        
+        // Function to fetch agents from the API
+        function fetchAgentsFromAPI() {
+            return new Promise((resolve) => {
+                try {
+                    // Get the correct API URL (same origin to avoid CORS)
+                    const apiUrl = '/api/v1/agents';
+                    
+                    console.log('Fetching agents from API:', apiUrl);
+                    
+                    // Add cache buster
+                    const cacheBuster = `?t=${new Date().getTime()}`;
+                    
+                    fetch(apiUrl + cacheBuster)
+                        .then(response => {
+                            if (!response.ok) {
+                                throw new Error(`Status: ${response.status}`);
+                            }
+                            return response.json();
+                        })
+                        .then(data => {
+                            console.log('API response:', data);
+                            
+                            if (data.success && data.agents) {
+                                // Update UI with the fetched agents
+                                displayAgents(data.agents);
+                                updateAgentStats(data.agents);
+                                
+                                // Show total agents including system agents
+                                const systemAgents = data.agents.filter(a => a.is_system === true);
+                                console.log(`Loaded ${data.agents.length} agents (including ${systemAgents.length} system agents)`);
+                                
+                                resolve(true);
+                            } else {
+                                console.error('API response not successful:', data.error || 'Unknown error');
+                                resolve(false);
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error fetching agents from API:', error);
+                            resolve(false);
+                        });
+                } catch (error) {
+                    console.error('Exception in fetchAgentsFromAPI:', error);
+                    resolve(false);
+                }
+            });
         }
     </script>
 </body>
