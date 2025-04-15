@@ -142,42 +142,62 @@
         
         .event-timeline {
             margin-top: 1rem;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            overflow-y: auto;
         }
         
         .timeline-item {
             position: relative;
-            padding-left: 20px;
+            padding: 12px 15px;
             margin-bottom: 0.5rem;
+            border-left: 3px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.2s ease;
+            border-radius: 0 4px 4px 0;
         }
         
-        .timeline-item:before {
-            content: '';
-            position: absolute;
-            left: 0;
-            top: 8px;
-            width: 10px;
-            height: 10px;
+        .timeline-item:hover {
+            background-color: rgba(0, 0, 0, 0.2);
+        }
+        
+        .timeline-icon {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 24px;
+            height: 24px;
             border-radius: 50%;
-            background-color: var(--bs-primary);
-        }
-        
-        .timeline-item:after {
-            content: '';
-            position: absolute;
-            left: 4px;
-            top: 18px;
-            bottom: -8px;
-            width: 2px;
             background-color: rgba(255, 255, 255, 0.1);
+            margin-right: 8px;
         }
         
-        .timeline-item:last-child:after {
-            display: none;
+        .timeline-source {
+            font-size: 0.8rem;
+        }
+        
+        .timeline-content {
+            margin: 5px 0;
+            padding-left: 32px;
+        }
+        
+        .timeline-details {
+            margin-top: 8px;
         }
         
         .timeline-time {
             font-size: 0.75rem;
             color: var(--bs-secondary);
+        }
+        
+        .collapse-toggle {
+            transition: transform 0.2s ease;
+            color: var(--bs-light);
+            cursor: pointer;
+        }
+        
+        .collapse-toggle[aria-expanded="true"] .bi-chevron-down {
+            transform: rotate(180deg);
         }
         
         /* Graph visualization styles */
@@ -344,12 +364,20 @@
                             
                             <!-- Timeline Tab -->
                             <div class="tab-pane fade" id="timeline" role="tabpanel" aria-labelledby="timeline-tab">
-                                <div class="event-timeline" id="event-timeline">
-                                    <!-- Timeline events will be added here -->
-                                    <div class="timeline-item">
-                                        <div class="timeline-time">Just now</div>
-                                        <div class="timeline-content">Conversation started</div>
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <h5 class="mb-0">Event Timeline</h5>
+                                    <div>
+                                        <button class="btn btn-sm btn-outline-primary" id="timeline-to-agent" 
+                                                title="Link selected event to agent view">
+                                            <i class="bi bi-link"></i> Link to Agents
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-secondary" id="clear-timeline">
+                                            <i class="bi bi-trash"></i> Clear
+                                        </button>
                                     </div>
+                                </div>
+                                <div class="event-timeline" id="event-timeline">
+                                    <!-- Timeline events will be added here dynamically -->
                                 </div>
                             </div>
                         </div>
@@ -706,20 +734,73 @@
         }
         
         // Add event to the timeline
-        function addTimelineEvent(content, source) {
+        function addTimelineEvent(content, source, eventType = 'info', details = null) {
             const now = new Date();
             const timeString = now.toLocaleTimeString();
+            const eventId = `event-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
+            
+            // Determine icon based on event type
+            let iconClass = 'bi-info-circle';
+            let badgeClass = 'bg-info';
+            
+            switch(eventType) {
+                case 'user':
+                    iconClass = 'bi-person';
+                    badgeClass = 'bg-primary';
+                    break;
+                case 'agent':
+                    iconClass = 'bi-robot';
+                    badgeClass = 'bg-success';
+                    break;
+                case 'error':
+                    iconClass = 'bi-exclamation-triangle';
+                    badgeClass = 'bg-danger';
+                    break;
+                case 'system':
+                    iconClass = 'bi-gear';
+                    badgeClass = 'bg-secondary';
+                    break;
+                default:
+                    iconClass = 'bi-info-circle';
+                    badgeClass = 'bg-info';
+            }
+            
+            // Create expandable details section if details are provided
+            let detailsSection = '';
+            if (details) {
+                detailsSection = `
+                    <div class="timeline-details collapse" id="${eventId}-details">
+                        <div class="card card-body mt-2 bg-dark">
+                            ${details}
+                        </div>
+                    </div>
+                `;
+            }
             
             const timelineItem = document.createElement('div');
             timelineItem.className = 'timeline-item';
             timelineItem.innerHTML = `
-                <div class="timeline-time">${timeString}</div>
-                <div class="timeline-content">${content}</div>
-                <div class="timeline-source small text-muted">${source}</div>
+                <div class="d-flex align-items-center">
+                    <span class="timeline-icon">
+                        <i class="bi ${iconClass}"></i>
+                    </span>
+                    <div class="timeline-time small text-muted me-2">${timeString}</div>
+                    <div class="timeline-source">
+                        <span class="badge ${badgeClass} me-2">${source}</span>
+                    </div>
+                    ${details ? `<button class="btn btn-sm btn-link collapse-toggle p-0" data-bs-toggle="collapse" data-bs-target="#${eventId}-details" aria-expanded="false" aria-controls="${eventId}-details">
+                        <i class="bi bi-chevron-down"></i>
+                    </button>` : ''}
+                </div>
+                <div class="timeline-content mt-1">${content}</div>
+                ${detailsSection}
             `;
             
             if (eventTimeline) {
-                eventTimeline.insertBefore(timelineItem, eventTimeline.firstChild);
+                // Append to the end instead of prepending
+                eventTimeline.appendChild(timelineItem);
+                // Scroll to the bottom
+                eventTimeline.scrollTop = eventTimeline.scrollHeight;
             }
         }
         
@@ -892,6 +973,38 @@
             if (logsContent) {
                 logsContent.innerHTML = '';
                 addLog('Logs cleared');
+            }
+        });
+        
+        // Clear timeline button handler
+        document.getElementById('clear-timeline')?.addEventListener('click', () => {
+            if (eventTimeline) {
+                eventTimeline.innerHTML = '';
+                addTimelineEvent('Timeline cleared', 'System', 'system');
+            }
+        });
+        
+        // Handle timeline to agent linking
+        document.getElementById('timeline-to-agent')?.addEventListener('click', () => {
+            // Find any selected timeline item
+            const selectedItem = document.querySelector('.timeline-item.selected');
+            if (selectedItem) {
+                // Extract the agent name from the badge if present
+                const badge = selectedItem.querySelector('.badge');
+                if (badge && agents.find(a => a.name === badge.textContent)) {
+                    // Show the agents tab and highlight the agent
+                    const agentsTab = document.getElementById('agents-tab');
+                    if (agentsTab) {
+                        const tab = new bootstrap.Tab(agentsTab);
+                        tab.show();
+                        updateAgentStatus(badge.textContent);
+                        addLog(`Linked timeline event to agent: ${badge.textContent}`);
+                    }
+                } else {
+                    addLog('No agent found to link with selected timeline event');
+                }
+            } else {
+                addLog('Please select a timeline event first');
             }
         });
     </script>
