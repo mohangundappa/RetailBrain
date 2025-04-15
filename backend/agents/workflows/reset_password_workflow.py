@@ -378,6 +378,23 @@ def create_reset_password_workflow(model_name: str = "gpt-4o", temperature: floa
             email = await extract_email_with_llm(user_input)
             if email:
                 logger.info(f"Extracted email with LLM: {email}")
+                # Store the email as an entity in Mem0 for persistence across conversations
+                try:
+                    mem0 = await get_mem0()
+                    if mem0:
+                        # Store the email as an entity (non-async method)
+                        mem0.add_entity(
+                            conversation_id=state["conversation_id"],
+                            entity_type="email",
+                            entity_value=email,
+                            confidence=0.95,
+                            metadata={"source": "llm_extraction"},
+                            session_id=state["session_id"]
+                        )
+                        logger.info(f"Stored email entity in memory: {email}")
+                except Exception as e:
+                    logger.error(f"Error storing email entity in memory: {str(e)}")
+                    
                 return {
                     **state,
                     "user_email": email,
@@ -602,11 +619,37 @@ async def execute_reset_password_workflow(
     ]
     
     # Prepare the initial state
+    # Try to get any previously stored email entity for this session
+    stored_email = email  # Start with any email passed in
+    if not stored_email:
+        try:
+            mem0 = await get_mem0()
+            if mem0:
+                # Query for email entities associated with this conversation
+                entities = await mem0.get_memories_by_conversation(
+                    conversation_id=conversation_id,
+                    memory_type=MemoryType.ENTITY
+                )
+                
+                # Filter entities by session ID manually since the method doesn't take a session_id parameter
+                # This is a workaround and could be improved later with a better memory API
+                entities = [e for e in entities if e.session_id == session_id]
+                
+                # Look for email entities
+                for entity in entities:
+                    metadata = entity.metadata or {}
+                    if metadata.get("entity_type") == "email":
+                        stored_email = entity.content
+                        logger.info(f"Retrieved stored email entity: {stored_email}")
+                        break
+        except Exception as e:
+            logger.error(f"Error retrieving email entity from memory: {str(e)}")
+    
     initial_state: ResetPasswordState = {
         "conversation_id": conversation_id,
         "session_id": session_id,
         "user_input": message,  # Explicitly set the user_input
-        "user_email": email,
+        "user_email": stored_email,  # Use either passed-in email or retrieved from memory
         "reset_intent": None,
         "reset_status": None,
         "current_step": "start",
