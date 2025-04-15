@@ -87,6 +87,7 @@
             let builderAgents = [];
             let isLoading = true;
             let error = null;
+            let selectedAgentId = null;  // Track which agent is being edited
             
             // Function to render the page
             function renderPage() {
@@ -286,10 +287,15 @@
                                     createElement('td', {}, [agent.name])
                                 );
                                 
-                                // Type column - Try both agent_type and type fields
-                                const agentType = agent.agent_type || agent.type || 'N/A';
+                                // Type column - Try both agent_type and type fields with formatting
+                                const rawAgentType = agent.agent_type || agent.type || 'N/A';
+                                // Format the agent type for display (convert SNAKE_CASE or snake_case to Title Case)
+                                const formattedAgentType = rawAgentType.split('_')
+                                    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+                                    .join(' ');
+                                
                                 row.appendChild(
-                                    createElement('td', {}, [agentType])
+                                    createElement('td', {}, [formattedAgentType])
                                 );
                                 
                                 // Description column
