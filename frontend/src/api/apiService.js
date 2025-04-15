@@ -107,4 +107,66 @@ const apiService = {
   }
 };
 
+// Agent Builder Service
+export const agentService = {
+  // List agents for display in agent list page
+  async listAgents() {
+    try {
+      console.log('Fetching agents list');
+      const response = await api.get('/agents');
+      console.log('Agents list response:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching agents:', error);
+      throw error;
+    }
+  },
+  
+  // Get agent builder agents for editing
+  async listAgentBuilderAgents() {
+    try {
+      console.log('Fetching agent builder agents');
+      const response = await api.get('/agent-builder/agents');
+      console.log('Agent builder agents response:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching agent builder agents:', error);
+      throw error;
+    }
+  },
+  
+  // Get a specific agent for editing
+  async getAgentBuilderAgent(agentId) {
+    try {
+      const response = await api.get(`/agent-builder/agents/${agentId}`);
+      return response.data;
+    } catch (error) {
+      console.error(`Error fetching agent ${agentId}:`, error);
+      throw error;
+    }
+  },
+  
+  // Update an agent
+  async updateAgentBuilderAgent(agentId, agentData) {
+    try {
+      const response = await api.put(`/agent-builder/agents/${agentId}`, agentData);
+      return response.data;
+    } catch (error) {
+      console.error(`Error updating agent ${agentId}:`, error);
+      throw error;
+    }
+  },
+  
+  // Create a new agent
+  async createAgentBuilderAgent(agentData) {
+    try {
+      const response = await api.post('/agent-builder/agents', agentData);
+      return response.data;
+    } catch (error) {
+      console.error('Error creating agent:', error);
+      throw error;
+    }
+  }
+};
+
 export default apiService;
