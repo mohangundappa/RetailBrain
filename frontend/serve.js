@@ -174,6 +174,27 @@ const server = http.createServer((req, res) => {
     return;
   }
   
+  // Directly serve react-app.html when requested
+  if (pathname === '/react-app.html') {
+    console.log('Serving react-app.html directly');
+    fs.readFile(path.join(__dirname, 'react-app.html'), (err, data) => {
+      if (err) {
+        console.error('Error reading react-app.html:', err);
+        res.writeHead(500);
+        res.end('Error loading react-app.html');
+        return;
+      }
+      
+      res.writeHead(200, { 
+        'Content-Type': 'text/html',
+        'X-Content-Type-Options': 'nosniff',
+        'Cache-Control': 'no-store'
+      });
+      res.end(data);
+    });
+    return;
+  }
+  
   // Serve static assets for the React application (JavaScript, CSS, etc.)
   if (pathname.startsWith('/static/') || pathname.includes('.js') || pathname.includes('.css') || 
       pathname.includes('.png') || pathname.includes('.jpg') || pathname.includes('.svg')) {
