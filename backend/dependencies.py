@@ -19,6 +19,8 @@ from backend.repositories.agent_repository import AgentRepository
 # Import mem0 memory system
 from backend.memory.factory import get_memory_service as create_memory_service
 from backend.memory.config import MemoryConfig
+# Import agent builder service
+from backend.services.agent_builder_service import AgentBuilderService
 
 # Set up logging
 logger = logging.getLogger("staples_brain")
@@ -28,12 +30,14 @@ _service_factory: Dict[str, Callable] = {
     "brain_service": OptimizedBrainService,  # Use the optimized brain service
     "graph_brain_service": OptimizedBrainService,  # For backward compatibility
     "chat_service": ChatService,
-    "telemetry_service": TelemetryService
+    "telemetry_service": TelemetryService,
+    "agent_builder_service": AgentBuilderService  # Initialize directly
 }
 
 # Singleton instances
 _brain_service = None
 _memory_service = None
+_agent_builder_service = None
 
 
 def set_service_factory(service_name: str, factory_func: Callable) -> None:
@@ -268,4 +272,45 @@ async def get_agent_repository(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Agent repository error"
+        )
+
+
+async def get_agent_builder_service(
+    db: AsyncSession = Depends(get_db),
+    brain_service: OptimizedBrainService = Depends(get_brain_service)
+) -> AgentBuilderService:
+    """
+    Get or create an agent builder service instance.
+    
+    Args:
+        db: Database session
+        brain_service: Brain service instance
+        
+    Returns:
+        AgentBuilderService instance
+    
+    Raises:
+        HTTPException: If the agent builder service cannot be initialized
+    """
+    global _agent_builder_service
+    
+    try:
+        if _agent_builder_service is None:
+            logger.info("Initializing AgentBuilderService")
+            factory = _service_factory["agent_builder_service"]
+            
+            # Initialize agent builder service with database session and brain service
+            _agent_builder_service = factory(
+                db_session=db,
+                brain_service=brain_service
+            )
+            
+            logger.info("AgentBuilderService initialization complete")
+        
+        return _agent_builder_service
+    except Exception as e:
+        logger.error(f"Failed to initialize AgentBuilderService: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Agent builder service initialization failed"
         )

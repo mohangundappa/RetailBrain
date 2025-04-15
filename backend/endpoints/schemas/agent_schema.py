@@ -1,157 +1,174 @@
 """
-API schemas for agent-related operations.
+Pydantic models for Agent Builder API.
+
+This module defines the API schemas for agent configuration endpoints,
+including request and response models for agent management, persona configuration,
+tool management, and entity mapping.
 """
-import uuid
+from typing import Dict, Any, List, Optional, Union
 from datetime import datetime
-from typing import List, Dict, Any, Optional, Union
-
-from pydantic import BaseModel, Field, constr
-
-
-class AgentBase(BaseModel):
-    """Base model for agent data."""
-    name: constr(min_length=1, max_length=255) = Field(..., description="Agent name")
-    description: Optional[str] = Field(None, description="Agent description")
-    agent_type: constr(min_length=1, max_length=50) = Field(..., description="Agent type (LLM, RULE, RETRIEVAL, etc.)")
-    is_system: bool = Field(False, description="Whether this is a system agent")
+from pydantic import BaseModel, Field, validator
+import uuid
 
 
-class AgentCreate(AgentBase):
-    """Model for creating a new agent."""
-    pass
+class AgentResponseTemplateModel(BaseModel):
+    """Model for agent response templates."""
+    id: Optional[str] = Field(None, description="Template ID")
+    template_key: str = Field(..., description="Unique key for this template")
+    template_content: str = Field(..., description="Template content with placeholders")
+    template_type: str = Field(..., description="Template type (text, rich_text, etc.)")
+    language: str = Field(..., description="Template language code")
+    tone: Optional[str] = Field(None, description="Template tone")
+    version: int = Field(1, description="Template version")
 
 
-class AgentUpdate(BaseModel):
-    """Model for updating an agent."""
-    name: Optional[constr(min_length=1, max_length=255)] = Field(None, description="Agent name")
-    description: Optional[str] = Field(None, description="Agent description")
-    status: Optional[str] = Field(None, description="Agent status (draft, active, archived)")
+class AgentPatternModel(BaseModel):
+    """Model for agent detection patterns."""
+    id: Optional[str] = Field(None, description="Pattern ID")
+    pattern_type: str = Field(..., description="Pattern type (keyword, semantic, regex)")
+    pattern_value: str = Field(..., description="The pattern value")
+    confidence_boost: float = Field(0.1, description="Confidence boost when pattern matches")
+    priority: int = Field(1, description="Pattern priority (higher is more important)")
 
 
-class AgentResponse(AgentBase):
-    """Model for returning agent data."""
-    id: uuid.UUID = Field(..., description="Agent ID")
-    status: str = Field(..., description="Agent status (draft, active, archived)")
-    version: int = Field(..., description="Agent version")
-    created_at: datetime = Field(..., description="Creation timestamp")
-    updated_at: datetime = Field(..., description="Last update timestamp")
-    created_by: Optional[str] = Field(None, description="Creator of the agent")
+class EntityMappingModel(BaseModel):
+    """Model for entity mappings to agents."""
+    id: Optional[str] = Field(None, description="Entity mapping ID")
+    entity_id: str = Field(..., description="Entity definition ID")
+    entity_name: str = Field(..., description="Entity name")
+    display_name: str = Field(..., description="Display name for the entity")
+    extraction_strategy: str = Field("llm", description="Strategy for extracting this entity")
+    confidence_threshold: float = Field(0.7, description="Confidence threshold for extraction")
+    is_required: bool = Field(False, description="Whether this entity is required")
+    persistence_scope: str = Field("session", description="Scope for entity persistence (session, conversation, etc.)")
+    validation_regex: Optional[str] = Field(None, description="Regex for validating extracted values")
+    default_value: Optional[str] = Field(None, description="Default value if not found")
+
+
+class AgentToolModel(BaseModel):
+    """Model for agent tools."""
+    id: Optional[str] = Field(None, description="Tool ID")
+    tool_name: str = Field(..., description="Name of the tool")
+    tool_description: str = Field(..., description="Description of what the tool does")
+    tool_class_path: str = Field(..., description="Python path to tool implementation")
+    parameters: Optional[Dict[str, Any]] = Field(None, description="Tool parameters")
+    is_enabled: bool = Field(True, description="Whether the tool is enabled")
+    requires_confirmation: bool = Field(False, description="Whether user confirmation is required")
+    usage_threshold: float = Field(0.7, description="Threshold for when to use this tool")
+
+
+class AgentPersonaModel(BaseModel):
+    """Model for agent persona configuration."""
+    system_prompt: str = Field(..., description="System prompt defining the agent's persona")
+    tone: str = Field("professional", description="Tone of the agent's responses")
+    verbosity: str = Field("balanced", description="Verbosity level (concise, balanced, detailed)")
+    formality: str = Field("formal", description="Formality level (casual, balanced, formal)")
+    persona_traits: List[str] = Field([], description="Persona traits (empathetic, authoritative, etc.)")
+    language_style: Optional[str] = Field(None, description="Language style guidelines")
     
-    class Config:
-        from_attributes = True
+    @validator('verbosity')
+    def validate_verbosity(cls, v):
+        allowed_values = ["concise", "balanced", "detailed"]
+        if v not in allowed_values:
+            raise ValueError(f"verbosity must be one of {allowed_values}")
+        return v
+    
+    @validator('formality')
+    def validate_formality(cls, v):
+        allowed_values = ["casual", "balanced", "formal"]
+        if v not in allowed_values:
+            raise ValueError(f"formality must be one of {allowed_values}")
+        return v
+
+
+class AgentLlmConfigModel(BaseModel):
+    """Model for LLM agent configuration."""
+    model_name: str = Field(..., description="LLM model name")
+    temperature: float = Field(0.7, description="Temperature setting")
+    max_tokens: Optional[int] = Field(None, description="Maximum tokens")
+    timeout_seconds: int = Field(30, description="Timeout in seconds")
+    confidence_threshold: float = Field(0.7, description="Confidence threshold")
+    few_shot_examples: Optional[List[Dict[str, Any]]] = Field(None, description="Few-shot examples")
+    output_parser: Optional[str] = Field(None, description="Output parser configuration")
+
+
+class AgentDetailModel(BaseModel):
+    """Detailed model for agent information."""
+    id: str = Field(..., description="Agent ID")
+    name: str = Field(..., description="Agent name")
+    description: str = Field(..., description="Agent description")
+    agent_type: str = Field(..., description="Agent type")
+    version: int = Field(1, description="Agent version")
+    status: str = Field("draft", description="Agent status (draft, active, deprecated)")
+    is_system: bool = Field(False, description="Whether this is a system agent")
+    created_at: Optional[str] = Field(None, description="Creation timestamp")
+    updated_at: Optional[str] = Field(None, description="Last update timestamp")
+    created_by: Optional[str] = Field(None, description="Creator username")
+    
+    # Configuration components
+    persona: Optional[AgentPersonaModel] = Field(None, description="Agent persona configuration")
+    llm_config: Optional[AgentLlmConfigModel] = Field(None, description="LLM configuration")
+    patterns: Optional[List[AgentPatternModel]] = Field(None, description="Detection patterns")
+    tools: Optional[List[AgentToolModel]] = Field(None, description="Available tools")
+    response_templates: Optional[List[AgentResponseTemplateModel]] = Field(None, description="Response templates")
+    entities: Optional[List[EntityMappingModel]] = Field(None, description="Entity mappings")
+
+
+class AgentCreateRequest(BaseModel):
+    """Request model for creating a new agent."""
+    name: str = Field(..., description="Agent name")
+    description: str = Field(..., description="Agent description")
+    agent_type: str = Field(..., description="Agent type")
+    is_system: bool = Field(False, description="Whether this is a system agent")
+    
+    # Optional configuration components
+    template_id: Optional[str] = Field(None, description="Template ID to base the agent on")
+    persona: Optional[AgentPersonaModel] = Field(None, description="Agent persona configuration")
+    llm_config: Optional[AgentLlmConfigModel] = Field(None, description="LLM configuration")
+    patterns: Optional[List[AgentPatternModel]] = Field(None, description="Detection patterns")
+    tools: Optional[List[AgentToolModel]] = Field(None, description="Available tools")
+    response_templates: Optional[List[AgentResponseTemplateModel]] = Field(None, description="Response templates")
+    entities: Optional[List[EntityMappingModel]] = Field(None, description="Entity mappings")
+
+
+class AgentUpdateRequest(BaseModel):
+    """Request model for updating an agent."""
+    name: Optional[str] = Field(None, description="Agent name")
+    description: Optional[str] = Field(None, description="Agent description")
+    agent_type: Optional[str] = Field(None, description="Agent type")
+    
+    # Optional configuration components
+    persona: Optional[AgentPersonaModel] = Field(None, description="Agent persona configuration")
+    llm_config: Optional[AgentLlmConfigModel] = Field(None, description="LLM configuration")
+    patterns: Optional[List[AgentPatternModel]] = Field(None, description="Detection patterns")
+    response_templates: Optional[List[AgentResponseTemplateModel]] = Field(None, description="Response templates")
 
 
 class AgentListResponse(BaseModel):
-    """Model for returning a list of agents."""
-    items: List[AgentResponse] = Field(..., description="List of agents")
-    total: int = Field(..., description="Total number of agents")
+    """Response model for listing agents."""
+    success: bool = Field(..., description="Whether the request was successful")
+    agents: List[Union[str, AgentDetailModel]] = Field(..., description="List of agents")
+    error: Optional[str] = Field(None, description="Error message if applicable")
+    metadata: Optional[Dict[str, Any]] = Field(None, description="Response metadata")
 
 
-class DeploymentCreate(BaseModel):
-    """Model for creating a new deployment."""
-    environment: constr(min_length=1, max_length=50) = Field(..., description="Deployment environment (dev, staging, production)")
-    deployment_notes: Optional[str] = Field(None, description="Notes about this deployment")
+class AgentTestRequest(BaseModel):
+    """Request model for testing an agent."""
+    message: str = Field(..., description="Sample message to test the agent with")
+    context: Optional[Dict[str, Any]] = Field(None, description="Optional context for the test")
+    include_debug: bool = Field(False, description="Whether to include debug information in the response")
 
 
-class DeploymentResponse(BaseModel):
-    """Model for returning deployment data."""
-    id: uuid.UUID = Field(..., description="Deployment ID")
-    agent_id: uuid.UUID = Field(..., description="Agent ID")
-    environment: str = Field(..., description="Deployment environment")
-    is_active: bool = Field(..., description="Whether this deployment is active")
-    deployed_at: datetime = Field(..., description="Deployment timestamp")
-    deployed_by: Optional[str] = Field(None, description="User who created the deployment")
-    deployment_notes: Optional[str] = Field(None, description="Deployment notes")
-    
-    class Config:
-        from_attributes = True
-
-
-class PatternCreate(BaseModel):
-    """Model for creating a new pattern."""
-    pattern_type: constr(min_length=1, max_length=50) = Field(..., description="Pattern type (regex, keyword, semantic)")
-    pattern_value: str = Field(..., description="The pattern value")
-    priority: int = Field(0, description="Pattern priority (higher number = higher priority)")
-    confidence_boost: float = Field(0.1, description="Confidence boost when pattern matches (0.0-1.0)")
-
-
-class PatternResponse(PatternCreate):
-    """Model for returning pattern data."""
-    id: uuid.UUID = Field(..., description="Pattern ID")
-    agent_id: uuid.UUID = Field(..., description="Agent ID")
-    created_at: datetime = Field(..., description="Creation timestamp")
-    
-    class Config:
-        from_attributes = True
-
-
-class ResponseTemplateCreate(BaseModel):
-    """Model for creating a new response template."""
-    template_key: constr(min_length=1, max_length=100) = Field(..., description="Template identifier")
-    template_content: str = Field(..., description="The template content")
-    language: str = Field("en", description="Language code")
-    template_type: str = Field("text", description="Template type (text, markdown, html)")
-    scenario: Optional[str] = Field(None, description="Scenario classification")
-    tone: str = Field("neutral", description="Template tone (friendly, formal, etc.)")
-    is_fallback: bool = Field(False, description="Whether this is a fallback template")
-
-
-class ResponseTemplateResponse(ResponseTemplateCreate):
-    """Model for returning response template data."""
-    id: uuid.UUID = Field(..., description="Template ID")
-    agent_id: uuid.UUID = Field(..., description="Agent ID")
-    version: int = Field(..., description="Template version")
-    created_at: datetime = Field(..., description="Creation timestamp")
-    updated_at: datetime = Field(..., description="Last update timestamp")
-    
-    class Config:
-        from_attributes = True
-
-
-# Type-specific configuration models
-
-class LlmAgentConfig(BaseModel):
-    """Configuration for LLM-based agents."""
-    model_name: str = Field(..., description="LLM model to use")
-    temperature: float = Field(0.7, description="Temperature parameter (0.0-1.0)")
-    max_tokens: Optional[int] = Field(None, description="Maximum number of tokens")
-    timeout_seconds: int = Field(30, description="Timeout in seconds")
-    confidence_threshold: float = Field(0.7, description="Confidence threshold (0.0-1.0)")
-    system_prompt: Optional[str] = Field(None, description="System prompt")
-    few_shot_examples: Optional[List[Dict[str, str]]] = Field(None, description="Few-shot examples")
-    output_parser: Optional[str] = Field(None, description="Output parser to use")
-
-
-class RuleAgentConfig(BaseModel):
-    """Configuration for rule-based agents."""
-    rules: Dict[str, Any] = Field(..., description="Rules configuration")
-    default_confidence: float = Field(0.5, description="Default confidence score (0.0-1.0)")
-    fallback_message: Optional[str] = Field(None, description="Fallback message when no rules match")
-
-
-class RetrievalAgentConfig(BaseModel):
-    """Configuration for retrieval-based agents."""
-    vector_store_id: Optional[uuid.UUID] = Field(None, description="Vector store ID")
-    search_type: str = Field("similarity", description="Search type (similarity, hybrid)")
-    top_k: int = Field(3, description="Number of results to retrieve")
-    similarity_threshold: float = Field(0.7, description="Similarity threshold (0.0-1.0)")
-    reranker_config: Optional[Dict[str, Any]] = Field(None, description="Reranker configuration")
-
-
-class AgentConfigCreate(BaseModel):
-    """Model for creating agent-specific configuration."""
-    llm_config: Optional[LlmAgentConfig] = Field(None, description="LLM agent configuration")
-    rule_config: Optional[RuleAgentConfig] = Field(None, description="Rule agent configuration")
-    retrieval_config: Optional[RetrievalAgentConfig] = Field(None, description="Retrieval agent configuration")
-
-
-class AgentDetailResponse(AgentResponse):
-    """Detailed agent information including configurations."""
-    llm_config: Optional[LlmAgentConfig] = Field(None, description="LLM agent configuration")
-    rule_config: Optional[RuleAgentConfig] = Field(None, description="Rule agent configuration")
-    retrieval_config: Optional[RetrievalAgentConfig] = Field(None, description="Retrieval agent configuration")
-    patterns: List[PatternResponse] = Field([], description="Agent patterns")
-    response_templates: List[ResponseTemplateResponse] = Field([], description="Response templates")
-    
-    class Config:
-        from_attributes = True
+class AgentTestResponse(BaseModel):
+    """Response model for agent testing."""
+    success: bool = Field(..., description="Whether the test was successful")
+    agent_id: str = Field(..., description="ID of the agent tested")
+    agent_name: str = Field(..., description="Name of the agent tested")
+    message: str = Field(..., description="Original test message")
+    response: str = Field(..., description="Agent's response")
+    confidence: float = Field(..., description="Agent's confidence score")
+    processing_time: float = Field(..., description="Processing time in milliseconds")
+    extracted_entities: Optional[Dict[str, Any]] = Field(None, description="Entities extracted from the message")
+    debug_info: Optional[Dict[str, Any]] = Field(None, description="Debug information if requested")
+    error: Optional[str] = Field(None, description="Error message if applicable")
+"""
