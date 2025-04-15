@@ -15,7 +15,7 @@ from sqlalchemy import select
 
 from backend.agents.framework.langgraph.langgraph_agent import LangGraphAgent
 from backend.agents.framework.langgraph.database_agent import DatabaseAgent
-from backend.agents.framework.langgraph.agent_factory_util import create_agent_from_model
+from backend.agents.framework.langgraph.agent_factory_util import create_agent_from_model, create_agent_from_definition
 from backend.repositories.agent_repository import AgentRepository
 from backend.database.agent_schema import (
     AgentDefinition, AgentDeployment, AgentComposition,
@@ -78,14 +78,72 @@ class LangGraphAgentFactory:
             agents = []
             for agent_def in agent_definitions:
                 try:
-                    # Create agent using the appropriate implementation based on agent type
-                    agent = await create_agent_from_model(agent_def)
+                    # Convert database model to a clean dictionary with eagerly loaded data
+                    agent_dict = {
+                        "id": str(agent_def.id),
+                        "name": agent_def.name,
+                        "description": agent_def.description,
+                        "agent_type": agent_def.agent_type,
+                        "status": agent_def.status,
+                        "is_system": agent_def.is_system,
+                        "created_at": agent_def.created_at.isoformat() if agent_def.created_at else None,
+                        "updated_at": agent_def.updated_at.isoformat() if agent_def.updated_at else None,
+                        "version": agent_def.version
+                    }
+                    
+                    # Extract LLM configuration
+                    if agent_def.agent_type == "LLM" and hasattr(agent_def, 'llm_configuration') and agent_def.llm_configuration:
+                        llm_config = agent_def.llm_configuration
+                        agent_dict["llm_config"] = {
+                            "model_name": llm_config.model_name,
+                            "temperature": llm_config.temperature,
+                            "max_tokens": llm_config.max_tokens,
+                            "timeout_seconds": llm_config.timeout_seconds,
+                            "system_prompt": llm_config.system_prompt
+                        }
+                        # Add individual fields for easier access
+                        agent_dict["model_name"] = llm_config.model_name
+                        agent_dict["temperature"] = llm_config.temperature
+                        agent_dict["system_prompt"] = llm_config.system_prompt
+                    
+                    # Extract patterns
+                    if hasattr(agent_def, 'patterns') and agent_def.patterns:
+                        agent_dict["patterns"] = [
+                            {
+                                "pattern_type": pattern.pattern_type,
+                                "pattern_value": pattern.pattern_value,
+                                "confidence_boost": pattern.confidence_boost
+                            }
+                            for pattern in agent_def.patterns
+                        ]
+                    
+                    # Extract tools
+                    if hasattr(agent_def, 'tools') and agent_def.tools:
+                        agent_dict["tools"] = [
+                            {
+                                "tool_name": tool.tool_name,
+                                "tool_description": tool.tool_description,
+                                "parameters": tool.parameters,
+                                "enabled": tool.enabled
+                            }
+                            for tool in agent_def.tools
+                        ]
+                    
+                    # Extract response templates
+                    if hasattr(agent_def, 'response_templates') and agent_def.response_templates:
+                        agent_dict["response_templates"] = {
+                            template.template_key: template.template_content
+                            for template in agent_def.response_templates
+                        }
+                        
+                    # Create the agent using create_agent_from_definition
+                    agent = await create_agent_from_definition(agent_dict)
                     
                     if agent:
                         # Add to registry
                         self.agents[agent.id] = agent
                         agents.append(agent)
-                        logger.info(f"Loaded agent: {agent.name} (ID: {agent.id}, Type: {agent.agent_type})")
+                        logger.info(f"Loaded agent: {agent.name} (ID: {agent.id}, Type: {agent_dict['agent_type']})")
                     else:
                         logger.error(f"Failed to create agent for {agent_def.name}")
                 except Exception as e:
@@ -124,8 +182,66 @@ class LangGraphAgentFactory:
                 logger.warning(f"Agent with ID {agent_id} not found in database")
                 return None
             
-            # Create the agent using the appropriate implementation based on agent type
-            agent = await create_agent_from_model(agent_def)
+            # Convert database model to a clean dictionary with eagerly loaded data
+            agent_dict = {
+                "id": str(agent_def.id),
+                "name": agent_def.name,
+                "description": agent_def.description,
+                "agent_type": agent_def.agent_type,
+                "status": agent_def.status,
+                "is_system": agent_def.is_system,
+                "created_at": agent_def.created_at.isoformat() if agent_def.created_at else None,
+                "updated_at": agent_def.updated_at.isoformat() if agent_def.updated_at else None,
+                "version": agent_def.version
+            }
+            
+            # Extract LLM configuration
+            if agent_def.agent_type == "LLM" and hasattr(agent_def, 'llm_configuration') and agent_def.llm_configuration:
+                llm_config = agent_def.llm_configuration
+                agent_dict["llm_config"] = {
+                    "model_name": llm_config.model_name,
+                    "temperature": llm_config.temperature,
+                    "max_tokens": llm_config.max_tokens,
+                    "timeout_seconds": llm_config.timeout_seconds,
+                    "system_prompt": llm_config.system_prompt
+                }
+                # Add individual fields for easier access
+                agent_dict["model_name"] = llm_config.model_name
+                agent_dict["temperature"] = llm_config.temperature
+                agent_dict["system_prompt"] = llm_config.system_prompt
+            
+            # Extract patterns
+            if hasattr(agent_def, 'patterns') and agent_def.patterns:
+                agent_dict["patterns"] = [
+                    {
+                        "pattern_type": pattern.pattern_type,
+                        "pattern_value": pattern.pattern_value,
+                        "confidence_boost": pattern.confidence_boost
+                    }
+                    for pattern in agent_def.patterns
+                ]
+            
+            # Extract tools
+            if hasattr(agent_def, 'tools') and agent_def.tools:
+                agent_dict["tools"] = [
+                    {
+                        "tool_name": tool.tool_name,
+                        "tool_description": tool.tool_description,
+                        "parameters": tool.parameters,
+                        "enabled": tool.enabled
+                    }
+                    for tool in agent_def.tools
+                ]
+            
+            # Extract response templates
+            if hasattr(agent_def, 'response_templates') and agent_def.response_templates:
+                agent_dict["response_templates"] = {
+                    template.template_key: template.template_content
+                    for template in agent_def.response_templates
+                }
+                
+            # Create the agent using create_agent_from_definition
+            agent = await create_agent_from_definition(agent_dict)
             
             if agent:
                 # Add to registry
@@ -225,12 +341,8 @@ class LangGraphAgentFactory:
                 logger.error("Failed to create agent in database")
                 return None
             
-            # Load the agent in a proper async context
-            async def load_agent(agent_definition):
-                from backend.agents.framework.langgraph.database_agent import create_database_agent_from_model
-                return await create_database_agent_from_model(agent_definition)
-                
-            agent = await load_agent(agent_def)
+            # Create the agent using the appropriate implementation based on agent type
+            agent = await create_agent_from_model(agent_def)
             
             if agent:
                 # Add to registry

@@ -68,48 +68,72 @@ async def create_agent_from_model(agent_model: AgentDefinition) -> Optional[Lang
         LangGraphAgent instance or None if creation fails
     """
     try:
-        # Convert model to dictionary
+        # Begin by extracting all the data we need while the model is attached to the session
+        agent_id = str(agent_model.id)
+        agent_name = agent_model.name
+        agent_description = agent_model.description
+        agent_type = agent_model.agent_type
+        agent_status = agent_model.status
+        agent_is_system = agent_model.is_system
+        agent_created_at = agent_model.created_at.isoformat() if agent_model.created_at else None
+        agent_updated_at = agent_model.updated_at.isoformat() if agent_model.updated_at else None
+        agent_version = agent_model.version
+        
+        # Convert model to dictionary with basic fields
         agent_def = {
-            "id": str(agent_model.id),
-            "name": agent_model.name,
-            "description": agent_model.description,
-            "agent_type": agent_model.agent_type,
-            "status": agent_model.status,
-            "is_system": agent_model.is_system,
-            "created_at": agent_model.created_at.isoformat() if agent_model.created_at else None,
-            "updated_at": agent_model.updated_at.isoformat() if agent_model.updated_at else None,
-            "version": agent_model.version
+            "id": agent_id,
+            "name": agent_name,
+            "description": agent_description,
+            "agent_type": agent_type,
+            "status": agent_status,
+            "is_system": agent_is_system,
+            "created_at": agent_created_at,
+            "updated_at": agent_updated_at,
+            "version": agent_version
         }
         
-        # Add LLM configuration
-        if hasattr(agent_model, 'llm_configuration') and agent_model.llm_configuration:
-            llm_config = agent_model.llm_configuration[0] if isinstance(agent_model.llm_configuration, list) else agent_model.llm_configuration
-            if llm_config:
+        # Extract LLM configuration safely
+        llm_configurations = getattr(agent_model, 'llm_configuration', None)
+        if llm_configurations:
+            # Make sure to extract all configuration values while the model is attached
+            if isinstance(llm_configurations, list) and llm_configurations:
+                llm_config = llm_configurations[0]
+                
+                # Extract all values from the configuration
+                model_name = getattr(llm_config, 'model_name', 'gpt-4o')
+                temperature = getattr(llm_config, 'temperature', 0.2)
+                max_tokens = getattr(llm_config, 'max_tokens', 800)
+                timeout_seconds = getattr(llm_config, 'timeout_seconds', 30)
+                system_prompt = getattr(llm_config, 'system_prompt', '')
+                
                 agent_def["llm_config"] = {
-                    "model_name": llm_config.model_name,
-                    "temperature": llm_config.temperature,
-                    "max_tokens": llm_config.max_tokens,
-                    "timeout_seconds": llm_config.timeout_seconds,
-                    "system_prompt": llm_config.system_prompt
+                    "model_name": model_name,
+                    "temperature": temperature,
+                    "max_tokens": max_tokens,
+                    "timeout_seconds": timeout_seconds,
+                    "system_prompt": system_prompt
                 }
+                
                 # Add individual fields for easier access
-                agent_def["model_name"] = llm_config.model_name
-                agent_def["temperature"] = llm_config.temperature
-                agent_def["system_prompt"] = llm_config.system_prompt
+                agent_def["model_name"] = model_name
+                agent_def["temperature"] = temperature
+                agent_def["system_prompt"] = system_prompt
         
-        # Add patterns
-        if hasattr(agent_model, 'patterns') and agent_model.patterns:
+        # Extract patterns safely
+        patterns = getattr(agent_model, 'patterns', None)
+        if patterns:
             agent_def["patterns"] = [
                 {
                     "pattern_type": pattern.pattern_type,
                     "pattern_value": pattern.pattern_value,
                     "confidence_boost": pattern.confidence_boost
                 }
-                for pattern in agent_model.patterns
+                for pattern in patterns
             ]
         
-        # Add tools
-        if hasattr(agent_model, 'tools') and agent_model.tools:
+        # Extract tools safely
+        tools = getattr(agent_model, 'tools', None)
+        if tools:
             agent_def["tools"] = [
                 {
                     "tool_name": tool.tool_name,
@@ -117,15 +141,19 @@ async def create_agent_from_model(agent_model: AgentDefinition) -> Optional[Lang
                     "parameters": tool.parameters,
                     "enabled": tool.enabled
                 }
-                for tool in agent_model.tools
+                for tool in tools
             ]
         
-        # Add response templates
-        if hasattr(agent_model, 'response_templates') and agent_model.response_templates:
+        # Extract response templates safely
+        templates = getattr(agent_model, 'response_templates', None)
+        if templates:
             agent_def["response_templates"] = {
                 template.template_key: template.template_content
-                for template in agent_model.response_templates
+                for template in templates
             }
+        
+        # Log the created agent definition
+        logger.info(f"Creating agent from definition: {agent_name} (ID: {agent_id}, Type: {agent_type})")
         
         # Create the agent using the helper function
         return await create_agent_from_definition(agent_def)
