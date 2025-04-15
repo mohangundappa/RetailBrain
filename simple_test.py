@@ -18,7 +18,7 @@ logger = logging.getLogger("brain_tester")
 
 # API endpoint
 API_BASE_URL = "http://localhost:5000/api/v1"
-CHAT_ENDPOINT = f"{API_BASE_URL}/graph/chat"  # Using the graph-based LangGraph endpoint
+CHAT_ENDPOINT = f"{API_BASE_URL}/chat"
 
 # Test message for Reset Password Agent
 TEST_MESSAGE = "I need to reset my password for my Staples account. Can you help me?"
