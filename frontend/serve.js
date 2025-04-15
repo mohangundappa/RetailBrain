@@ -45,25 +45,57 @@ const server = http.createServer((req, res) => {
     return;
   }
   
-  // Serve the dashboard
-  if (pathname === '/' || pathname === '/index.html') {
-    console.log('Serving dashboard page');
-    fs.readFile(path.join(__dirname, 'static-app.html'), (err, data) => {
+  // Define routes that should serve the React app
+  const reactRoutes = ['/agents', '/agent-overview', '/analytics', '/settings'];
+  
+  // Define routes that should serve the static app
+  const staticRoutes = ['/', '/index.html', '/dashboard'];
+  
+  // If the request is for one of the React app routes, serve the React app HTML
+  if (reactRoutes.includes(pathname) || pathname.startsWith('/agents/')) {
+    console.log(`Serving React application for route: ${pathname}`);
+    fs.readFile(path.join(__dirname, 'react-app.html'), (err, data) => {
       if (err) {
+        console.error('Error reading react-app.html:', err);
         res.writeHead(500);
-        res.end('Error loading static-app.html');
+        res.end('Error loading react-app.html');
         return;
       }
       
-      res.writeHead(200, { 'Content-Type': 'text/html' });
+      res.writeHead(200, { 
+        'Content-Type': 'text/html',
+        'X-Content-Type-Options': 'nosniff',
+        'Cache-Control': 'no-store'
+      });
       res.end(data);
     });
     return;
   }
   
-  // Serve the context-aware chat interface - use exact URL matching to prevent bleed-through to backend
-  if (pathname === '/chat' || pathname === '/chat.html' || pathname === '/chat/') {
-    console.log('Serving simple chat interface page from frontend server');
+  // If the request is for one of the static app routes, serve the static app HTML
+  if (staticRoutes.includes(pathname)) {
+    console.log(`Serving static application for route: ${pathname}`);
+    fs.readFile(path.join(__dirname, 'static-app.html'), (err, data) => {
+      if (err) {
+        console.error('Error reading static-app.html:', err);
+        res.writeHead(500);
+        res.end('Error loading static-app.html');
+        return;
+      }
+      
+      res.writeHead(200, { 
+        'Content-Type': 'text/html',
+        'X-Content-Type-Options': 'nosniff',
+        'Cache-Control': 'no-store'
+      });
+      res.end(data);
+    });
+    return;
+  }
+  
+  // Handle chat specifically
+  if (pathname === '/chat' || pathname.startsWith('/chat/')) {
+    console.log('Serving chat interface');
     fs.readFile(path.join(__dirname, 'simple-chat.html'), (err, data) => {
       if (err) {
         console.error('Error reading simple-chat.html:', err);
@@ -72,7 +104,6 @@ const server = http.createServer((req, res) => {
         return;
       }
       
-      // Set content-type explicitly
       res.writeHead(200, { 
         'Content-Type': 'text/html',
         'X-Content-Type-Options': 'nosniff',
