@@ -90,7 +90,7 @@ def create_reset_password_workflow(model_name: str = "gpt-4o", temperature: floa
     
     async def classify_intent(state: ResetPasswordState) -> Dict[str, Any]:
         """
-        Classify the user's intent regarding password reset.
+        Zero-shot intent classification using pattern matching.
         
         Args:
             state: Current workflow state
@@ -98,106 +98,104 @@ def create_reset_password_workflow(model_name: str = "gpt-4o", temperature: floa
         Returns:
             Updated state with intent classification
         """
-        # Hard-coded user input for testing - this is a workaround for the state passing issue
-        # When invoking the workflow, we should extract this directly from the messages
+        # Get the user input with more robust handling
         direct_message = state.get("messages", [{}])[0].get("content", "") if state.get("messages") else ""
         if direct_message:
             state["user_input"] = direct_message  # Force set the user_input in state
             
-        logger.info(f"State in classify_intent: original user_input={state.get('user_input')}, from_messages={direct_message}, messages_count={len(state.get('messages', []))}")
-        # Define the intent classifier prompt
-        intent_prompt = ChatPromptTemplate.from_messages([
-            SystemMessage(content=(
-                "You are an intelligent assistant that classifies user intents for password reset requests. "
-                "Determine whether the user is asking for information about password reset, "
-                "actually requesting a password reset, or describing another account issue."
-            )),
-            MessagesPlaceholder(variable_name="messages"),
-            HumanMessage(content=(
-                "Based on the conversation history and the user's last message, classify their intent as: "
-                "1. INFO_REQUEST: User is asking about password policies or reset procedures.\n"
-                "2. RESET_REQUEST: User explicitly wants to reset their password.\n"
-                "3. ACCOUNT_ISSUE: User has other account-related issues.\n"
-                "4. UNKNOWN: Intent cannot be determined.\n\n"
-                "Respond with a JSON object containing 'intent' (one of the categories above) and 'reasoning' (your explanation)."
-            ))
-        ])
+        user_input = state.get("user_input", "")
         
-        # Define the output parser
-        intent_output_parser = JsonOutputParser()
+        # If no direct user input, try to get from messages
+        if not user_input:
+            messages = state.get("messages", [])
+            if messages:
+                for msg in reversed(messages):
+                    if msg.get("role") == "user" and msg.get("content"):
+                        user_input = msg.get("content")
+                        break
         
-        # Call the model
+        # Last resort fallback
+        if not user_input:
+            logger.warning("No user input found in state or messages, using default")
+            user_input = "Need help with password"
+            
+        # Log the user input with better formatting
+        truncated = user_input[:75] + ('...' if len(user_input) > 75 else '')
+        logger.info(f"Zero-shot intent classification for message: '{truncated}'")
+        
+        # Zero-shot intent classification with pattern matching
+        message_lower = user_input.lower()
+        intent = "unknown"
+        
+        # Define pattern sets for each intent type
+        reset_patterns = [
+            "reset password", "forgot password", "change password", 
+            "can't login", "login problem", "password not working",
+            "locked out", "reset my password", "new password", 
+            "change my password", "lost password", "recover password"
+        ]
+        
+        info_patterns = [
+            "password requirements", "password policy", "how to reset", 
+            "password rules", "secure password", "password instructions",
+            "how do i", "what are the steps", "explain how",
+            "password criteria", "password strength"
+        ]
+        
+        account_patterns = [
+            "account locked", "account stolen", "hacked account",
+            "suspicious activity", "security breach", "account compromise",
+            "account access", "someone else", "account help", 
+            "verify identity", "account issues", "can't access"
+        ]
+        
+        # Check patterns in order of priority
+        for pattern in reset_patterns:
+            if pattern in message_lower:
+                intent = "reset_request"
+                logger.info(f"Pattern match: Found '{pattern}' in message, classified as {intent}")
+                break
+                
+        # If no reset patterns matched, check info patterns
+        if intent == "unknown":
+            for pattern in info_patterns:
+                if pattern in message_lower:
+                    intent = "info_request"
+                    logger.info(f"Pattern match: Found '{pattern}' in message, classified as {intent}")
+                    break
+        
+        # If still no match, check account issue patterns
+        if intent == "unknown":
+            for pattern in account_patterns:
+                if pattern in message_lower:
+                    intent = "account_issue"
+                    logger.info(f"Pattern match: Found '{pattern}' in message, classified as {intent}")
+                    break
+        
+        # If password is mentioned but no specific pattern matched, default to reset_request
+        if intent == "unknown" and "password" in message_lower:
+            intent = "reset_request"
+            logger.info("Default password mention match: User mentioned 'password', defaulting to reset_request")
+        
+        # Map to enum value
         try:
-            # Get the user input directly from the state first
-            user_input = state.get("user_input", "")
-            
-            # If no direct user input, try to get from messages
-            if not user_input:
-                messages = state.get("messages", [])
-                if messages:
-                    for msg in reversed(messages):
-                        if msg.get("role") == "user" and msg.get("content"):
-                            user_input = msg.get("content")
-                            break
-            
-            # Last resort fallback
-            if not user_input:
-                logger.warning("No user input found in state or messages, using default")
-                user_input = "Need help with password"
-                
-            # Create messages list for the LLM with proper message objects for the prompt
-            formatted_messages = [{"role": "user", "content": user_input}]
-            
-            # Log the user input with better formatting
-            truncated = user_input[:75] + ('...' if len(user_input) > 75 else '')
-            logger.info(f"Classifying intent for message: '{truncated}'")  # Log the actual message being used
-            # Format the prompt and then invoke the LLM
-            formatted_prompt = intent_prompt.format(messages=formatted_messages)
-            response = await llm.ainvoke(formatted_prompt)
-            
-            parsed_response = intent_output_parser.parse(response.content)
-            intent = parsed_response.get("intent", "UNKNOWN")
-            reasoning = parsed_response.get("reasoning", "No reasoning provided")
-            
-            # Add a direct pattern match for clarity
-            message_lower = user_input.lower()
-            if "reset" in message_lower and "password" in message_lower:
-                logger.info("Pattern match override: Found 'reset password' in message, forcing reset_request intent")
-                intent = "reset_request"
-            elif "forgot" in message_lower and "password" in message_lower:
-                logger.info("Pattern match override: Found 'forgot password' in message, forcing reset_request intent")
-                intent = "reset_request"
-                
-            # Map to enum value
-            try:
-                intent_enum = ResetPasswordIntent(intent.strip())
-                logger.info(f"Final intent classification: {intent_enum.value}")
-            except ValueError:
-                # Default to unknown if invalid intent
-                logger.warning(f"Invalid intent value '{intent}', defaulting to UNKNOWN")
-                intent_enum = ResetPasswordIntent.UNKNOWN
-                
-            # Log the intent classification
-            logger.info(f"Classified intent: {intent_enum} (Reasoning: {reasoning[:100]}...)")
-                
-            # Update state with intent
-            return {
-                **state,
-                "reset_intent": intent_enum,
-                "current_step": "intent_classified"
-            }
-        except Exception as e:
-            logger.error(f"Error classifying intent: {str(e)}", exc_info=True)
-            # Default to unknown intent on error
-            return {
-                **state,
-                "reset_intent": ResetPasswordIntent.UNKNOWN,
-                "current_step": "intent_classified"
-            }
+            intent_enum = ResetPasswordIntent(intent.strip())
+            logger.info(f"Final intent classification: {intent_enum.value}")
+        except ValueError:
+            # Default to unknown if invalid intent
+            logger.warning(f"Invalid intent value '{intent}', defaulting to UNKNOWN")
+            intent_enum = ResetPasswordIntent.UNKNOWN
+        
+        # Update state with intent
+        return {
+            **state,
+            "reset_intent": intent_enum,
+            "current_step": "intent_classified"
+        }
     
     async def extract_email(state: ResetPasswordState) -> Dict[str, Any]:
         """
-        Extract email address from user input or ask for it if needed.
+        Extract email address from user input using regex pattern matching.
         
         Args:
             state: Current workflow state
@@ -205,6 +203,8 @@ def create_reset_password_workflow(model_name: str = "gpt-4o", temperature: floa
         Returns:
             Updated state with extracted email or response asking for it
         """
+        import re
+        
         # Get the user input with more robust handling
         user_input = state.get("user_input", "")
         if not user_input:
@@ -216,37 +216,26 @@ def create_reset_password_workflow(model_name: str = "gpt-4o", temperature: floa
                         break
             
         if not user_input:
-            user_input = "Please extract any email from this text"
+            logger.warning("No user input found for email extraction")
+            return {
+                **state,
+                "current_step": "need_email"
+            }
             
         logger.info(f"Extracting email from: '{user_input[:50]}...'")
         
-        # Define email extraction prompt
-        email_prompt = ChatPromptTemplate.from_messages([
-            SystemMessage(content=(
-                "You are an assistant that extracts email addresses from text. "
-                "Find any valid email address in the user's message."
-            )),
-            HumanMessage(content=(
-                f"Extract any email address from this text: {user_input}\n\n"
-                "Respond with a JSON object containing:\n"
-                "- 'email': The extracted email address, or null if not found\n"
-                "- 'email_provided': Boolean indicating if an email was found in the text"
-            ))
-        ])
-        
-        # Define the output parser
-        email_output_parser = JsonOutputParser()
+        # Use regex to find email pattern
+        # This pattern matches most standard email formats
+        email_pattern = r'[\w\.-]+@[\w\.-]+\.\w+'
         
         try:
-            # Format the prompt and then invoke the LLM
-            formatted_prompt = email_prompt.format()
-            response = await llm.ainvoke(formatted_prompt)
-            parsed_response = email_output_parser.parse(response.content)
+            # Search for email in the text
+            matches = re.findall(email_pattern, user_input)
             
-            email = parsed_response.get("email")
-            email_provided = parsed_response.get("email_provided", False)
-            
-            if email_provided and email:
+            if matches:
+                email = matches[0]  # Take the first email found
+                logger.info(f"Extracted email: {email}")
+                
                 # Store the extracted email
                 return {
                     **state,
@@ -254,6 +243,7 @@ def create_reset_password_workflow(model_name: str = "gpt-4o", temperature: floa
                     "current_step": "email_provided"
                 }
             else:
+                logger.info("No email found in user input")
                 # No email found, need to ask
                 return {
                     **state,

@@ -200,6 +200,31 @@ class GraphBrainService:
         # Track execution
         state["trace"].append({"step": "router", "timestamp": start_time})
         
+        # Check for password reset patterns directly
+        password_reset_patterns = [
+            "reset password", "forgot password", "change password", 
+            "can't login", "login problem", "password not working",
+            "locked out", "reset my password", "new password", 
+            "change my password", "lost password", "recover password"
+        ]
+        
+        user_input_lower = user_input.lower()
+        for pattern in password_reset_patterns:
+            if pattern in user_input_lower:
+                # Find the Reset Password Agent
+                for agent_id, agent in self.agents.items():
+                    if "reset password" in agent.name.lower():
+                        logger.info(f"Direct pattern match: routing to {agent.name} based on pattern '{pattern}'")
+                        state["selected_agent"] = agent
+                        state["current_agent_id"] = agent_id
+                        state["confidence"] = 0.95  # High confidence since it's a direct match
+                        state["trace"].append({
+                            "step": "direct_pattern_match",
+                            "pattern": pattern,
+                            "agent": agent.name
+                        })
+                        return state
+        
         # Get conversation history if available
         conversation_history = []
         if self.memory_service and session_id:
@@ -377,6 +402,17 @@ class GraphBrainService:
         # Get the guardrails agent if available
         guardrails_agent = self._get_guardrails_agent()
         
+        # Check if this is a response from the Reset Password Agent - if so, skip guardrails
+        agent_id = state.get("current_agent_id", "")
+        agent_name = ""
+        if agent_id in self.agents:
+            agent_name = self.agents[agent_id].name
+            
+        # Skip guardrails for Reset Password Agent responses
+        if agent_name == "Reset Password Agent":
+            logger.info("Skipping guardrails for Reset Password Agent response")
+            return state
+            
         if guardrails_agent and response:
             try:
                 # Apply guardrails to the response
