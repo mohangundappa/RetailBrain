@@ -357,11 +357,46 @@
                                     const description = document.getElementById('agent-description').value;
                                     const status = document.getElementById('agent-status').value;
                                     
+                                    // Get JSON fields and parse them if not empty
+                                    let promptTemplates = document.getElementById('agent-prompt-templates').value;
+                                    let entities = document.getElementById('agent-entities').value;
+                                    let tools = document.getElementById('agent-tools').value;
+                                    let patterns = document.getElementById('agent-patterns').value;
+                                    let llmConfig = document.getElementById('agent-llm-config').value;
+                                    const persona = document.getElementById('agent-persona').value;
+                                    
+                                    // Parse JSON fields if they're not empty
+                                    try {
+                                        if (promptTemplates) promptTemplates = JSON.parse(promptTemplates);
+                                        else promptTemplates = null;
+                                        
+                                        if (entities) entities = JSON.parse(entities);
+                                        else entities = null;
+                                        
+                                        if (tools) tools = JSON.parse(tools);
+                                        else tools = null;
+                                        
+                                        if (patterns) patterns = JSON.parse(patterns);
+                                        else patterns = null;
+                                        
+                                        if (llmConfig) llmConfig = JSON.parse(llmConfig);
+                                        else llmConfig = null;
+                                    } catch (e) {
+                                        alert('Error parsing JSON: ' + e.message);
+                                        return;
+                                    }
+                                    
                                     // Prepare update data
                                     const updateData = {
                                         name,
                                         description,
-                                        status
+                                        status,
+                                        response_templates: promptTemplates,
+                                        entities: entities,
+                                        tools: tools,
+                                        patterns: patterns,
+                                        llm_config: llmConfig,
+                                        persona: persona || null
                                     };
                                     
                                     // Call the update function
@@ -418,6 +453,72 @@
                             });
                             statusGroup.appendChild(statusSelect);
                             form.appendChild(statusGroup);
+                            
+                            // Prompt Templates section (response_templates)
+                            const promptTemplatesGroup = createElement('div', { className: 'mb-3' });
+                            promptTemplatesGroup.appendChild(createElement('label', { for: 'agent-prompt-templates', className: 'form-label' }, ['Prompt Templates']));
+                            promptTemplatesGroup.appendChild(createElement('textarea', { 
+                                className: 'form-control',
+                                id: 'agent-prompt-templates',
+                                rows: 5,
+                                placeholder: 'Enter JSON formatted prompt templates'
+                            }, [agent.response_templates ? JSON.stringify(agent.response_templates, null, 2) : '']));
+                            form.appendChild(promptTemplatesGroup);
+                            
+                            // Entity Definitions section
+                            const entitiesGroup = createElement('div', { className: 'mb-3' });
+                            entitiesGroup.appendChild(createElement('label', { for: 'agent-entities', className: 'form-label' }, ['Entity Definitions/Rules']));
+                            entitiesGroup.appendChild(createElement('textarea', { 
+                                className: 'form-control',
+                                id: 'agent-entities',
+                                rows: 5,
+                                placeholder: 'Enter JSON formatted entity definitions'
+                            }, [agent.entities ? JSON.stringify(agent.entities, null, 2) : '']));
+                            form.appendChild(entitiesGroup);
+                            
+                            // Tools section
+                            const toolsGroup = createElement('div', { className: 'mb-3' });
+                            toolsGroup.appendChild(createElement('label', { for: 'agent-tools', className: 'form-label' }, ['Tools']));
+                            toolsGroup.appendChild(createElement('textarea', { 
+                                className: 'form-control',
+                                id: 'agent-tools',
+                                rows: 5,
+                                placeholder: 'Enter JSON formatted tools configuration'
+                            }, [agent.tools ? JSON.stringify(agent.tools, null, 2) : '']));
+                            form.appendChild(toolsGroup);
+                            
+                            // Patterns section
+                            const patternsGroup = createElement('div', { className: 'mb-3' });
+                            patternsGroup.appendChild(createElement('label', { for: 'agent-patterns', className: 'form-label' }, ['Patterns']));
+                            patternsGroup.appendChild(createElement('textarea', { 
+                                className: 'form-control',
+                                id: 'agent-patterns',
+                                rows: 5,
+                                placeholder: 'Enter JSON formatted patterns for agent matching'
+                            }, [agent.patterns ? JSON.stringify(agent.patterns, null, 2) : '']));
+                            form.appendChild(patternsGroup);
+                            
+                            // LLM Config section
+                            const llmConfigGroup = createElement('div', { className: 'mb-3' });
+                            llmConfigGroup.appendChild(createElement('label', { for: 'agent-llm-config', className: 'form-label' }, ['LLM Configuration']));
+                            llmConfigGroup.appendChild(createElement('textarea', { 
+                                className: 'form-control',
+                                id: 'agent-llm-config',
+                                rows: 5,
+                                placeholder: 'Enter JSON formatted LLM configuration'
+                            }, [agent.llm_config ? JSON.stringify(agent.llm_config, null, 2) : '']));
+                            form.appendChild(llmConfigGroup);
+                            
+                            // Persona section
+                            const personaGroup = createElement('div', { className: 'mb-3' });
+                            personaGroup.appendChild(createElement('label', { for: 'agent-persona', className: 'form-label' }, ['Persona']));
+                            personaGroup.appendChild(createElement('textarea', { 
+                                className: 'form-control',
+                                id: 'agent-persona',
+                                rows: 5,
+                                placeholder: 'Enter agent persona definition'
+                            }, [agent.persona || '']));
+                            form.appendChild(personaGroup);
                             
                             // Submit button
                             const submitBtn = createElement('button', { 
