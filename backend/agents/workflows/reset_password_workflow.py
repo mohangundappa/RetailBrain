@@ -625,10 +625,10 @@ async def execute_reset_password_workflow(
         try:
             mem0 = await get_mem0()
             if mem0:
-                # Query for email entities associated with this conversation
-                entities = await mem0.get_memories_by_conversation(
+                # Query for entities associated with this conversation - use non-async method
+                entities = mem0.get_memories_by_conversation(
                     conversation_id=conversation_id,
-                    memory_type=MemoryType.ENTITY
+                    memory_type="entity"  # Pass as string instead of enum to match API expectations
                 )
                 
                 # Filter entities by session ID manually since the method doesn't take a session_id parameter

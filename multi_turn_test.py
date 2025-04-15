@@ -18,8 +18,8 @@ logging.basicConfig(
 )
 logger = logging.getLogger("multi_turn_tester")
 
-# API endpoint
-API_BASE_URL = "http://localhost:5000/api/v1"
+# API endpoint - the actual API doesn't have a v1 versioning
+API_BASE_URL = "http://localhost:5000/api"
 CHAT_ENDPOINT = f"{API_BASE_URL}/chat"
 
 # Generate a unique session ID
@@ -78,6 +78,7 @@ async def test_reset_password_flow():
         
         # Provide an email address in response to the expected request
         if response1 and "email" in response1.lower():
+            logger.info("Providing email address...")
             response2 = await send_message(
                 session,
                 "My email is test@example.com",
@@ -89,11 +90,29 @@ async def test_reset_password_flow():
             
             # Confirm the reset if prompted
             if response2 and "reset" in response2.lower():
-                await send_message(
+                logger.info("Confirming password reset...")
+                response3 = await send_message(
                     session,
                     "Yes, please reset my password",
                     SESSION_ID
                 )
+                
+                # Wait for a moment
+                await asyncio.sleep(1)
+                
+                # Now we'll ask a follow-up question that requires the email to be persisted
+                logger.info("Testing email persistence...")
+                response4 = await send_message(
+                    session,
+                    "I haven't received the email yet. Can you send it again to test@example.com?",
+                    SESSION_ID
+                )
+                
+                # Check if the system remembers the email
+                if response4 and "test@example.com" in response4.lower():
+                    logger.info("SUCCESS: System remembered the email address between turns!")
+                else:
+                    logger.error("FAILURE: System may have forgotten the email address")
         
     logger.info("Test completed")
 
