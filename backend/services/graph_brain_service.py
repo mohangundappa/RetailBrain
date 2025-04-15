@@ -200,88 +200,128 @@ class GraphBrainService:
         # Track execution
         state["trace"].append({"step": "router", "timestamp": start_time})
         
-        # Check for password reset patterns and email patterns
-        password_reset_patterns = [
-            "reset password", "forgot password", "change password", 
-            "can't login", "login problem", "password not working",
-            "locked out", "reset my password", "new password", 
-            "change my password", "lost password", "recover password"
-        ]
-        
-        user_input_lower = user_input.lower()
-        
-        # Check for "yes" responses to previous reset password agent
-        if session_id:
+        # Get conversation history if available (we'll need it multiple times)
+        conversation_history = []
+        if self.memory_service and session_id:
             try:
-                memory_service = self.memory_service
-                if memory_service:
-                    # Get the last assistant message to see if it was a reset password offer
-                    history = await memory_service.get_conversation_history(session_id)
+                conversation_history = await self.memory_service.get_conversation_history(session_id)
+            except Exception as e:
+                logger.error(f"Error retrieving conversation history: {str(e)}")
+        
+        # Use LLM to detect if this is a reset password request or context-specific response
+        if session_id and conversation_history:
+            try:
+                # Get last few messages for context
+                recent_history = conversation_history[-4:] if len(conversation_history) >= 4 else conversation_history
+                
+                # Format the conversation for the prompt
+                formatted_history = ""
+                for item in recent_history:
+                    role = item.get("role", "")
+                    content = item.get("content", "")
+                    if role and content:
+                        formatted_history += f"{role.upper()}: {content}\n"
+                
+                # Use LLM to analyze if the message is:
+                # 1. A reset password intent
+                # 2. A response to a previous reset password prompt
+                # 3. Contains email information in response to a request
+                
+                password_reset_intent_prompt = PromptTemplate.from_template("""
+                Analyze the following conversation and the latest user message:
+                
+                CONVERSATION HISTORY:
+                {history}
+                
+                LATEST USER MESSAGE: {message}
+                
+                Determine if:
+                1. The user is requesting a password reset
+                2. The user is responding affirmatively to a password reset offer
+                3. The user is providing an email address in response to a request for it
+                4. None of the above
+                
+                In your analysis, consider if:
+                - The user explicitly or implicitly mentions resetting, changing, recovering a password
+                - The latest message contains an affirmative response (yes, please, sure, etc.) to a reset password offer
+                - The latest message contains an email address in response to a request for it
+                
+                Output a JSON object with:
+                - intent: string (one of: "reset_password", "reset_affirmative", "email_provided", "other")
+                - confidence: number between 0.0 and 1.0
+                - extracted_email: string or null (if an email is detected)
+                - explanation: brief explanation of your decision
+                
+                JSON Output:
+                """)
+                
+                # Create and run the intent detection chain
+                intent_chain = password_reset_intent_prompt | self.llm | StrOutputParser()
+                
+                result = await intent_chain.ainvoke({
+                    "history": formatted_history,
+                    "message": user_input
+                })
+                
+                # Parse the result with proper error handling
+                try:
+                    # Clean up the result to ensure valid JSON
+                    result = result.strip()
+                    # Handle potential code blocks
+                    if result.startswith('```'):
+                        end_backticks = result.rfind('```')
+                        if end_backticks > 3:
+                            start_content = result.find('\n', 3)
+                            if start_content != -1 and start_content < end_backticks:
+                                result = result[start_content:end_backticks].strip()
+                            else:
+                                result = result.replace('```', '').strip()
                     
-                    if history and len(history) >= 2:
-                        # Find the last assistant message
-                        last_assistant_msg = None
-                        for msg in reversed(history):
-                            if msg.get("role") == "assistant":
-                                last_assistant_msg = msg.get("content", "")
+                    # Parse the JSON
+                    intent_data = json.loads(result)
+                    
+                    intent_type = intent_data.get("intent", "other")
+                    confidence = float(intent_data.get("confidence", 0.0))
+                    
+                    # If high confidence in reset password intent, find the reset password agent
+                    if (intent_type in ["reset_password", "reset_affirmative", "email_provided"]) and confidence > 0.7:
+                        reset_password_agent_id = None
+                        reset_password_agent = None
+                        
+                        # Find the Reset Password Agent
+                        for agent_id, agent in self.agents.items():
+                            if "reset password" in agent.name.lower():
+                                reset_password_agent_id = agent_id
+                                reset_password_agent = agent
                                 break
                         
-                        # Check if the last message was about password reset help
-                        if (last_assistant_msg and 
-                            "reset your password" in last_assistant_msg and 
-                            "help" in last_assistant_msg and
-                            any(word in user_input_lower for word in ["yes", "yeah", "sure", "please", "ok", "okay"])):
+                        if reset_password_agent:
+                            logger.info(f"LLM-based intent detection: routing to {reset_password_agent.name} with intent {intent_type}")
+                            state["selected_agent"] = reset_password_agent
+                            state["current_agent_id"] = reset_password_agent_id
+                            state["confidence"] = confidence
                             
-                            # This is a positive response to a reset password offer
-                            for agent_id, agent in self.agents.items():
-                                if "reset password" in agent.name.lower():
-                                    logger.info(f"Affirmative response to reset password offer, routing to {agent.name}")
-                                    state["selected_agent"] = agent
-                                    state["current_agent_id"] = agent_id
-                                    state["confidence"] = 0.95
-                                    # Explicitly mark this as a reset request
-                                    context["intent"] = "reset_request"
-                                    state["trace"].append({
-                                        "step": "direct_pattern_match",
-                                        "pattern": "affirmative_response",
-                                        "agent": agent.name
-                                    })
-                                    return state
+                            # Add extracted email to context if available
+                            extracted_email = intent_data.get("extracted_email")
+                            if extracted_email:
+                                context["extracted_email"] = extracted_email
+                            
+                            # Set intent in context
+                            context["intent"] = intent_type
+                            
+                            state["trace"].append({
+                                "step": "llm_intent_detection",
+                                "intent": intent_type,
+                                "confidence": confidence,
+                                "agent": reset_password_agent.name
+                            })
+                            return state
+                
+                except Exception as e:
+                    logger.error(f"Error parsing reset password intent result: {str(e)}", exc_info=True)
+            
             except Exception as e:
-                logger.error(f"Error checking for affirmative response: {str(e)}")
-        
-        # Check for direct email pattern - could be a response to a reset password request
-        if "@" in user_input_lower and ("email" in user_input_lower or "mail" in user_input_lower):
-            # Find the Reset Password Agent for email-like messages
-            for agent_id, agent in self.agents.items():
-                if "reset password" in agent.name.lower():
-                    logger.info(f"Direct email pattern match: routing to {agent.name} for possible email response")
-                    state["selected_agent"] = agent
-                    state["current_agent_id"] = agent_id
-                    state["confidence"] = 0.95  # High confidence since it's a direct match
-                    state["trace"].append({
-                        "step": "direct_pattern_match",
-                        "pattern": "email_response",
-                        "agent": agent.name
-                    })
-                    return state
-        
-        # Check for password reset patterns
-        for pattern in password_reset_patterns:
-            if pattern in user_input_lower:
-                # Find the Reset Password Agent
-                for agent_id, agent in self.agents.items():
-                    if "reset password" in agent.name.lower():
-                        logger.info(f"Direct pattern match: routing to {agent.name} based on pattern '{pattern}'")
-                        state["selected_agent"] = agent
-                        state["current_agent_id"] = agent_id
-                        state["confidence"] = 0.95  # High confidence since it's a direct match
-                        state["trace"].append({
-                            "step": "direct_pattern_match",
-                            "pattern": pattern,
-                            "agent": agent.name
-                        })
-                        return state
+                logger.error(f"Error in LLM-based reset password intent detection: {str(e)}", exc_info=True)
         
         # Get conversation history if available
         conversation_history = []
@@ -298,29 +338,86 @@ class GraphBrainService:
         if prev_agent_id and prev_agent_id in self.agents:
             prev_agent_name = self.agents[prev_agent_id].name
             
-            # Special case for Reset Password Agent: detect email format in response for continuity
+            # Special case for Reset Password Agent: use LLM to detect email response
             if prev_agent_name == "Reset Password Agent":
                 # Check if there was a previous request for email
                 if conversation_history and len(conversation_history) >= 2:
-                    last_assistant_msg = None
-                    for msg in reversed(conversation_history):
-                        if msg.get("role") == "assistant":
-                            last_assistant_msg = msg.get("content", "")
-                            break
-                    
-                    # If last message asked for email and current contains an email pattern
-                    if last_assistant_msg and "email address" in last_assistant_msg and "@" in user_input:
-                        logger.info(f"Detected email response to Reset Password Agent request")
-                        state["selected_agent"] = self.agents[prev_agent_id]
-                        state["current_agent_id"] = prev_agent_id
-                        state["confidence"] = 0.95
-                        state["trace"].append({
-                            "step": "agent_selection",
-                            "method": "reset_password_email_continuity",
-                            "selected": prev_agent_id,
-                            "confidence": 0.95
+                    try:
+                        # Format recent conversation for the prompt
+                        recent_history = conversation_history[-4:] if len(conversation_history) >= 4 else conversation_history
+                        formatted_history = ""
+                        for item in recent_history:
+                            role = item.get("role", "")
+                            content = item.get("content", "")
+                            if role and content:
+                                formatted_history += f"{role.upper()}: {content}\n"
+                        
+                        # Use LLM to determine if this is an email response
+                        email_response_prompt = PromptTemplate.from_template("""
+                        Analyze this conversation and determine if the latest user message is providing an email address 
+                        in response to a previous request for it:
+                        
+                        CONVERSATION HISTORY:
+                        {history}
+                        
+                        LATEST USER MESSAGE: {message}
+                        
+                        Determine:
+                        1. If the assistant previously asked for an email address
+                        2. If the user is now providing an email address
+                        
+                        Output a JSON object with:
+                        - is_email_response: boolean (true if the user is responding with an email)
+                        - extracted_email: string or null (the email address if detected)
+                        - confidence: number between 0.0 and 1.0
+                        
+                        JSON Output:
+                        """)
+                        
+                        # Create and run the email detection chain
+                        email_chain = email_response_prompt | self.llm | StrOutputParser()
+                        
+                        result = await email_chain.ainvoke({
+                            "history": formatted_history,
+                            "message": user_input
                         })
-                        return state
+                        
+                        # Parse the result
+                        result = result.strip()
+                        if result.startswith('```'):
+                            end_backticks = result.rfind('```')
+                            if end_backticks > 3:
+                                start_content = result.find('\n', 3)
+                                if start_content != -1 and start_content < end_backticks:
+                                    result = result[start_content:end_backticks].strip()
+                                else:
+                                    result = result.replace('```', '').strip()
+                        
+                        email_data = json.loads(result)
+                        
+                        is_email_response = email_data.get("is_email_response", False)
+                        confidence = float(email_data.get("confidence", 0.0))
+                        
+                        if is_email_response and confidence > 0.7:
+                            logger.info(f"LLM detected email response to Reset Password Agent request")
+                            state["selected_agent"] = self.agents[prev_agent_id]
+                            state["current_agent_id"] = prev_agent_id
+                            state["confidence"] = confidence
+                            
+                            # Add extracted email to context if available
+                            extracted_email = email_data.get("extracted_email")
+                            if extracted_email:
+                                context["extracted_email"] = extracted_email
+                            
+                            state["trace"].append({
+                                "step": "agent_selection",
+                                "method": "llm_email_detection",
+                                "selected": prev_agent_id,
+                                "confidence": confidence
+                            })
+                            return state
+                    except Exception as e:
+                        logger.error(f"Error in LLM-based email detection: {str(e)}", exc_info=True)
             
             # If not a special case, use the standard continuity check
             try:
