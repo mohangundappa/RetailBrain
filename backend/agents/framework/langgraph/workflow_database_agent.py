@@ -109,7 +109,7 @@ class WorkflowDatabaseAgent(DatabaseAgent):
         try:
             # Check for specific workflow handling
             if "Reset Password Agent" in self.name and self.workflow:
-                logger.info(f"Using Reset Password workflow for message: {message[:30]}...")
+                logger.info(f"Using Reset Password workflow for message: {message[:50]}...")
                 
                 # Execute the workflow
                 result = await execute_reset_password_workflow(

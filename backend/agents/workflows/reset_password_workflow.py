@@ -121,12 +121,27 @@ def create_reset_password_workflow(model_name: str = "gpt-4o", temperature: floa
         
         # Call the model
         try:
-            # Make sure we have valid messages
-            messages = state.get("messages", [])
-            if not messages:
-                user_input = state.get("user_input", "Need help with password")
-                messages = [{"role": "user", "content": user_input}]
+            # Get the user input directly from the state first
+            user_input = state.get("user_input", "")
+            
+            # If no direct user input, try to get from messages
+            if not user_input:
+                messages = state.get("messages", [])
+                if messages:
+                    for msg in reversed(messages):
+                        if msg.get("role") == "user" and msg.get("content"):
+                            user_input = msg.get("content")
+                            break
+            
+            # Last resort fallback
+            if not user_input:
+                logger.warning("No user input found in state or messages, using default")
+                user_input = "Need help with password"
                 
+            # Create messages list for the LLM
+            messages = [{"role": "user", "content": user_input}]
+            
+            logger.info(f"Classifying intent for input: '{user_input[:75]}...'")  # Log the actual message being used
             response = await llm.ainvoke(
                 intent_prompt.format(messages=messages)
             )
@@ -170,7 +185,20 @@ def create_reset_password_workflow(model_name: str = "gpt-4o", temperature: floa
         Returns:
             Updated state with extracted email or response asking for it
         """
-        user_input = state.get("user_input", "Please extract any email from this text")
+        # Get the user input with more robust handling
+        user_input = state.get("user_input", "")
+        if not user_input:
+            messages = state.get("messages", [])
+            if messages:
+                for msg in reversed(messages):
+                    if msg.get("role") == "user" and msg.get("content"):
+                        user_input = msg.get("content")
+                        break
+            
+        if not user_input:
+            user_input = "Please extract any email from this text"
+            
+        logger.info(f"Extracting email from: '{user_input[:50]}...'")
         
         # Define email extraction prompt
         email_prompt = ChatPromptTemplate.from_messages([
@@ -414,6 +442,7 @@ async def execute_reset_password_workflow(
         {"role": "user", "content": message}
     ]
     logger.info(f"Initializing workflow for conversation {conversation_id} and session {session_id}")
+    logger.info(f"Processing message: {message[:50]}...")
     
     # Prepare the initial state
     initial_state: ResetPasswordState = {
