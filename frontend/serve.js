@@ -150,6 +150,7 @@ const server = http.createServer((req, res) => {
       method: req.method,
       headers: headers
     });
+    console.log(`BACKEND DEBUG: Connecting to backend port ${backendPort} for ${req.method} ${req.url}`);
     
     // Create proxy request to backend
     const proxyReq = http.request(options, (proxyRes) => {
@@ -209,4 +210,6 @@ const server = http.createServer((req, res) => {
 // Start the server
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`Frontend server running at http://0.0.0.0:${PORT}`);
+  console.log(`Backend API server expected at http://127.0.0.1:${BACKEND_PORT}`);
+  console.log(`API requests will be proxied from /api/* to http://127.0.0.1:${BACKEND_PORT}/api/*`);
 });
