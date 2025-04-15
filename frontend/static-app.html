@@ -73,6 +73,55 @@
             font-size: 0.9rem;
             color: var(--bs-secondary);
         }
+        
+        .sidebar-nav {
+            background-color: rgba(0, 0, 0, 0.2);
+            border-radius: 0.5rem;
+            padding: 1rem;
+            margin-bottom: 1.5rem;
+        }
+        
+        .sidebar-nav .nav-link {
+            color: rgba(255, 255, 255, 0.7);
+            border-radius: 0.25rem;
+            margin-bottom: 0.5rem;
+            padding: 0.75rem 1rem;
+            transition: all 0.2s ease;
+        }
+        
+        .sidebar-nav .nav-link:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+        
+        .sidebar-nav .nav-link.active {
+            color: white;
+            background-color: var(--bs-primary);
+        }
+        
+        .tab-content {
+            padding: 0 0 1.5rem 0;
+        }
+        
+        .main-content-wrapper {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1.5rem;
+        }
+        
+        .connection-issue {
+            background-color: rgba(220, 53, 69, 0.1);
+            border: 1px solid rgba(220, 53, 69, 0.2);
+            padding: 1rem;
+            border-radius: 0.5rem;
+            margin-bottom: 1.5rem;
+        }
+        
+        .agent-type-badge {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            font-size: 0.7rem;
+        }
     </style>
 </head>
 <body>
@@ -84,133 +133,422 @@
                     <p class="text-muted">AI-powered Customer Engagement Platform</p>
                 </div>
                 <div>
-                    <span class="badge bg-success">System Online</span>
+                    <span class="badge bg-success" id="system-status">System Online</span>
                 </div>
             </div>
         </div>
         
-        <div class="stats-container">
-            <div class="row">
-                <div class="col-md-3 col-6">
-                    <div class="stat-item">
-                        <div class="stat-value text-primary">7</div>
-                        <div class="stat-label">Active Agents</div>
-                    </div>
-                </div>
-                <div class="col-md-3 col-6">
-                    <div class="stat-item">
-                        <div class="stat-value text-success">98.5%</div>
-                        <div class="stat-label">System Uptime</div>
-                    </div>
-                </div>
-                <div class="col-md-3 col-6">
-                    <div class="stat-item">
-                        <div class="stat-value text-info">2.1s</div>
-                        <div class="stat-label">Avg. Response Time</div>
-                    </div>
-                </div>
-                <div class="col-md-3 col-6">
-                    <div class="stat-item">
-                        <div class="stat-value text-warning">94%</div>
-                        <div class="stat-label">Success Rate</div>
+        <div class="main-content-wrapper">
+            <!-- Sidebar Navigation -->
+            <div class="col-md-3 col-lg-2">
+                <div class="sidebar-nav">
+                    <div class="nav flex-column nav-pills" id="mainTabs" role="tablist" aria-orientation="vertical">
+                        <button class="nav-link active" id="home-tab" data-bs-toggle="tab" data-bs-target="#home-tab-pane" type="button" role="tab" aria-controls="home-tab-pane" aria-selected="true">
+                            <i class="bi bi-house-door me-2"></i>Dashboard
+                        </button>
+                        <button class="nav-link" id="chat-tab" data-bs-toggle="tab" data-bs-target="#chat-tab-pane" type="button" role="tab" aria-controls="chat-tab-pane" aria-selected="false">
+                            <i class="bi bi-chat-dots me-2"></i>Chat
+                        </button>
+                        <button class="nav-link" id="agents-tab" data-bs-toggle="tab" data-bs-target="#agents-tab-pane" type="button" role="tab" aria-controls="agents-tab-pane" aria-selected="false">
+                            <i class="bi bi-robot me-2"></i>Agents
+                        </button>
                     </div>
                 </div>
             </div>
-        </div>
-        
-        <h3 class="mb-4">Features & Interfaces</h3>
-        
-        <div class="row">
-            <div class="col-lg-6 col-md-6">
-                <div class="card h-100">
-                    <div class="card-body">
-                        <div class="card-icon">
-                            <i class="bi bi-chat-dots"></i>
+            
+            <!-- Main Content Area -->
+            <div class="col-md-9 col-lg-10">
+                <div class="tab-content" id="mainTabsContent">
+            <div class="tab-pane fade show active" id="home-tab-pane" role="tabpanel" aria-labelledby="home-tab" tabindex="0">
+                <div class="stats-container">
+                    <div class="row">
+                        <div class="col-md-3 col-6">
+                            <div class="stat-item">
+                                <div class="stat-value text-primary" id="agent-count">7</div>
+                                <div class="stat-label">Active Agents</div>
+                            </div>
                         </div>
-                        <h5 class="card-title">Chat Interface</h5>
-                        <p class="card-text">Chat interface for interacting with Staples Brain and its specialized agents.</p>
-                        <a href="/chat" class="btn btn-outline-primary mt-3">
-                            <i class="bi bi-arrow-right-circle me-2"></i>
-                            Launch Chat
-                        </a>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="col-lg-6 col-md-6">
-                <div class="card h-100">
-                    <div class="card-body">
-                        <div class="card-icon">
-                            <i class="bi bi-diagram-3"></i>
+                        <div class="col-md-3 col-6">
+                            <div class="stat-item">
+                                <div class="stat-value text-success">98.5%</div>
+                                <div class="stat-label">System Uptime</div>
+                            </div>
                         </div>
-                        <h5 class="card-title">Routing Architecture</h5>
-                        <p class="card-text">View the agent routing architecture diagram.</p>
-                        <a href="/routing-architecture" class="btn btn-outline-secondary mt-3">
-                            <i class="bi bi-arrow-right-circle me-2"></i>
-                            View Diagram
-                        </a>
+                        <div class="col-md-3 col-6">
+                            <div class="stat-item">
+                                <div class="stat-value text-info">2.1s</div>
+                                <div class="stat-label">Avg. Response Time</div>
+                            </div>
+                        </div>
+                        <div class="col-md-3 col-6">
+                            <div class="stat-item">
+                                <div class="stat-value text-warning">94%</div>
+                                <div class="stat-label">Success Rate</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <h3 class="mb-4">Features & Interfaces</h3>
+                
+                <div class="row">
+                    <div class="col-lg-6 col-md-6">
+                        <div class="card h-100">
+                            <div class="card-body">
+                                <div class="card-icon">
+                                    <i class="bi bi-chat-dots"></i>
+                                </div>
+                                <h5 class="card-title">Chat Interface</h5>
+                                <p class="card-text">Chat interface for interacting with Staples Brain and its specialized agents.</p>
+                                <button class="btn btn-outline-primary mt-3" id="launch-chat-btn">
+                                    <i class="bi bi-arrow-right-circle me-2"></i>
+                                    Launch Chat
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-lg-6 col-md-6">
+                        <div class="card h-100">
+                            <div class="card-body">
+                                <div class="card-icon">
+                                    <i class="bi bi-diagram-3"></i>
+                                </div>
+                                <h5 class="card-title">Routing Architecture</h5>
+                                <p class="card-text">View the agent routing architecture diagram.</p>
+                                <a href="/routing-architecture" class="btn btn-outline-secondary mt-3">
+                                    <i class="bi bi-arrow-right-circle me-2"></i>
+                                    View Diagram
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <h3 class="mb-4 mt-5">Active Specialized Agents</h3>
+                <div id="agent-connection-alert" class="connection-issue" style="display: none;">
+                    <div class="d-flex align-items-center">
+                        <i class="bi bi-exclamation-triangle-fill text-warning me-2"></i>
+                        <span>Unable to fetch live agent data. Showing cached data instead.</span>
+                    </div>
+                </div>
+                
+                <div class="row" id="agent-cards-container">
+                    <!-- Agent cards will be loaded here -->
+                </div>
+            </div>
+            
+            <div class="tab-pane fade" id="chat-tab-pane" role="tabpanel" aria-labelledby="chat-tab" tabindex="0">
+                <div class="chat-container" style="height: 600px; border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 0.5rem; overflow: hidden;">
+                    <div class="chat-header d-flex justify-content-between align-items-center p-3 border-bottom">
+                        <div>
+                            <h5 class="mb-0">Staples Brain Chat</h5>
+                            <div class="text-muted small">AI Customer Assistant</div>
+                        </div>
+                        <div>
+                            <span class="badge bg-success" id="chat-connection-status">
+                                <span class="status-indicator status-connected"></span>
+                                Connected
+                            </span>
+                        </div>
+                    </div>
+                    
+                    <div class="chat-messages p-3" id="embedded-chat-messages" style="height: 480px; overflow-y: auto;">
+                        <!-- Messages will be displayed here -->
+                        <div class="message message-assistant">
+                            <div class="agent-badge">
+                                <span class="badge bg-info">System</span>
+                            </div>
+                            <div>Hello! I'm the Staples Brain assistant. How can I help you today?</div>
+                        </div>
+                    </div>
+                    
+                    <div class="chat-input-container p-3 border-top">
+                        <form id="embedded-chat-form" class="d-flex">
+                            <input type="text" id="embedded-chat-input" class="form-control me-2" placeholder="Type your message..." autocomplete="off">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-send"></i>
+                            </button>
+                        </form>
                     </div>
                 </div>
             </div>
+            
+            <div class="tab-pane fade" id="agents-tab-pane" role="tabpanel" aria-labelledby="agents-tab" tabindex="0">
+                <h3 class="mb-4">All Agents</h3>
+                
+                <div id="agents-connection-alert" class="connection-issue" style="display: none;">
+                    <div class="d-flex align-items-center">
+                        <i class="bi bi-exclamation-triangle-fill text-warning me-2"></i>
+                        <span>Unable to fetch live agent data. Showing cached data instead.</span>
+                    </div>
+                </div>
+                
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Type</th>
+                                <th>Status</th>
+                                <th>Description</th>
+                            </tr>
+                        </thead>
+                        <tbody id="agents-table-body">
+                            <!-- Agent list will be loaded here -->
+                        </tbody>
+                    </table>
+                </div>
+                </div>
+            </div>
+            <!-- End Main Content Area -->
         </div>
-        
-        <h3 class="mb-4 mt-5">Active Specialized Agents</h3>
-        
-        <div class="row">
-            <div class="col-lg-4 col-md-6">
-                <div class="card agent-card h-100">
-                    <div class="card-body">
-                        <h5 class="card-title">Store Locator Agent</h5>
-                        <p class="card-text">Helps users find the nearest Staples store locations based on geographic queries.</p>
-                        <span class="badge bg-success">Active</span>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="col-lg-4 col-md-6">
-                <div class="card agent-card h-100">
-                    <div class="card-body">
-                        <h5 class="card-title">Package Tracking Agent</h5>
-                        <p class="card-text">Provides order status and package tracking information to customers.</p>
-                        <span class="badge bg-success">Active</span>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="col-lg-4 col-md-6">
-                <div class="card agent-card h-100">
-                    <div class="card-body">
-                        <h5 class="card-title">Reset Password Agent</h5>
-                        <p class="card-text">Guides users through the process of resetting their account passwords.</p>
-                        <span class="badge bg-success">Active</span>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="col-lg-4 col-md-6">
-                <div class="card agent-card h-100">
-                    <div class="card-body">
-                        <h5 class="card-title">Product Information Agent</h5>
-                        <p class="card-text">Provides detailed information about product specifications, pricing, and availability.</p>
-                        <span class="badge bg-success">Active</span>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="col-lg-4 col-md-6">
-                <div class="card agent-card h-100">
-                    <div class="card-body">
-                        <h5 class="card-title">Returns Processing Agent</h5>
-                        <p class="card-text">Assists customers with product returns and exchange procedures.</p>
-                        <span class="badge bg-success">Active</span>
-                    </div>
-                </div>
-            </div>
-        </div>
+        <!-- End main-content-wrapper -->
         
         <div class="footer">
             <p class="text-muted">Staples Brain • AI Customer Engagement Platform • April 2025</p>
         </div>
     </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Agent data - This would normally come from the API
+            const agents = [
+                { 
+                    id: 'f2feabb7-2279-4feb-875a-3c7f58105ac9',
+                    name: 'Guardrails Agent', 
+                    type: 'SYSTEM', 
+                    description: 'Enforces system guardrails and safety constraints for all conversations.',
+                    status: 'active',
+                    is_system: true
+                },
+                { 
+                    id: 'd5e22e3a-1d83-49bf-baef-52c8f4d55a87',
+                    name: 'General Conversation Agent', 
+                    type: 'SYSTEM', 
+                    description: 'Handles general conversational flows and fallback responses.',
+                    status: 'active',
+                    is_system: true
+                },
+                { 
+                    id: '6929f621-de11-4068-9d4b-5160a9b4e85f',
+                    name: 'Package Tracking Agent', 
+                    type: 'PACKAGE_TRACKING', 
+                    description: 'Provides order status and package tracking information to customers.',
+                    status: 'active',
+                    is_system: false
+                },
+                { 
+                    id: 'ded3cb1c-6db4-4337-9b8a-c80668d14de3',
+                    name: 'Reset Password Agent', 
+                    type: 'RESET_PASSWORD', 
+                    description: 'Guides users through the process of resetting their account passwords.',
+                    status: 'active',
+                    is_system: false
+                },
+                { 
+                    id: '1ed554e4-8843-405a-ab3e-83866eb262bf',
+                    name: 'Store Locator Agent', 
+                    type: 'STORE_LOCATOR', 
+                    description: 'Helps users find the nearest Staples store locations based on geographic queries.',
+                    status: 'active',
+                    is_system: false
+                },
+                { 
+                    id: '4525be42-73cf-4fee-990c-3622c4baaaa3',
+                    name: 'Product Information Agent', 
+                    type: 'PRODUCT_INFO', 
+                    description: 'Provides detailed information about product specifications, pricing, and availability.',
+                    status: 'active',
+                    is_system: false
+                },
+                { 
+                    id: '247b2b9c-17d6-4513-8375-e2275d1f1e78',
+                    name: 'Returns Processing Agent', 
+                    type: 'RETURNS_PROCESSING', 
+                    description: 'Assists customers with product returns and exchange procedures.',
+                    status: 'active',
+                    is_system: false
+                }
+            ];
+            
+            // Update agent count in stats
+            document.getElementById('agent-count').textContent = agents.length;
+            
+            // Show connection alert since we're using static data instead of API
+            document.getElementById('agent-connection-alert').style.display = 'block';
+            document.getElementById('agents-connection-alert').style.display = 'block';
+            
+            // Function to get type badge color
+            function getTypeBadgeColor(type) {
+                const typeMap = {
+                    'SYSTEM': 'bg-dark',
+                    'PACKAGE_TRACKING': 'bg-primary',
+                    'RESET_PASSWORD': 'bg-danger',
+                    'STORE_LOCATOR': 'bg-success',
+                    'PRODUCT_INFO': 'bg-info',
+                    'RETURNS_PROCESSING': 'bg-warning'
+                };
+                return typeMap[type] || 'bg-secondary';
+            }
+            
+            // Function to format agent type for display
+            function formatAgentType(type) {
+                return type.split('_').map(word => 
+                    word.charAt(0) + word.slice(1).toLowerCase()
+                ).join(' ');
+            }
+            
+            // Load agent cards for dashboard
+            const agentCardsContainer = document.getElementById('agent-cards-container');
+            
+            // Filter out system agents for the dashboard cards
+            const specializedAgents = agents.filter(agent => !agent.is_system);
+            
+            specializedAgents.forEach(agent => {
+                const cardHtml = `
+                    <div class="col-lg-4 col-md-6">
+                        <div class="card agent-card h-100 position-relative">
+                            <span class="badge ${getTypeBadgeColor(agent.type)} agent-type-badge">${formatAgentType(agent.type)}</span>
+                            <div class="card-body">
+                                <h5 class="card-title">${agent.name}</h5>
+                                <p class="card-text">${agent.description}</p>
+                                <span class="badge bg-success">Active</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                agentCardsContainer.innerHTML += cardHtml;
+            });
+            
+            // Load agent list for Agents tab
+            const agentsTableBody = document.getElementById('agents-table-body');
+            
+            agents.forEach(agent => {
+                const statusBadge = agent.status === 'active' ? 
+                    '<span class="badge bg-success">Active</span>' : 
+                    '<span class="badge bg-secondary">Inactive</span>';
+                
+                const typeBadge = `<span class="badge ${getTypeBadgeColor(agent.type)}">${formatAgentType(agent.type)}</span>`;
+                
+                const rowHtml = `
+                    <tr>
+                        <td>${agent.name}</td>
+                        <td>${typeBadge}</td>
+                        <td>${statusBadge}</td>
+                        <td>${agent.description}</td>
+                    </tr>
+                `;
+                agentsTableBody.innerHTML += rowHtml;
+            });
+            
+            // Chat functionality
+            const embeddedChatForm = document.getElementById('embedded-chat-form');
+            const embeddedChatInput = document.getElementById('embedded-chat-input');
+            const embeddedChatMessages = document.getElementById('embedded-chat-messages');
+            const chatConnectionStatus = document.getElementById('chat-connection-status');
+            const launchChatBtn = document.getElementById('launch-chat-btn');
+            
+            // Variables
+            let currentConversationId = 'conv_' + Date.now();
+            
+            // Switch to chat tab when launch chat button is clicked
+            launchChatBtn.addEventListener('click', () => {
+                const chatTab = new bootstrap.Tab(document.getElementById('chat-tab'));
+                chatTab.show();
+                setTimeout(() => embeddedChatInput.focus(), 300);
+            });
+            
+            // Add message to chat UI
+            function addMessageToChat(role, content, metadata = {}) {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = `message message-${role}`;
+                
+                let messageContent = '';
+                
+                // For assistant messages, add the agent name as a badge if available
+                if (role === 'assistant' && metadata.agent) {
+                    messageContent += `
+                        <div class="agent-badge">
+                            <span class="badge bg-info">${metadata.agent}</span>
+                        </div>
+                    `;
+                }
+                
+                // Format message content (simple markdown-like support)
+                let formattedContent = content;
+                // Basic markdown support - code blocks
+                formattedContent = formattedContent.replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>');
+                // Basic markdown support - inline code
+                formattedContent = formattedContent.replace(/`([^`]+)`/g, '<code>$1</code>');
+                
+                messageContent += `<div>${formattedContent}</div>`;
+                
+                // Add timestamp
+                const time = new Date().toLocaleTimeString();
+                messageContent += `<div class="text-muted small mt-1">${time}</div>`;
+                
+                messageDiv.innerHTML = messageContent;
+                embeddedChatMessages.appendChild(messageDiv);
+                
+                // Scroll to bottom
+                embeddedChatMessages.scrollTop = embeddedChatMessages.scrollHeight;
+            }
+            
+            // Handle chat form submission
+            embeddedChatForm.addEventListener('submit', e => {
+                e.preventDefault();
+                const message = embeddedChatInput.value.trim();
+                if (!message) return;
+                
+                // Add user message to UI
+                addMessageToChat('user', message);
+                embeddedChatInput.value = '';
+                
+                // Update connection status
+                chatConnectionStatus.innerHTML = '<span class="status-indicator status-sending"></span> Sending...';
+                chatConnectionStatus.className = 'badge bg-warning';
+                
+                // Simulate API call (since the backend is not accessible)
+                setTimeout(() => {
+                    // Get a random agent to respond
+                    const randomAgentIndex = Math.floor(Math.random() * agents.length);
+                    const respondingAgent = agents[randomAgentIndex];
+                    
+                    // Simulate response based on message content
+                    let responseText = '';
+                    
+                    if (message.toLowerCase().includes('track') || message.toLowerCase().includes('package') || message.toLowerCase().includes('order')) {
+                        responseText = "I can help you track your package. Could you please provide your order number?";
+                        respondingAgent.name = "Package Tracking Agent";
+                    } else if (message.toLowerCase().includes('password') || message.toLowerCase().includes('reset')) {
+                        responseText = "I can help you reset your password. For security reasons, I'll need to verify your identity first. Could you please confirm the email address associated with your account?";
+                        respondingAgent.name = "Reset Password Agent";
+                    } else if (message.toLowerCase().includes('store') || message.toLowerCase().includes('location')) {
+                        responseText = "I can help you find the nearest Staples store. Could you please share your zip code or city and state?";
+                        respondingAgent.name = "Store Locator Agent";
+                    } else if (message.toLowerCase().includes('product') || message.toLowerCase().includes('item')) {
+                        responseText = "I'd be happy to provide information about our products. Which specific item are you interested in?";
+                        respondingAgent.name = "Product Information Agent";
+                    } else if (message.toLowerCase().includes('return') || message.toLowerCase().includes('exchange')) {
+                        responseText = "I can help with your return or exchange. Do you have your order number and the item you'd like to return?";
+                        respondingAgent.name = "Returns Processing Agent";
+                    } else {
+                        responseText = "Thanks for your message. How else can I assist you with Staples products or services today?";
+                        respondingAgent.name = "General Conversation Agent";
+                    }
+                    
+                    // Add response to UI
+                    addMessageToChat('assistant', responseText, { agent: respondingAgent.name });
+                    
+                    // Reset connection status
+                    chatConnectionStatus.innerHTML = '<span class="status-indicator status-connected"></span> Connected';
+                    chatConnectionStatus.className = 'badge bg-success';
+                    
+                }, 1000);
+            });
+        });
+    </script>
 </body>
 </html>
