@@ -951,21 +951,212 @@
                 }
             }
             
-            // Fetch observability data from API
+            // Fetch observability data from API for a specific message
             function fetchObservabilityData(messageId) {
-                // In a real implementation, this would make an API call to get observability data
-                
-                // For demonstration, create simulated observability data
-                const simulatedData = createSimulatedObservabilityData(messageId);
+                // Hide placeholder and show the relevant observability data
+                observabilityPlaceholder.classList.add('hidden');
                 
                 // Create and append observability data container
                 const obsMessageDiv = document.createElement('div');
                 obsMessageDiv.id = `obs-${messageId}`;
-                obsMessageDiv.className = 'observability-message active';
-                obsMessageDiv.innerHTML = simulatedData;
+                obsMessageDiv.className = 'observability-message active loading';
+                obsMessageDiv.innerHTML = '<div class="text-center my-4"><div class="spinner-border text-primary" role="status"></div><p class="mt-2">Loading observability data...</p></div>';
                 
                 // Add to the observability content area
                 observabilityContent.appendChild(obsMessageDiv);
+                
+                // Fetch from API if we have a trace ID
+                fetchObservabilityDataFromApi(null, messageId);
+            }
+            
+            // Fetch observability data from API using trace ID
+            async function fetchObservabilityDataFromApi(traceId, messageId) {
+                try {
+                    let url;
+                    if (traceId) {
+                        // If we have a trace ID, use it
+                        url = `/api/v1/chat/observability/${traceId}`;
+                    } else {
+                        // Otherwise use the conversation ID
+                        url = `/api/v1/chat/observability/${currentConversationId}?message_id=${messageId}`;
+                    }
+                    
+                    const response = await fetch(url);
+                    
+                    if (!response.ok) {
+                        throw new Error(`API error: ${response.status}`);
+                    }
+                    
+                    const data = await response.json();
+                    
+                    if (!data.success) {
+                        throw new Error(data.error || 'Unknown error fetching observability data');
+                    }
+                    
+                    // Get element ID to update
+                    const elementId = messageId ? `obs-${messageId}` : `obs-latest`;
+                    const obsElement = document.getElementById(elementId);
+                    
+                    if (obsElement) {
+                        // Format and display observability data
+                        const formattedData = formatObservabilityData(data.data);
+                        obsElement.innerHTML = formattedData;
+                        obsElement.classList.remove('loading');
+                    }
+                } catch (error) {
+                    console.error('Error fetching observability data:', error);
+                    
+                    // Show error in observability panel
+                    const elementId = messageId ? `obs-${messageId}` : `obs-latest`;
+                    const obsElement = document.getElementById(elementId);
+                    
+                    if (obsElement) {
+                        obsElement.innerHTML = `
+                            <div class="alert alert-danger">
+                                <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                                Error loading observability data: ${error.message}
+                            </div>
+                        `;
+                        obsElement.classList.remove('loading');
+                    }
+                }
+            }
+            
+            // Format observability data from API response
+            function formatObservabilityData(data) {
+                // If no data, show message
+                if (!data || Object.keys(data).length === 0) {
+                    return `
+                        <div class="alert alert-info">
+                            <i class="bi bi-info-circle-fill me-2"></i>
+                            No observability data available for this message.
+                        </div>
+                    `;
+                }
+                
+                // Format agent selection data
+                const agentSelectionHtml = formatAgentSelectionFlow(data.agent_selection || {});
+                
+                // Format tools execution data
+                const toolsHtml = formatToolsExecuted(data.tools_executed || []);
+                
+                // Format entities data
+                const entitiesHtml = formatEntitiesExtracted(data.entities || []);
+                
+                // Full observability HTML
+                return `
+                    <div class="observability-section mb-4">
+                        <h6 class="section-title">
+                            <i class="bi bi-robot me-2"></i>
+                            Agent Selection
+                        </h6>
+                        <div class="section-content">
+                            ${agentSelectionHtml}
+                        </div>
+                    </div>
+                    
+                    ${toolsHtml}
+                    
+                    <div class="observability-section">
+                        <h6 class="section-title">
+                            <i class="bi bi-tag me-2"></i>
+                            Entities Extracted
+                        </h6>
+                        <div class="section-content">
+                            <div class="entity-extraction">
+                                <div class="entity-list">
+                                    ${entitiesHtml}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            // Format agent selection flow
+            function formatAgentSelectionFlow(agentSelection) {
+                if (!agentSelection || !agentSelection.agents || agentSelection.agents.length === 0) {
+                    return '<div class="alert alert-info">No agent selection data available.</div>';
+                }
+                
+                let html = '<div class="agent-selection-flow">';
+                
+                agentSelection.agents.forEach((agent, index) => {
+                    // Only add arrow if not the first agent
+                    if (index > 0) {
+                        html += '<div class="flow-arrow">→</div>';
+                    }
+                    
+                    // Determine if agent was selected
+                    const isSelected = agent.selected || false;
+                    
+                    html += `
+                        <div class="agent-node ${isSelected ? 'selected' : ''}">
+                            <div class="agent-icon">
+                                <i class="bi bi-${agent.icon || 'chat-dots'}"></i>
+                            </div>
+                            <div class="agent-info">
+                                <div class="agent-name">${agent.name || 'Unknown Agent'}</div>
+                                <div class="agent-description small">${agent.description || ''}</div>
+                                ${agent.confidence ? `<div class="agent-confidence small">Confidence: ${(agent.confidence * 100).toFixed(1)}%</div>` : ''}
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                html += '</div>';
+                return html;
+            }
+            
+            // Format tools executed
+            function formatToolsExecuted(tools) {
+                if (!tools || tools.length === 0) {
+                    return '';
+                }
+                
+                let toolsHtml = `
+                    <div class="observability-section mb-4">
+                        <h6 class="section-title">
+                            <i class="bi bi-tools me-2"></i>
+                            Tools Executed
+                        </h6>
+                        <div class="section-content">
+                `;
+                
+                tools.forEach(tool => {
+                    toolsHtml += `
+                        <div class="tool-execution">
+                            <div class="tool-name">${tool.name || 'Unknown Tool'}</div>
+                            <div class="tool-details small">
+                                <div class="tool-params">
+                                    <code>${JSON.stringify(tool.parameters || {})}</code>
+                                </div>
+                                <div class="tool-result ${tool.success ? 'text-success' : 'text-danger'}">
+                                    <i class="bi bi-${tool.success ? 'check-circle' : 'x-circle'} me-1"></i>
+                                    ${tool.success ? 'Success' : 'Failed'}
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                toolsHtml += `
+                        </div>
+                    </div>
+                `;
+                
+                return toolsHtml;
+            }
+            
+            // Format entities extracted
+            function formatEntitiesExtracted(entities) {
+                if (!entities || entities.length === 0) {
+                    return '<span class="badge bg-secondary">No entities detected</span>';
+                }
+                
+                return entities.map(entity => {
+                    return `<span class="badge bg-info me-1">${entity.value || entity.name} <span class="badge bg-dark ms-1">${entity.type || 'unknown'}</span></span>`;
+                }).join('');
             }
             
             // Create simulated observability data for demo purposes
@@ -1144,7 +1335,7 @@
             }
             
             // Handle chat form submission
-            embeddedChatForm.addEventListener('submit', e => {
+            embeddedChatForm.addEventListener('submit', async (e) => {
                 e.preventDefault();
                 const message = embeddedChatInput.value.trim();
                 if (!message) return;
@@ -1157,43 +1348,184 @@
                 chatConnectionStatus.innerHTML = '<span class="status-indicator status-sending"></span> Sending...';
                 chatConnectionStatus.className = 'badge bg-warning';
                 
-                // Simulate API call (since the backend is not accessible)
-                setTimeout(() => {
-                    // Get a random agent to respond
-                    const randomAgentIndex = Math.floor(Math.random() * agents.length);
-                    const respondingAgent = agents[randomAgentIndex];
+                try {
+                    // Prepare request to backend API
+                    const response = await fetch('/api/v1/chat', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            message: message,
+                            session_id: currentConversationId,
+                            context: {
+                                // Additional context if needed
+                                client_info: {
+                                    app: 'staples-brain-dashboard',
+                                    version: '1.0.0'
+                                }
+                            }
+                        })
+                    });
                     
-                    // Simulate response based on message content
-                    let responseText = '';
-                    
-                    if (message.toLowerCase().includes('track') || message.toLowerCase().includes('package') || message.toLowerCase().includes('order')) {
-                        responseText = "I can help you track your package. Could you please provide your order number?";
-                        respondingAgent.name = "Package Tracking Agent";
-                    } else if (message.toLowerCase().includes('password') || message.toLowerCase().includes('reset')) {
-                        responseText = "I can help you reset your password. For security reasons, I'll need to verify your identity first. Could you please confirm the email address associated with your account?";
-                        respondingAgent.name = "Reset Password Agent";
-                    } else if (message.toLowerCase().includes('store') || message.toLowerCase().includes('location')) {
-                        responseText = "I can help you find the nearest Staples store. Could you please share your zip code or city and state?";
-                        respondingAgent.name = "Store Locator Agent";
-                    } else if (message.toLowerCase().includes('product') || message.toLowerCase().includes('item')) {
-                        responseText = "I'd be happy to provide information about our products. Which specific item are you interested in?";
-                        respondingAgent.name = "Product Information Agent";
-                    } else if (message.toLowerCase().includes('return') || message.toLowerCase().includes('exchange')) {
-                        responseText = "I can help with your return or exchange. Do you have your order number and the item you'd like to return?";
-                        respondingAgent.name = "Returns Processing Agent";
-                    } else {
-                        responseText = "Thanks for your message. How else can I assist you with Staples products or services today?";
-                        respondingAgent.name = "General Conversation Agent";
+                    if (!response.ok) {
+                        throw new Error(`API error: ${response.status}`);
                     }
                     
+                    const data = await response.json();
+                    
+                    if (!data.success) {
+                        throw new Error(data.error || 'Unknown error processing message');
+                    }
+                    
+                    // Extract response data
+                    const responseData = data.data;
+                    const agentName = responseData.agent || 'Assistant';
+                    const responseText = responseData.message || 'No response';
+                    
                     // Add response to UI
-                    const assistantMessageId = addMessageToChat('assistant', responseText, { agent: respondingAgent.name });
+                    const assistantMessageId = addMessageToChat('assistant', responseText, { agent: agentName });
                     
                     // Reset connection status
                     chatConnectionStatus.innerHTML = '<span class="status-indicator status-connected"></span> Connected';
                     chatConnectionStatus.className = 'badge bg-success';
                     
-                }, 1000);
+                    // Fetch observability data if available
+                    if (responseData.observability_trace_id) {
+                        await fetchObservabilityDataFromApi(responseData.observability_trace_id);
+                    }
+                    
+                } catch (error) {
+                    console.error('Error processing message:', error);
+                    
+                    // Show connection error
+                    chatConnectionStatus.innerHTML = '<span class="status-indicator status-error"></span> Backend Unavailable';
+                    chatConnectionStatus.className = 'badge bg-danger';
+                    
+                    // Add warning about backend unavailability
+                    addMessageToChat('system', `The backend server is currently unavailable. Using fallback mode with limited functionality.`);
+                    
+                    // Use fallback response for testing purposes
+                    const fallbackResponse = getFallbackResponse(message, currentConversationId);
+                    
+                    // Add fallback response
+                    const assistantMessageId = addMessageToChat('assistant', fallbackResponse.message, { 
+                        agent: fallbackResponse.agent 
+                    });
+                    
+                    // Generate fallback observability data
+                    setTimeout(() => {
+                        const obsData = {
+                            agent_selection: {
+                                agents: [
+                                    {
+                                        name: "User",
+                                        icon: "person",
+                                        description: "User message",
+                                        selected: false
+                                    },
+                                    {
+                                        name: fallbackResponse.agent,
+                                        icon: "chat-dots",
+                                        description: "Primary responding agent (fallback mode)",
+                                        confidence: 0.8,
+                                        selected: true
+                                    }
+                                ]
+                            },
+                            tools_executed: [
+                                {
+                                    name: "LocalFallbackResponseGenerator",
+                                    parameters: {
+                                        "message": message.substring(0, 50) + (message.length > 50 ? "..." : "")
+                                    },
+                                    success: true
+                                }
+                            ],
+                            entities: fallbackResponse.entities || []
+                        };
+                        
+                        // Create observability container
+                        const obsMessageDiv = document.createElement('div');
+                        obsMessageDiv.id = `obs-${assistantMessageId}`;
+                        obsMessageDiv.className = 'observability-message active';
+                        obsMessageDiv.innerHTML = formatObservabilityData(obsData);
+                        
+                        // Add to observability content and hide placeholder
+                        observabilityContent.appendChild(obsMessageDiv);
+                        observabilityPlaceholder.classList.add('hidden');
+                        
+                        // Mark message as selected
+                        document.querySelectorAll('.message').forEach(msg => {
+                            msg.classList.remove('selected');
+                        });
+                        document.querySelector(`.message[data-message-id="${assistantMessageId}"]`).classList.add('selected');
+                    }, 500);
+                }
+                
+                // Fallback function for when backend is unavailable
+                function getFallbackResponse(message, conversationId) {
+                    // Get last message in conversation for context
+                    const messages = document.querySelectorAll('.message');
+                    const lastMessages = Array.from(messages).slice(-5);
+                    
+                    // For password reset flow, check if previous message was about password reset
+                    const hasPreviousPasswordResetMessage = lastMessages.some(msg => {
+                        const content = msg.querySelector('.message-content')?.textContent || '';
+                        const agentBadge = msg.querySelector('.agent-badge .badge')?.textContent || '';
+                        return agentBadge === 'Reset Password Agent' && content.toLowerCase().includes('email');
+                    });
+                    
+                    // For email response to password reset agent
+                    if (hasPreviousPasswordResetMessage && message.includes('@')) {
+                        return {
+                            message: `Thank you for confirming your email address (${message}). I've sent a password reset link to this email. Please check your inbox and follow the instructions in the email to reset your password. The link will expire in 24 hours.`,
+                            agent: "Reset Password Agent",
+                            entities: [
+                                { value: message, type: "email_address" }
+                            ]
+                        };
+                    }
+                    
+                    // Standard keyword-based routing
+                    if (message.toLowerCase().includes('track') || message.toLowerCase().includes('package') || message.toLowerCase().includes('order')) {
+                        return {
+                            message: "I can help you track your package. Could you please provide your order number?",
+                            agent: "Package Tracking Agent",
+                            entities: []
+                        };
+                    } else if (message.toLowerCase().includes('password') || message.toLowerCase().includes('reset')) {
+                        return {
+                            message: "I can help you reset your password. For security reasons, I'll need to verify your identity first. Could you please confirm the email address associated with your account?",
+                            agent: "Reset Password Agent", 
+                            entities: []
+                        };
+                    } else if (message.toLowerCase().includes('store') || message.toLowerCase().includes('location')) {
+                        return {
+                            message: "I can help you find the nearest Staples store. Could you please share your zip code or city and state?",
+                            agent: "Store Locator Agent",
+                            entities: []
+                        };
+                    } else if (message.toLowerCase().includes('product') || message.toLowerCase().includes('item')) {
+                        return { 
+                            message: "I'd be happy to provide information about our products. Which specific item are you interested in?",
+                            agent: "Product Information Agent",
+                            entities: []
+                        };
+                    } else if (message.toLowerCase().includes('return') || message.toLowerCase().includes('exchange')) {
+                        return {
+                            message: "I can help with your return or exchange. Do you have your order number and the item you'd like to return?",
+                            agent: "Returns Processing Agent",
+                            entities: []
+                        };
+                    } else {
+                        return {
+                            message: "Thanks for your message. I notice the backend server is currently unavailable. Once it's back online, I'll be able to provide more comprehensive assistance.",
+                            agent: "General Conversation Agent",
+                            entities: []
+                        };
+                    }
+                }
             });
         });
     </script>
