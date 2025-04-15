@@ -122,10 +122,14 @@ class WorkflowDatabaseAgent(DatabaseAgent):
                 
                 # Build final response
                 processing_time = time.time() - start_time
+                assistant_response = result.get("response", "I encountered an issue processing your request.")
+                logger.info(f"Workflow result keys: {result.keys()}")
+                logger.info(f"Extracted response from workflow: {assistant_response[:100]}...")
+                
                 response = {
                     "id": self.id,
                     "agent_name": self.name,
-                    "response": result.get("response", "I encountered an issue processing your request."),
+                    "response": assistant_response,
                     "confidence": 1.0,  # High confidence for workflow-based responses
                     "processing_time": processing_time,
                     "metadata": {

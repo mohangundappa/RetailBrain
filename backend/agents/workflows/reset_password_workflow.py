@@ -159,11 +159,22 @@ def create_reset_password_workflow(model_name: str = "gpt-4o", temperature: floa
             intent = parsed_response.get("intent", "UNKNOWN")
             reasoning = parsed_response.get("reasoning", "No reasoning provided")
             
+            # Add a direct pattern match for clarity
+            message_lower = user_input.lower()
+            if "reset" in message_lower and "password" in message_lower:
+                logger.info("Pattern match override: Found 'reset password' in message, forcing reset_request intent")
+                intent = "reset_request"
+            elif "forgot" in message_lower and "password" in message_lower:
+                logger.info("Pattern match override: Found 'forgot password' in message, forcing reset_request intent")
+                intent = "reset_request"
+                
             # Map to enum value
             try:
                 intent_enum = ResetPasswordIntent(intent.strip())
+                logger.info(f"Final intent classification: {intent_enum.value}")
             except ValueError:
                 # Default to unknown if invalid intent
+                logger.warning(f"Invalid intent value '{intent}', defaulting to UNKNOWN")
                 intent_enum = ResetPasswordIntent.UNKNOWN
                 
             # Log the intent classification
