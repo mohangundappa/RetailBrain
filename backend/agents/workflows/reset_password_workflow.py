@@ -619,8 +619,45 @@ async def execute_reset_password_workflow(
     ]
     
     # Prepare the initial state
-    # Try to get any previously stored email entity for this session
+    # Try multiple methods to find email
     stored_email = email  # Start with any email passed in
+    
+    # 1. Check if email is in context
+    if not stored_email and context:
+        if "email" in context:
+            stored_email = context.get("email")
+            logger.info(f"Found email in context: {stored_email}")
+        elif "extracted_email" in context:
+            stored_email = context.get("extracted_email")
+            logger.info(f"Found extracted_email in context: {stored_email}")
+    
+    # 2. Try to extract email from current message
+    if not stored_email and '@' in message:
+        try:
+            extracted_email = await extract_email_with_llm(message)
+            if extracted_email:
+                stored_email = extracted_email
+                logger.info(f"Extracted email from current message: {stored_email}")
+                
+                # Immediately store this as an entity for future reference
+                try:
+                    mem0 = await get_mem0()
+                    if mem0:
+                        mem0.add_entity(
+                            conversation_id=conversation_id,
+                            entity_type="email",
+                            entity_value=stored_email,
+                            confidence=0.95,
+                            metadata={"source": "initial_extraction"},
+                            session_id=session_id
+                        )
+                        logger.info(f"Stored email entity from initial extraction: {stored_email}")
+                except Exception as e:
+                    logger.error(f"Error storing initial email entity: {str(e)}")
+        except Exception as e:
+            logger.error(f"Error extracting email from current message: {str(e)}")
+    
+    # 3. Check memory for stored email entities
     if not stored_email:
         try:
             mem0 = await get_mem0()
@@ -640,16 +677,47 @@ async def execute_reset_password_workflow(
                     metadata = entity.metadata or {}
                     if metadata.get("entity_type") == "email":
                         stored_email = entity.content
-                        logger.info(f"Retrieved stored email entity: {stored_email}")
+                        logger.info(f"Retrieved stored email entity from memory: {stored_email}")
                         break
         except Exception as e:
             logger.error(f"Error retrieving email entity from memory: {str(e)}")
+    
+    # 4. Try to find email in conversation history
+    if not stored_email:
+        try:
+            mem0 = await get_mem0()
+            if mem0:
+                history = await mem0.get_conversation_history(conversation_id)
+                if history:
+                    # Concatenate all messages to check for emails
+                    combined_text = " ".join([msg.get("content", "") for msg in history])
+                    if '@' in combined_text:
+                        extracted_email = await extract_email_with_llm(combined_text)
+                        if extracted_email:
+                            stored_email = extracted_email
+                            logger.info(f"Extracted email from conversation history: {stored_email}")
+                            
+                            # Store this as an entity for future reference
+                            try:
+                                mem0.add_entity(
+                                    conversation_id=conversation_id,
+                                    entity_type="email",
+                                    entity_value=stored_email,
+                                    confidence=0.9,
+                                    metadata={"source": "history_extraction"},
+                                    session_id=session_id
+                                )
+                                logger.info(f"Stored email entity from history: {stored_email}")
+                            except Exception as e:
+                                logger.error(f"Error storing history email entity: {str(e)}")
+        except Exception as e:
+            logger.error(f"Error extracting email from conversation history: {str(e)}")
     
     initial_state: ResetPasswordState = {
         "conversation_id": conversation_id,
         "session_id": session_id,
         "user_input": message,  # Explicitly set the user_input
-        "user_email": stored_email,  # Use either passed-in email or retrieved from memory
+        "user_email": stored_email,  # Use email from any of our detection methods
         "reset_intent": None,
         "reset_status": None,
         "current_step": "start",

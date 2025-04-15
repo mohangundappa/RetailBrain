@@ -18,8 +18,8 @@ logging.basicConfig(
 )
 logger = logging.getLogger("multi_turn_tester")
 
-# API endpoint - the actual API doesn't have a v1 versioning
-API_BASE_URL = "http://localhost:5000/api"
+# API endpoint - with correct v1 versioning
+API_BASE_URL = "http://localhost:5000/api/v1"
 CHAT_ENDPOINT = f"{API_BASE_URL}/chat"
 
 # Generate a unique session ID
