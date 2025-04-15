@@ -20,9 +20,9 @@ logger = logging.getLogger("brain_tester")
 API_BASE_URL = "http://localhost:5000/api/v1"
 CHAT_ENDPOINT = f"{API_BASE_URL}/optimized/chat"
 
-# Test message
-TEST_MESSAGE = "Hello, tell me about the Staples Brain system"
-SESSION_ID = "test-simple-session"
+# Test message for Reset Password Agent
+TEST_MESSAGE = "I need to reset my password for my Staples account. Can you help me?"
+SESSION_ID = "test-reset-password-session"
 
 async def main():
     """Send a single message to test the brain API."""

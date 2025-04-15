@@ -278,8 +278,66 @@ class LangGraphAgentFactory:
                 logger.warning(f"Agent with name {name} not found in database")
                 return None
             
-            # Create the agent using the appropriate implementation based on agent type
-            agent = await create_agent_from_model(agent_def)
+            # Convert database model to a clean dictionary with eagerly loaded data
+            agent_dict = {
+                "id": str(agent_def.id),
+                "name": agent_def.name,
+                "description": agent_def.description,
+                "agent_type": agent_def.agent_type,
+                "status": agent_def.status,
+                "is_system": agent_def.is_system,
+                "created_at": agent_def.created_at.isoformat() if agent_def.created_at else None,
+                "updated_at": agent_def.updated_at.isoformat() if agent_def.updated_at else None,
+                "version": agent_def.version
+            }
+            
+            # Extract LLM configuration
+            if agent_def.agent_type == "LLM" and hasattr(agent_def, 'llm_configuration') and agent_def.llm_configuration:
+                llm_config = agent_def.llm_configuration
+                agent_dict["llm_config"] = {
+                    "model_name": llm_config.model_name,
+                    "temperature": llm_config.temperature,
+                    "max_tokens": llm_config.max_tokens,
+                    "timeout_seconds": llm_config.timeout_seconds,
+                    "system_prompt": llm_config.system_prompt
+                }
+                # Add individual fields for easier access
+                agent_dict["model_name"] = llm_config.model_name
+                agent_dict["temperature"] = llm_config.temperature
+                agent_dict["system_prompt"] = llm_config.system_prompt
+            
+            # Extract patterns
+            if hasattr(agent_def, 'patterns') and agent_def.patterns:
+                agent_dict["patterns"] = [
+                    {
+                        "pattern_type": pattern.pattern_type,
+                        "pattern_value": pattern.pattern_value,
+                        "confidence_boost": pattern.confidence_boost
+                    }
+                    for pattern in agent_def.patterns
+                ]
+            
+            # Extract tools
+            if hasattr(agent_def, 'tools') and agent_def.tools:
+                agent_dict["tools"] = [
+                    {
+                        "tool_name": tool.tool_name,
+                        "tool_description": tool.tool_description,
+                        "parameters": tool.parameters,
+                        "enabled": tool.enabled
+                    }
+                    for tool in agent_def.tools
+                ]
+            
+            # Extract response templates
+            if hasattr(agent_def, 'response_templates') and agent_def.response_templates:
+                agent_dict["response_templates"] = {
+                    template.template_key: template.template_content
+                    for template in agent_def.response_templates
+                }
+                
+            # Create the agent using create_agent_from_definition
+            agent = await create_agent_from_definition(agent_dict)
             
             if agent:
                 # Add to registry
@@ -336,13 +394,34 @@ class LangGraphAgentFactory:
         """
         try:
             # Create agent in database
-            agent_def = await self.agent_repository.create_agent(agent_data)
+            if "name" not in agent_data or "description" not in agent_data or "agent_type" not in agent_data:
+                logger.error("Missing required fields in agent_data: name, description, agent_type")
+                return None
+                
+            agent_def = await self.agent_repository.create_agent(
+                name=agent_data["name"],
+                description=agent_data["description"],
+                agent_type=agent_data["agent_type"],
+                is_system=agent_data.get("is_system", False),
+                status=agent_data.get("status", "draft")
+            )
+            
             if not agent_def:
                 logger.error("Failed to create agent in database")
                 return None
             
-            # Create the agent using the appropriate implementation based on agent type
-            agent = await create_agent_from_model(agent_def)
+            # Directly use the agent_data to create the agent
+            # This ensures we don't need to load relationships from the database
+            agent_data["id"] = str(agent_def.id)
+            if "created_at" not in agent_data and agent_def.created_at:
+                agent_data["created_at"] = agent_def.created_at.isoformat()
+            if "updated_at" not in agent_data and agent_def.updated_at:
+                agent_data["updated_at"] = agent_def.updated_at.isoformat() 
+            if "version" not in agent_data:
+                agent_data["version"] = agent_def.version
+                
+            # Create the agent using definition object
+            agent = await create_agent_from_definition(agent_data)
             
             if agent:
                 # Add to registry
@@ -350,7 +429,7 @@ class LangGraphAgentFactory:
                 logger.info(f"Created new agent: {agent.name} (ID: {agent.id})")
                 return agent
             else:
-                logger.error(f"Failed to create agent instance for {agent_def.name}")
+                logger.error(f"Failed to create agent instance for {agent_data['name']}")
                 return None
                 
         except Exception as e:
@@ -369,8 +448,26 @@ class LangGraphAgentFactory:
             Updated LangGraphAgent instance or None if update failed
         """
         try:
+            # Extract valid fields to update
+            update_fields = {}
+            valid_fields = ['name', 'description', 'status']
+            for field, value in agent_data.items():
+                if field in valid_fields:
+                    update_fields[field] = value
+            
+            # Check if we have fields to update
+            if not update_fields:
+                logger.warning(f"No valid fields to update for agent {agent_id}")
+                return await self.get_agent_by_id(agent_id)
+            
             # Update agent in database
-            agent_def = await self.agent_repository.update_agent(agent_id, agent_data)
+            should_increment_version = agent_data.get('increment_version', False)
+            agent_def = await self.agent_repository.update_agent(
+                agent_id=agent_id, 
+                increment_version=should_increment_version,
+                **update_fields
+            )
+            
             if not agent_def:
                 logger.error(f"Failed to update agent {agent_id} in database")
                 return None
