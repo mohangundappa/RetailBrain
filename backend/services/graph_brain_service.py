@@ -561,6 +561,7 @@ class GraphBrainService:
                 
                 # Parse the JSON
                 scores = json.loads(result)
+                logger.info(f"Agent selection scores: {scores}")
             except json.JSONDecodeError as e:
                 logger.error(f"Error parsing agent selection result: {str(e)}")
                 logger.debug(f"Raw result from LLM: {result}")

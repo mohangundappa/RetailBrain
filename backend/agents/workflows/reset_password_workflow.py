@@ -98,8 +98,13 @@ def create_reset_password_workflow(model_name: str = "gpt-4o", temperature: floa
         Returns:
             Updated state with intent classification
         """
-        # Debug the state to see what we're working with
-        logger.info(f"State received in classify_intent: user_input={state.get('user_input', 'None')}, messages_count={len(state.get('messages', []))}")
+        # Hard-coded user input for testing - this is a workaround for the state passing issue
+        # When invoking the workflow, we should extract this directly from the messages
+        direct_message = state.get("messages", [{}])[0].get("content", "") if state.get("messages") else ""
+        if direct_message:
+            state["user_input"] = direct_message  # Force set the user_input in state
+            
+        logger.info(f"State in classify_intent: original user_input={state.get('user_input')}, from_messages={direct_message}, messages_count={len(state.get('messages', []))}")
         # Define the intent classifier prompt
         intent_prompt = ChatPromptTemplate.from_messages([
             SystemMessage(content=(
@@ -369,9 +374,8 @@ def create_reset_password_workflow(model_name: str = "gpt-4o", temperature: floa
             "current_step": "account_issue_handled"
         }
     
-    # Create the state graph
-    from typing import Dict as DictType
-    workflow = StateGraph(DictType)
+    # Create the state graph with type annotation
+    workflow = StateGraph(ResetPasswordState)
     
     # Add nodes to the graph
     workflow.add_node("classify_intent", classify_intent)
@@ -484,7 +488,9 @@ async def execute_reset_password_workflow(
             logger.error(f"Error saving message to memory: {str(e)}")
         
         # Execute the workflow
+        logger.info(f"Invoking workflow with state: {initial_state}")
         result = await workflow.ainvoke(initial_state)
+        logger.info(f"Workflow result: {result}")
         
         # Store the agent response in memory if available
         if result.get("response"):

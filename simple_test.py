@@ -21,7 +21,7 @@ API_BASE_URL = "http://localhost:5000/api/v1"
 CHAT_ENDPOINT = f"{API_BASE_URL}/chat"
 
 # Test message for Reset Password Agent
-TEST_MESSAGE = "I need to reset my password for my Staples account. Can you help me?"
+TEST_MESSAGE = "I forgot my password and need to reset it. Can you help me reset my Staples password?"
 SESSION_ID = "test-reset-password-session"
 
 async def main():
