@@ -37,7 +37,7 @@ logger.info("Starting Staples Brain application")
 
 # Server configuration
 HOST = os.environ.get("API_HOST", "0.0.0.0")
-PORT = int(os.environ.get("API_PORT", 5000))
+PORT = int(os.environ.get("API_PORT", 5001))  # Changed from 5000 to 5001 to avoid port conflicts
 APP_MODULE = "main:app"
 RELOAD = os.environ.get("ENVIRONMENT", "development") != "production"
 
