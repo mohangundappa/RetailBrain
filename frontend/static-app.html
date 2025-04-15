@@ -9,24 +9,83 @@
     <style>
         body {
             min-height: 100vh;
+            overflow-x: hidden;
         }
         
-        .dashboard-container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 2rem 1rem;
+        /* Main layout containers */
+        .app-container {
+            display: flex;
+            min-height: 100vh;
         }
         
-        .header {
-            margin-bottom: 2rem;
+        /* Fixed side panel */
+        .side-panel {
+            width: 250px;
+            background-color: rgba(0, 0, 0, 0.2);
+            border-right: 1px solid rgba(255, 255, 255, 0.1);
+            position: fixed;
+            height: 100vh;
+            overflow-y: auto;
+            padding: 0;
+            transition: all 0.3s ease;
+            z-index: 1000;
+        }
+        
+        /* Main content area */
+        .main-content {
+            flex: 1;
+            margin-left: 250px;
+            padding: 20px 30px;
+            transition: all 0.3s ease;
+        }
+        
+        /* Sidebar branding */
+        .sidebar-branding {
+            padding: 1.5rem;
             border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-            padding-bottom: 1rem;
+            margin-bottom: 1rem;
         }
         
+        .sidebar-branding h3 {
+            margin: 0;
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+        
+        /* Nav menu */
+        .sidebar-nav .nav-item {
+            margin-bottom: 0.25rem;
+            padding: 0 0.75rem;
+        }
+        
+        .sidebar-nav .nav-link {
+            color: rgba(255, 255, 255, 0.7);
+            border-radius: 0.5rem;
+            padding: 0.75rem 1rem;
+            transition: all 0.2s ease;
+            font-weight: 500;
+        }
+        
+        .sidebar-nav .nav-link:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+            color: white;
+        }
+        
+        .sidebar-nav .nav-link.active {
+            color: white;
+            background-color: var(--bs-primary);
+        }
+        
+        .sidebar-nav .nav-link .bi {
+            margin-right: 0.75rem;
+        }
+        
+        /* Cards */
         .card {
             transition: transform 0.2s ease, box-shadow 0.2s ease;
             margin-bottom: 1.5rem;
             height: 100%;
+            border-radius: 0.5rem;
         }
         
         .card:hover {
@@ -44,13 +103,7 @@
             border-left: 4px solid var(--bs-primary);
         }
         
-        .footer {
-            margin-top: 3rem;
-            padding-top: 1.5rem;
-            border-top: 1px solid rgba(255, 255, 255, 0.1);
-            text-align: center;
-        }
-        
+        /* Stats */
         .stats-container {
             background: rgba(0, 0, 0, 0.2);
             border-radius: 0.5rem;
@@ -74,40 +127,15 @@
             color: var(--bs-secondary);
         }
         
-        .sidebar-nav {
-            background-color: rgba(0, 0, 0, 0.2);
-            border-radius: 0.5rem;
-            padding: 1rem;
-            margin-bottom: 1.5rem;
+        /* Footer */
+        .footer {
+            margin-top: 3rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            text-align: center;
         }
         
-        .sidebar-nav .nav-link {
-            color: rgba(255, 255, 255, 0.7);
-            border-radius: 0.25rem;
-            margin-bottom: 0.5rem;
-            padding: 0.75rem 1rem;
-            transition: all 0.2s ease;
-        }
-        
-        .sidebar-nav .nav-link:hover {
-            background-color: rgba(255, 255, 255, 0.1);
-        }
-        
-        .sidebar-nav .nav-link.active {
-            color: white;
-            background-color: var(--bs-primary);
-        }
-        
-        .tab-content {
-            padding: 0 0 1.5rem 0;
-        }
-        
-        .main-content-wrapper {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 1.5rem;
-        }
-        
+        /* Alerts */
         .connection-issue {
             background-color: rgba(220, 53, 69, 0.1);
             border: 1px solid rgba(220, 53, 69, 0.2);
@@ -116,49 +144,185 @@
             margin-bottom: 1.5rem;
         }
         
+        /* Badges */
         .agent-type-badge {
             position: absolute;
             top: 8px;
             right: 8px;
             font-size: 0.7rem;
         }
+        
+        /* Chat specific */
+        .chat-container {
+            height: calc(100vh - 120px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 0.5rem;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 1rem;
+        }
+        
+        .chat-input-container {
+            padding: 1rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .message {
+            margin-bottom: 1rem;
+            padding: 0.75rem;
+            border-radius: 0.5rem;
+            max-width: 80%;
+        }
+        
+        .message-user {
+            background-color: rgba(13, 110, 253, 0.2);
+            align-self: flex-end;
+            margin-left: auto;
+        }
+        
+        .message-assistant {
+            background-color: rgba(32, 32, 32, 0.5);
+            align-self: flex-start;
+        }
+        
+        /* Status indicators */
+        .status-indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 5px;
+        }
+        
+        .status-connected {
+            background-color: var(--bs-success);
+        }
+        
+        .status-disconnected {
+            background-color: var(--bs-danger);
+        }
+        
+        .status-sending {
+            background-color: var(--bs-warning);
+        }
+        
+        /* Agent Builder */
+        .agent-builder-container {
+            background-color: rgba(0, 0, 0, 0.1);
+            border-radius: 0.5rem;
+            padding: 1.5rem;
+        }
+        
+        .agent-builder-placeholder {
+            text-align: center;
+            padding: 3rem;
+            border: 2px dashed rgba(255, 255, 255, 0.2);
+            border-radius: 0.5rem;
+        }
+        
+        /* Mobile responsiveness */
+        @media (max-width: 992px) {
+            .side-panel {
+                width: 200px;
+            }
+            .main-content {
+                margin-left: 200px;
+                padding: 15px;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .side-panel {
+                left: -250px;
+            }
+            .side-panel.show {
+                left: 0;
+            }
+            .main-content {
+                margin-left: 0;
+                padding: 15px;
+            }
+            .menu-toggle {
+                display: block;
+                position: fixed;
+                top: 15px;
+                left: 15px;
+                z-index: 1100;
+            }
+        }
     </style>
 </head>
 <body>
-    <div class="dashboard-container">
-        <div class="header">
-            <div class="d-flex justify-content-between align-items-center">
-                <div>
-                    <h1>Staples Brain</h1>
-                    <p class="text-muted">AI-powered Customer Engagement Platform</p>
-                </div>
-                <div>
-                    <span class="badge bg-success" id="system-status">System Online</span>
-                </div>
-            </div>
-        </div>
-        
-        <div class="main-content-wrapper">
-            <!-- Sidebar Navigation -->
-            <div class="col-md-3 col-lg-2">
-                <div class="sidebar-nav">
-                    <div class="nav flex-column nav-pills" id="mainTabs" role="tablist" aria-orientation="vertical">
-                        <button class="nav-link active" id="home-tab" data-bs-toggle="tab" data-bs-target="#home-tab-pane" type="button" role="tab" aria-controls="home-tab-pane" aria-selected="true">
-                            <i class="bi bi-house-door me-2"></i>Dashboard
-                        </button>
-                        <button class="nav-link" id="chat-tab" data-bs-toggle="tab" data-bs-target="#chat-tab-pane" type="button" role="tab" aria-controls="chat-tab-pane" aria-selected="false">
-                            <i class="bi bi-chat-dots me-2"></i>Chat
-                        </button>
-                        <button class="nav-link" id="agents-tab" data-bs-toggle="tab" data-bs-target="#agents-tab-pane" type="button" role="tab" aria-controls="agents-tab-pane" aria-selected="false">
-                            <i class="bi bi-robot me-2"></i>Agents
-                        </button>
-                    </div>
-                </div>
+    <div class="app-container">
+        <!-- Fixed Side Panel -->
+        <aside class="side-panel">
+            <div class="sidebar-branding">
+                <h3>Staples Brain</h3>
+                <p class="text-muted small mb-0">AI Engagement Platform</p>
             </div>
             
-            <!-- Main Content Area -->
-            <div class="col-md-9 col-lg-10">
-                <div class="tab-content" id="mainTabsContent">
+            <ul class="sidebar-nav nav flex-column" id="mainTabs" role="tablist">
+                <li class="nav-item">
+                    <a class="nav-link active" id="home-tab" data-bs-toggle="tab" href="#home-tab-pane" role="tab" aria-controls="home-tab-pane" aria-selected="true">
+                        <i class="bi bi-house-door"></i>
+                        Home
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" id="chat-tab" data-bs-toggle="tab" href="#chat-tab-pane" role="tab" aria-controls="chat-tab-pane" aria-selected="false">
+                        <i class="bi bi-chat-dots"></i>
+                        Chat
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" id="builder-tab" data-bs-toggle="tab" href="#builder-tab-pane" role="tab" aria-controls="builder-tab-pane" aria-selected="false">
+                        <i class="bi bi-gear"></i>
+                        Agent Builder
+                    </a>
+                </li>
+                <li class="nav-item mt-3">
+                    <hr class="dropdown-divider bg-secondary">
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" id="agents-tab" data-bs-toggle="tab" href="#agents-tab-pane" role="tab" aria-controls="agents-tab-pane" aria-selected="false">
+                        <i class="bi bi-robot"></i>
+                        Agent List
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link disabled" href="#" tabindex="-1" aria-disabled="true">
+                        <i class="bi bi-graph-up"></i>
+                        Analytics
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link disabled" href="#" tabindex="-1" aria-disabled="true">
+                        <i class="bi bi-sliders"></i>
+                        Settings
+                    </a>
+                </li>
+            </ul>
+            
+            <div class="position-absolute bottom-0 start-0 w-100 p-3 border-top border-secondary">
+                <div class="d-flex align-items-center">
+                    <span class="badge bg-success me-2">
+                        <span class="status-indicator status-connected"></span>
+                        System Online
+                    </span>
+                    <small class="text-muted">v1.0.0</small>
+                </div>
+            </div>
+        </aside>
+        
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <div class="tab-content" id="mainTabsContent">
             <div class="tab-pane fade show active" id="home-tab-pane" role="tabpanel" aria-labelledby="home-tab" tabindex="0">
                 <div class="stats-container">
                     <div class="row">
@@ -299,16 +463,49 @@
                         </tbody>
                     </table>
                 </div>
+            </div>
+            
+            <div class="tab-pane fade" id="builder-tab-pane" role="tabpanel" aria-labelledby="builder-tab" tabindex="0">
+                <h3 class="mb-4">Agent Builder</h3>
+                
+                <div class="agent-builder-container">
+                    <div class="row mb-4">
+                        <div class="col-md-12">
+                            <div class="card">
+                                <div class="card-body">
+                                    <h5 class="card-title">Create New Agent</h5>
+                                    <p class="card-text">Build custom agents with specialized capabilities for customer engagement scenarios.</p>
+                                    <button class="btn btn-primary mt-3" disabled>
+                                        <i class="bi bi-plus-circle me-2"></i>
+                                        New Agent
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="agent-builder-placeholder">
+                        <div class="text-center">
+                            <i class="bi bi-gear display-1 text-muted mb-3"></i>
+                            <h4>Agent Builder Coming Soon</h4>
+                            <p class="text-muted">This feature is currently under development.</p>
+                        </div>
+                    </div>
                 </div>
             </div>
-            <!-- End Main Content Area -->
-        </div>
-        <!-- End main-content-wrapper -->
+            
+            </div>
+            <!-- End Tab Content -->
+        </main>
+        <!-- End Main Content Area -->
         
-        <div class="footer">
-            <p class="text-muted">Staples Brain • AI Customer Engagement Platform • April 2025</p>
-        </div>
+        <footer class="footer mt-auto py-3">
+            <div class="container">
+                <p class="text-muted text-center mb-0">Staples Brain • AI Customer Engagement Platform • April 2025</p>
+            </div>
+        </footer>
     </div>
+    <!-- End App Container -->
     
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script>
