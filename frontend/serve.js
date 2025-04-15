@@ -5,6 +5,32 @@ const url = require('url');
 
 const PORT = process.env.PORT || 3001;
 
+// Function to determine the content type based on file extension
+function getContentType(filePath) {
+  const extname = path.extname(filePath);
+  switch (extname) {
+    case '.html':
+      return 'text/html';
+    case '.js':
+      return 'text/javascript';
+    case '.css':
+      return 'text/css';
+    case '.json':
+      return 'application/json';
+    case '.png':
+      return 'image/png';
+    case '.jpg':
+    case '.jpeg':
+      return 'image/jpeg';
+    case '.gif':
+      return 'image/gif';
+    case '.svg':
+      return 'image/svg+xml';
+    default:
+      return 'text/plain';
+  }
+}
+
 // Read backend port from file if possible, default to 5000
 let BACKEND_PORT = 5000;
 try {
@@ -145,6 +171,53 @@ const server = http.createServer((req, res) => {
       res.writeHead(200, { 'Content-Type': 'text/html' });
       res.end(data);
     });
+    return;
+  }
+  
+  // Serve static assets for the React application (JavaScript, CSS, etc.)
+  if (pathname.startsWith('/static/') || pathname.includes('.js') || pathname.includes('.css') || 
+      pathname.includes('.png') || pathname.includes('.jpg') || pathname.includes('.svg')) {
+    console.log(`Static asset request: ${pathname}`);
+    
+    // Try serving from the React app's src directory first
+    const srcPath = path.join(__dirname, 'src', pathname);
+    
+    if (fs.existsSync(srcPath)) {
+      const contentType = getContentType(srcPath);
+      fs.readFile(srcPath, (err, data) => {
+        if (err) {
+          res.writeHead(500);
+          res.end(`Error loading ${pathname}`);
+          return;
+        }
+        
+        res.writeHead(200, { 'Content-Type': contentType });
+        res.end(data);
+      });
+      return;
+    }
+    
+    // If not found in src directory, look in the node_modules
+    const nodeModulesPath = path.join(__dirname, 'node_modules', pathname.replace('/static/', ''));
+    
+    if (fs.existsSync(nodeModulesPath)) {
+      const contentType = getContentType(nodeModulesPath);
+      fs.readFile(nodeModulesPath, (err, data) => {
+        if (err) {
+          res.writeHead(500);
+          res.end(`Error loading ${pathname}`);
+          return;
+        }
+        
+        res.writeHead(200, { 'Content-Type': contentType });
+        res.end(data);
+      });
+      return;
+    }
+    
+    // If asset not found, try a fallback
+    res.writeHead(404);
+    res.end(`Static asset not found: ${pathname}`);
     return;
   }
   

@@ -16,13 +16,388 @@
         #root {
             min-height: 100vh;
         }
+        
+        .nav-link {
+            cursor: pointer;
+        }
+        
+        .card {
+            margin-bottom: 1.5rem;
+        }
+        
+        .agent-description {
+            max-width: 300px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
     </style>
 </head>
 <body>
     <!-- React Application Root Container -->
-    <div id="root"></div>
+    <div id="root">
+        <!-- Loading Indicator -->
+        <div class="container mt-5">
+            <div class="text-center">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p class="mt-3">Loading Agent Management...</p>
+            </div>
+        </div>
+    </div>
     
-    <!-- Load React Application -->
-    <script src="/static/js/bundle.js"></script>
+    <!-- Inline Agent Management page script -->
+    <script>
+        // Wait for DOM to be ready
+        document.addEventListener('DOMContentLoaded', function() {
+            // Get the root element
+            const root = document.getElementById('root');
+            
+            // Function to create HTML element with attributes and children
+            function createElement(tag, attributes = {}, children = []) {
+                const element = document.createElement(tag);
+                
+                // Set attributes
+                Object.entries(attributes).forEach(([key, value]) => {
+                    if (key === 'className') {
+                        element.className = value;
+                    } else if (key === 'onClick') {
+                        element.addEventListener('click', value);
+                    } else {
+                        element.setAttribute(key, value);
+                    }
+                });
+                
+                // Add children
+                children.forEach(child => {
+                    if (typeof child === 'string') {
+                        element.appendChild(document.createTextNode(child));
+                    } else if (child instanceof Node) {
+                        element.appendChild(child);
+                    }
+                });
+                
+                return element;
+            }
+            
+            // State variables
+            let activeTab = 'all-agents';
+            let agents = [];
+            let builderAgents = [];
+            let isLoading = true;
+            let error = null;
+            
+            // Function to render the page
+            function renderPage() {
+                // Clear previous content
+                root.innerHTML = '';
+                
+                // Create container
+                const container = createElement('div', { className: 'container-fluid p-4' });
+                
+                // Add heading
+                container.appendChild(
+                    createElement('h1', { className: 'mb-4' }, ['Agent Management'])
+                );
+                
+                // Create tabs
+                const tabs = createElement('ul', { className: 'nav nav-tabs mb-4' });
+                
+                // All Agents tab
+                tabs.appendChild(
+                    createElement('li', { className: 'nav-item' }, [
+                        createElement('a', { 
+                            className: `nav-link ${activeTab === 'all-agents' ? 'active' : ''}`,
+                            href: '#',
+                            onClick: (e) => {
+                                e.preventDefault();
+                                activeTab = 'all-agents';
+                                renderPage();
+                            }
+                        }, ['All Agents'])
+                    ])
+                );
+                
+                // Agent Builder tab
+                tabs.appendChild(
+                    createElement('li', { className: 'nav-item' }, [
+                        createElement('a', { 
+                            className: `nav-link ${activeTab === 'agent-builder' ? 'active' : ''}`,
+                            href: '#',
+                            onClick: (e) => {
+                                e.preventDefault();
+                                activeTab = 'agent-builder';
+                                renderPage();
+                            }
+                        }, ['Agent Builder'])
+                    ])
+                );
+                
+                container.appendChild(tabs);
+                
+                // Content based on state
+                if (isLoading) {
+                    // Loading state
+                    container.appendChild(
+                        createElement('div', { className: 'd-flex justify-content-center' }, [
+                            createElement('div', { className: 'spinner-border text-primary' }, [
+                                createElement('span', { className: 'visually-hidden' }, ['Loading...'])
+                            ])
+                        ])
+                    );
+                } else if (error) {
+                    // Error state
+                    container.appendChild(
+                        createElement('div', { className: 'alert alert-danger' }, [error])
+                    );
+                } else {
+                    // Tab content
+                    const tabContent = createElement('div', { className: 'tab-content' });
+                    
+                    // All Agents tab content
+                    if (activeTab === 'all-agents') {
+                        const allAgentsTab = createElement('div', { className: 'tab-pane fade show active' });
+                        
+                        const card = createElement('div', { className: 'card' });
+                        
+                        // Card header
+                        card.appendChild(
+                            createElement('div', { className: 'card-header d-flex justify-content-between align-items-center' }, [
+                                createElement('h5', { className: 'mb-0' }, ['System Agents'])
+                            ])
+                        );
+                        
+                        // Card body
+                        const cardBody = createElement('div', { className: 'card-body' });
+                        
+                        // Table
+                        const table = createElement('table', { className: 'table table-hover' });
+                        
+                        // Table header
+                        const thead = createElement('thead');
+                        thead.appendChild(
+                            createElement('tr', {}, [
+                                createElement('th', {}, ['Name']),
+                                createElement('th', {}, ['Type']),
+                                createElement('th', {}, ['Description']),
+                                createElement('th', {}, ['Status'])
+                            ])
+                        );
+                        table.appendChild(thead);
+                        
+                        // Table body
+                        const tbody = createElement('tbody');
+                        
+                        // Agent rows
+                        agents.forEach(agent => {
+                            const row = createElement('tr');
+                            
+                            // Name column
+                            const nameCell = createElement('td');
+                            nameCell.appendChild(document.createTextNode(agent.name));
+                            
+                            if (agent.is_system) {
+                                nameCell.appendChild(
+                                    createElement('span', { className: 'badge bg-info ms-2' }, ['System'])
+                                );
+                            }
+                            row.appendChild(nameCell);
+                            
+                            // Type column
+                            row.appendChild(
+                                createElement('td', {}, [agent.type || 'N/A'])
+                            );
+                            
+                            // Description column
+                            row.appendChild(
+                                createElement('td', { className: 'agent-description' }, [agent.description || 'No description'])
+                            );
+                            
+                            // Status column
+                            row.appendChild(
+                                createElement('td', {}, [
+                                    createElement('span', { 
+                                        className: `badge ${agent.loaded ? 'bg-success' : 'bg-secondary'}`
+                                    }, [agent.loaded ? 'Active' : 'Inactive'])
+                                ])
+                            );
+                            
+                            tbody.appendChild(row);
+                        });
+                        
+                        table.appendChild(tbody);
+                        cardBody.appendChild(table);
+                        card.appendChild(cardBody);
+                        allAgentsTab.appendChild(card);
+                        tabContent.appendChild(allAgentsTab);
+                    }
+                    
+                    // Agent Builder tab content
+                    if (activeTab === 'agent-builder') {
+                        const builderTab = createElement('div', { className: 'tab-pane fade show active' });
+                        
+                        const card = createElement('div', { className: 'card' });
+                        
+                        // Card header
+                        card.appendChild(
+                            createElement('div', { className: 'card-header d-flex justify-content-between align-items-center' }, [
+                                createElement('h5', { className: 'mb-0' }, ['Agent Builder']),
+                                createElement('button', { className: 'btn btn-primary btn-sm' }, [
+                                    createElement('i', { className: 'bi bi-plus' }),
+                                    ' Create New Agent'
+                                ])
+                            ])
+                        );
+                        
+                        // Card body
+                        const cardBody = createElement('div', { className: 'card-body' });
+                        
+                        if (builderAgents.length > 0) {
+                            // Table
+                            const table = createElement('table', { className: 'table table-hover' });
+                            
+                            // Table header
+                            const thead = createElement('thead');
+                            thead.appendChild(
+                                createElement('tr', {}, [
+                                    createElement('th', {}, ['Name']),
+                                    createElement('th', {}, ['Type']),
+                                    createElement('th', {}, ['Description']),
+                                    createElement('th', {}, ['Actions'])
+                                ])
+                            );
+                            table.appendChild(thead);
+                            
+                            // Table body
+                            const tbody = createElement('tbody');
+                            
+                            // Agent rows
+                            builderAgents.forEach(agent => {
+                                const row = createElement('tr');
+                                
+                                // Name column
+                                row.appendChild(
+                                    createElement('td', {}, [agent.name])
+                                );
+                                
+                                // Type column
+                                row.appendChild(
+                                    createElement('td', {}, [agent.agent_type || 'N/A'])
+                                );
+                                
+                                // Description column
+                                row.appendChild(
+                                    createElement('td', { className: 'agent-description' }, [agent.description || 'No description'])
+                                );
+                                
+                                // Actions column
+                                const actionsCell = createElement('td');
+                                
+                                actionsCell.appendChild(
+                                    createElement('button', { className: 'btn btn-sm btn-outline-primary me-2' }, [
+                                        createElement('i', { className: 'bi bi-pencil' }),
+                                        ' Edit'
+                                    ])
+                                );
+                                
+                                actionsCell.appendChild(
+                                    createElement('button', { className: 'btn btn-sm btn-outline-danger' }, [
+                                        createElement('i', { className: 'bi bi-trash' }),
+                                        ' Delete'
+                                    ])
+                                );
+                                
+                                row.appendChild(actionsCell);
+                                tbody.appendChild(row);
+                            });
+                            
+                            table.appendChild(tbody);
+                            cardBody.appendChild(table);
+                        } else {
+                            // No agents message
+                            const emptyState = createElement('div', { className: 'text-center py-5' });
+                            
+                            emptyState.appendChild(
+                                createElement('i', { className: 'bi bi-robot display-1 text-muted mb-3' })
+                            );
+                            
+                            emptyState.appendChild(
+                                createElement('h5', {}, ['No Custom Agents Yet'])
+                            );
+                            
+                            emptyState.appendChild(
+                                createElement('p', { className: 'text-muted' }, [
+                                    'Use the Agent Builder to create your own custom agents.'
+                                ])
+                            );
+                            
+                            emptyState.appendChild(
+                                createElement('button', { className: 'btn btn-primary' }, [
+                                    createElement('i', { className: 'bi bi-plus' }),
+                                    ' Create Your First Agent'
+                                ])
+                            );
+                            
+                            cardBody.appendChild(emptyState);
+                        }
+                        
+                        card.appendChild(cardBody);
+                        builderTab.appendChild(card);
+                        tabContent.appendChild(builderTab);
+                    }
+                    
+                    container.appendChild(tabContent);
+                }
+                
+                root.appendChild(container);
+            }
+            
+            // Fetch data and render
+            function fetchData() {
+                // Fetch regular agents
+                fetch('/api/v1/agents')
+                    .then(response => response.json())
+                    .then(data => {
+                        console.log('Agents data:', data);
+                        if (data.success && data.agents) {
+                            agents = data.agents;
+                        } else {
+                            throw new Error(data.error || 'Failed to load agents');
+                        }
+                        isLoading = false;
+                        renderPage();
+                    })
+                    .catch(err => {
+                        console.error('Error fetching agents:', err);
+                        error = 'Failed to load agents. Please try again later.';
+                        isLoading = false;
+                        renderPage();
+                    });
+                
+                // Fetch builder agents
+                fetch('/api/v1/agent-builder/agents')
+                    .then(response => response.json())
+                    .then(data => {
+                        console.log('Builder agents data:', data);
+                        if (data.success && data.agents) {
+                            builderAgents = data.agents;
+                            renderPage();
+                        } else {
+                            throw new Error(data.error || 'Failed to load builder agents');
+                        }
+                    })
+                    .catch(err => {
+                        console.error('Error fetching builder agents:', err);
+                    });
+            }
+            
+            // Initial render
+            renderPage();
+            
+            // Fetch data
+            fetchData();
+        });
+    </script>
 </body>
 </html>
