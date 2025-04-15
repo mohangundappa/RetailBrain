@@ -418,29 +418,11 @@ async def execute_reset_password_workflow(
     Returns:
         Execution result
     """
-    # Retrieve conversation history from memory
-    messages = []
-    try:
-        mem0 = await get_mem0()
-        if mem0:
-            # Get recent messages
-            history = mem0.get_messages(
-                conversation_id=conversation_id,
-                limit=5,
-                session_id=session_id
-            )
-            
-            # Convert to standard format
-            for entry in history:
-                role = entry.get("role", "")
-                content = entry.get("content", "")
-                if role and content:
-                    messages.append({
-                        "role": role,
-                        "content": content
-                    })
-    except Exception as e:
-        logger.error(f"Error retrieving conversation history: {str(e)}")
+    # Initialize with just current message since memory integration is incomplete
+    messages = [
+        {"role": "user", "content": message}
+    ]
+    logger.info(f"Initializing workflow for conversation {conversation_id} and session {session_id}")
     
     # Prepare the initial state
     initial_state: ResetPasswordState = {
