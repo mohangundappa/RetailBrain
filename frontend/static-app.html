@@ -1373,6 +1373,7 @@
                     }
                     
                     const data = await response.json();
+                    console.log("Response data from API:", data);
                     
                     if (!data.success) {
                         throw new Error(data.error || 'Unknown error processing message');
