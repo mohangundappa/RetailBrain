@@ -98,6 +98,8 @@ def create_reset_password_workflow(model_name: str = "gpt-4o", temperature: floa
         Returns:
             Updated state with intent classification
         """
+        # Debug the state to see what we're working with
+        logger.info(f"State received in classify_intent: user_input={state.get('user_input', 'None')}, messages_count={len(state.get('messages', []))}")
         # Define the intent classifier prompt
         intent_prompt = ChatPromptTemplate.from_messages([
             SystemMessage(content=(
@@ -138,12 +140,14 @@ def create_reset_password_workflow(model_name: str = "gpt-4o", temperature: floa
                 logger.warning("No user input found in state or messages, using default")
                 user_input = "Need help with password"
                 
-            # Create messages list for the LLM
-            messages = [{"role": "user", "content": user_input}]
+            # Create messages list for the LLM with proper message objects for the prompt
+            formatted_messages = [{"role": "user", "content": user_input}]
             
-            logger.info(f"Classifying intent for input: '{user_input[:75]}...'")  # Log the actual message being used
+            # Log the user input with better formatting
+            truncated = user_input[:75] + ('...' if len(user_input) > 75 else '')
+            logger.info(f"Classifying intent for message: '{truncated}'")  # Log the actual message being used
             response = await llm.ainvoke(
-                intent_prompt.format(messages=messages)
+                intent_prompt.format(messages=formatted_messages)
             )
             
             parsed_response = intent_output_parser.parse(response.content)
@@ -437,18 +441,25 @@ async def execute_reset_password_workflow(
     Returns:
         Execution result
     """
-    # Initialize with just current message since memory integration is incomplete
+    # Ensure message is not None or empty
+    if not message:
+        message = "I need help with my password"
+        logger.warning(f"Empty message received, using default: {message}")
+    
+    # Log the message being processed
+    logger.info(f"Initializing workflow for conversation {conversation_id} and session {session_id}")
+    logger.info(f"Processing message: '{message[:100]}...'")
+    
+    # Initialize with the current message
     messages = [
         {"role": "user", "content": message}
     ]
-    logger.info(f"Initializing workflow for conversation {conversation_id} and session {session_id}")
-    logger.info(f"Processing message: {message[:50]}...")
     
     # Prepare the initial state
     initial_state: ResetPasswordState = {
         "conversation_id": conversation_id,
         "session_id": session_id,
-        "user_input": message,
+        "user_input": message,  # Explicitly set the user_input
         "user_email": email,
         "reset_intent": None,
         "reset_status": None,
