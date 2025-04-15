@@ -127,55 +127,61 @@ def create_reset_password_workflow(model_name: str = "gpt-4o", temperature: floa
         message_lower = user_input.lower()
         intent = "unknown"
         
-        # Define pattern sets for each intent type
-        reset_patterns = [
-            "reset password", "forgot password", "change password", 
-            "can't login", "login problem", "password not working",
-            "locked out", "reset my password", "new password", 
-            "change my password", "lost password", "recover password"
-        ]
-        
-        info_patterns = [
-            "password requirements", "password policy", "how to reset", 
-            "password rules", "secure password", "password instructions",
-            "how do i", "what are the steps", "explain how",
-            "password criteria", "password strength"
-        ]
-        
-        account_patterns = [
-            "account locked", "account stolen", "hacked account",
-            "suspicious activity", "security breach", "account compromise",
-            "account access", "someone else", "account help", 
-            "verify identity", "account issues", "can't access"
-        ]
-        
-        # Check patterns in order of priority
-        for pattern in reset_patterns:
-            if pattern in message_lower:
-                intent = "reset_request"
-                logger.info(f"Pattern match: Found '{pattern}' in message, classified as {intent}")
-                break
-                
-        # If no reset patterns matched, check info patterns
-        if intent == "unknown":
-            for pattern in info_patterns:
-                if pattern in message_lower:
-                    intent = "info_request"
-                    logger.info(f"Pattern match: Found '{pattern}' in message, classified as {intent}")
-                    break
-        
-        # If still no match, check account issue patterns
-        if intent == "unknown":
-            for pattern in account_patterns:
-                if pattern in message_lower:
-                    intent = "account_issue"
-                    logger.info(f"Pattern match: Found '{pattern}' in message, classified as {intent}")
-                    break
-        
-        # If password is mentioned but no specific pattern matched, default to reset_request
-        if intent == "unknown" and "password" in message_lower:
+        # Check for positive response to reset offer first
+        if any(word in message_lower for word in ["yes", "yeah", "sure", "okay", "help me"]) and "reset" not in message_lower:
+            # This looks like an affirmative response to our offer to help
             intent = "reset_request"
-            logger.info("Default password mention match: User mentioned 'password', defaulting to reset_request")
+            logger.info("Detected affirmative response to previous reset offer, setting intent to reset_request")
+        else:
+            # Define pattern sets for each intent type
+            reset_patterns = [
+                "reset password", "forgot password", "change password", 
+                "can't login", "login problem", "password not working",
+                "locked out", "reset my password", "new password", 
+                "change my password", "lost password", "recover password"
+            ]
+            
+            info_patterns = [
+                "password requirements", "password policy", "how to reset", 
+                "password rules", "secure password", "password instructions",
+                "how do i", "what are the steps", "explain how",
+                "password criteria", "password strength"
+            ]
+            
+            account_patterns = [
+                "account locked", "account stolen", "hacked account",
+                "suspicious activity", "security breach", "account compromise",
+                "account access", "someone else", "account help", 
+                "verify identity", "account issues", "can't access"
+            ]
+            
+            # Check patterns in order of priority
+            for pattern in reset_patterns:
+                if pattern in message_lower:
+                    intent = "reset_request"
+                    logger.info(f"Pattern match: Found '{pattern}' in message, classified as {intent}")
+                    break
+                    
+            # If no reset patterns matched, check info patterns
+            if intent == "unknown":
+                for pattern in info_patterns:
+                    if pattern in message_lower:
+                        intent = "info_request"
+                        logger.info(f"Pattern match: Found '{pattern}' in message, classified as {intent}")
+                        break
+            
+            # If still no match, check account issue patterns
+            if intent == "unknown":
+                for pattern in account_patterns:
+                    if pattern in message_lower:
+                        intent = "account_issue"
+                        logger.info(f"Pattern match: Found '{pattern}' in message, classified as {intent}")
+                        break
+            
+            # If password is mentioned but no specific pattern matched, default to reset_request
+            if intent == "unknown" and "password" in message_lower:
+                intent = "reset_request"
+                logger.info("Default password mention match: User mentioned 'password', defaulting to reset_request")
         
         # Map to enum value
         try:

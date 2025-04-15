@@ -200,7 +200,7 @@ class GraphBrainService:
         # Track execution
         state["trace"].append({"step": "router", "timestamp": start_time})
         
-        # Check for password reset patterns directly
+        # Check for password reset patterns and email patterns
         password_reset_patterns = [
             "reset password", "forgot password", "change password", 
             "can't login", "login problem", "password not working",
@@ -209,6 +209,24 @@ class GraphBrainService:
         ]
         
         user_input_lower = user_input.lower()
+        
+        # Check for direct email pattern - could be a response to a reset password request
+        if "@" in user_input_lower and ("email" in user_input_lower or "mail" in user_input_lower):
+            # Find the Reset Password Agent for email-like messages
+            for agent_id, agent in self.agents.items():
+                if "reset password" in agent.name.lower():
+                    logger.info(f"Direct email pattern match: routing to {agent.name} for possible email response")
+                    state["selected_agent"] = agent
+                    state["current_agent_id"] = agent_id
+                    state["confidence"] = 0.95  # High confidence since it's a direct match
+                    state["trace"].append({
+                        "step": "direct_pattern_match",
+                        "pattern": "email_response",
+                        "agent": agent.name
+                    })
+                    return state
+        
+        # Check for password reset patterns
         for pattern in password_reset_patterns:
             if pattern in user_input_lower:
                 # Find the Reset Password Agent
@@ -238,23 +256,54 @@ class GraphBrainService:
         # Check for conversation continuity with previous agent
         prev_agent_id = state.get("current_agent_id")
         if prev_agent_id and prev_agent_id in self.agents:
-            # If we have a previous agent, check if we should continue with it
-            continuity_check = await self._check_conversation_continuity(
-                user_input, 
-                prev_agent_id,
-                conversation_history
-            )
+            prev_agent_name = self.agents[prev_agent_id].name
             
-            if continuity_check["continue"] and continuity_check["confidence"] > 0.6:
-                state["selected_agent"] = self.agents[prev_agent_id]
-                state["confidence"] = continuity_check["confidence"]
-                state["trace"].append({
-                    "step": "agent_selection",
-                    "method": "continuity",
-                    "selected": prev_agent_id,
-                    "confidence": continuity_check["confidence"]
-                })
-                return state
+            # Special case for Reset Password Agent: detect email format in response for continuity
+            if prev_agent_name == "Reset Password Agent":
+                # Check if there was a previous request for email
+                if conversation_history and len(conversation_history) >= 2:
+                    last_assistant_msg = None
+                    for msg in reversed(conversation_history):
+                        if msg.get("role") == "assistant":
+                            last_assistant_msg = msg.get("content", "")
+                            break
+                    
+                    # If last message asked for email and current contains an email pattern
+                    if last_assistant_msg and "email address" in last_assistant_msg and "@" in user_input:
+                        logger.info(f"Detected email response to Reset Password Agent request")
+                        state["selected_agent"] = self.agents[prev_agent_id]
+                        state["current_agent_id"] = prev_agent_id
+                        state["confidence"] = 0.95
+                        state["trace"].append({
+                            "step": "agent_selection",
+                            "method": "reset_password_email_continuity",
+                            "selected": prev_agent_id,
+                            "confidence": 0.95
+                        })
+                        return state
+            
+            # If not a special case, use the standard continuity check
+            try:
+                # If we have a previous agent, check if we should continue with it
+                continuity_check = await self._check_conversation_continuity(
+                    user_input, 
+                    prev_agent_id,
+                    conversation_history
+                )
+                
+                if continuity_check["continue"] and continuity_check["confidence"] > 0.6:
+                    state["selected_agent"] = self.agents[prev_agent_id]
+                    state["confidence"] = continuity_check["confidence"]
+                    state["trace"].append({
+                        "step": "agent_selection",
+                        "method": "continuity",
+                        "selected": prev_agent_id,
+                        "confidence": continuity_check["confidence"]
+                    })
+                    return state
+            except Exception as e:
+                logger.error(f"Error in standard continuity check: {str(e)}")
+                # Continue with regular agent selection if continuity check fails
         
         # Perform agent selection using intent matching and semantic similarity
         selected_agent, confidence = await self._select_agent(
