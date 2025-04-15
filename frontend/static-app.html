@@ -402,7 +402,7 @@
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" id="chat-tab" data-bs-toggle="tab" href="#chat-tab-pane" role="tab" aria-controls="chat-tab-pane" aria-selected="false">
+                    <a class="nav-link" id="chat-tab" href="/chat">
                         <i class="bi bi-chat-dots"></i>
                         Chat
                     </a>
@@ -897,9 +897,7 @@
             
             // Switch to chat tab when launch chat button is clicked
             launchChatBtn.addEventListener('click', () => {
-                const chatTab = new bootstrap.Tab(document.getElementById('chat-tab'));
-                chatTab.show();
-                setTimeout(() => embeddedChatInput.focus(), 300);
+                window.location.href = '/chat';
             });
             
             // Toggle observability panel
