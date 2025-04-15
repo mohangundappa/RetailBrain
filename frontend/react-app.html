@@ -234,6 +234,115 @@
                         tabContent.appendChild(allAgentsTab);
                     }
                     
+                    // Agent Details view
+                    if (activeTab === 'agent-details' && selectedAgentId) {
+                        const agent = builderAgents.find(a => a.id === selectedAgentId);
+                        
+                        if (!agent) {
+                            // Agent not found
+                            container.appendChild(
+                                createElement('div', { className: 'alert alert-danger' }, [
+                                    `Agent with ID ${selectedAgentId} not found`
+                                ])
+                            );
+                        } else {
+                            // Agent details view
+                            const detailsContainer = createElement('div', { className: 'card' });
+                            
+                            // Card header with back button
+                            detailsContainer.appendChild(
+                                createElement('div', { className: 'card-header d-flex justify-content-between align-items-center' }, [
+                                    createElement('h5', { className: 'mb-0' }, ['Agent Details']),
+                                    createElement('button', { 
+                                        className: 'btn btn-outline-secondary btn-sm',
+                                        id: 'back-to-agents-btn'
+                                    }, [
+                                        createElement('i', { className: 'bi bi-arrow-left' }),
+                                        ' Back to Agents'
+                                    ])
+                                ])
+                            );
+                            
+                            // Card body
+                            const cardBody = createElement('div', { className: 'card-body' });
+                            
+                            // Name and type header
+                            cardBody.appendChild(
+                                createElement('div', { className: 'mb-4 d-flex justify-content-between align-items-center' }, [
+                                    createElement('h3', {}, [agent.name]),
+                                    createElement('span', { className: 'badge bg-primary' }, [
+                                        agent.agent_type || agent.type || 'Unknown Type'
+                                    ])
+                                ])
+                            );
+                            
+                            // Description
+                            cardBody.appendChild(
+                                createElement('div', { className: 'mb-4' }, [
+                                    createElement('h5', {}, ['Description']),
+                                    createElement('p', { className: 'lead' }, [agent.description || 'No description available'])
+                                ])
+                            );
+                            
+                            // Details section
+                            const detailsSection = createElement('div', { className: 'card mb-4' });
+                            const detailsHeader = createElement('div', { className: 'card-header' }, [
+                                createElement('h5', { className: 'mb-0' }, ['Agent Properties'])
+                            ]);
+                            const detailsBody = createElement('div', { className: 'card-body' });
+                            
+                            // Details table
+                            const detailsTable = createElement('table', { className: 'table' });
+                            const detailsRows = [
+                                { label: 'Agent ID', value: agent.id },
+                                { label: 'Status', value: agent.status || 'N/A' },
+                                { label: 'Version', value: agent.version?.toString() || '1' },
+                                { label: 'Created', value: new Date(agent.created_at).toLocaleString() },
+                                { label: 'Last Updated', value: new Date(agent.updated_at).toLocaleString() },
+                                { label: 'Created By', value: agent.created_by || 'System' }
+                            ];
+                            
+                            detailsRows.forEach(row => {
+                                const tr = createElement('tr', {}, [
+                                    createElement('th', { style: 'width: 30%' }, [row.label]),
+                                    createElement('td', {}, [row.value])
+                                ]);
+                                detailsTable.appendChild(tr);
+                            });
+                            
+                            detailsBody.appendChild(detailsTable);
+                            detailsSection.appendChild(detailsHeader);
+                            detailsSection.appendChild(detailsBody);
+                            cardBody.appendChild(detailsSection);
+                            
+                            // Actions section
+                            const actionsSection = createElement('div', { className: 'mb-4 d-flex gap-2' }, [
+                                createElement('button', { 
+                                    className: 'btn btn-primary',
+                                    onClick: () => alert('Edit functionality will be implemented soon')
+                                }, [
+                                    createElement('i', { className: 'bi bi-pencil' }),
+                                    ' Edit Agent'
+                                ]),
+                                createElement('button', { 
+                                    className: 'btn btn-danger',
+                                    onClick: () => {
+                                        if (confirm(`Are you sure you want to delete "${agent.name}"?`)) {
+                                            deleteAgent(agent.id);
+                                        }
+                                    }
+                                }, [
+                                    createElement('i', { className: 'bi bi-trash' }),
+                                    ' Delete Agent'
+                                ])
+                            ]);
+                            cardBody.appendChild(actionsSection);
+                            
+                            detailsContainer.appendChild(cardBody);
+                            tabContent.appendChild(detailsContainer);
+                        }
+                    }
+                    
                     // Agent Builder tab content
                     if (activeTab === 'agent-builder') {
                         const builderTab = createElement('div', { className: 'tab-pane fade show active' });
@@ -312,8 +421,7 @@
                                     'data-agent-id': agent.id,
                                     onClick: (e) => {
                                         console.log('Edit agent:', agent.id);
-                                        // Here we would handle navigation to edit page
-                                        // or open an edit modal
+                                        showAgentDetails(agent.id);
                                     }
                                 }, [
                                     createElement('i', { className: 'bi bi-pencil' }),
@@ -329,7 +437,7 @@
                                     onClick: (e) => {
                                         if (confirm(`Are you sure you want to delete "${agent.name}"?`)) {
                                             console.log('Delete agent:', agent.id);
-                                            // Here we would handle deletion
+                                            deleteAgent(agent.id);
                                         }
                                     }
                                 }, [
@@ -382,6 +490,69 @@
                 }
                 
                 root.appendChild(container);
+            }
+            
+            // Function to handle agent editing
+            function showAgentDetails(agentId) {
+                console.log('Showing details for agent:', agentId);
+                selectedAgentId = agentId;
+                
+                // Find the agent data
+                const agent = builderAgents.find(a => a.id === agentId);
+                
+                if (!agent) {
+                    console.error('Agent not found:', agentId);
+                    return;
+                }
+                
+                // Save current tab content
+                const previousTab = activeTab;
+                
+                // Switch to agent detail view
+                activeTab = 'agent-details';
+                
+                // Render the updated page
+                renderPage();
+                
+                // Add back button listener
+                document.getElementById('back-to-agents-btn')?.addEventListener('click', () => {
+                    // Switch back to previous tab
+                    activeTab = previousTab || 'agent-builder';
+                    selectedAgentId = null;
+                    renderPage();
+                });
+            }
+            
+            // Function to delete an agent
+            async function deleteAgent(agentId) {
+                if (!agentId) return;
+                
+                try {
+                    const response = await fetch(`/api/v1/agent-builder/agents/${agentId}`, {
+                        method: 'DELETE',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        }
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        // Remove agent from local data
+                        builderAgents = builderAgents.filter(a => a.id !== agentId);
+                        
+                        // Show success message
+                        alert('Agent deleted successfully');
+                        
+                        // Refresh page
+                        renderPage();
+                    } else {
+                        throw new Error(data.error || 'Failed to delete agent');
+                    }
+                } catch (err) {
+                    console.error('Error deleting agent:', err);
+                    alert(`Error deleting agent: ${err.message}`);
+                }
             }
             
             // Fetch data and render
