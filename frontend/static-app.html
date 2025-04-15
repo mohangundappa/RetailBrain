@@ -152,9 +152,27 @@
             font-size: 0.7rem;
         }
         
-        /* Chat specific */
-        .chat-container {
-            height: calc(100vh - 120px);
+        /* Chat split screen layout */
+        .chat-split-container {
+            display: flex;
+            height: calc(100vh - 180px);
+            gap: 1rem;
+        }
+        
+        .chat-panel {
+            flex: 1;
+            min-width: 0; /* Prevent flex items from overflowing */
+            transition: all 0.3s ease;
+        }
+        
+        .observability-panel {
+            flex: 1;
+            min-width: 0; /* Prevent flex items from overflowing */
+            transition: all 0.3s ease;
+        }
+        
+        .chat-container, .observability-container {
+            height: 100%;
             border: 1px solid rgba(255, 255, 255, 0.1);
             border-radius: 0.5rem;
             overflow: hidden;
@@ -162,7 +180,7 @@
             flex-direction: column;
         }
         
-        .chat-messages {
+        .chat-messages, .observability-content {
             flex: 1;
             overflow-y: auto;
             padding: 1rem;
@@ -173,22 +191,131 @@
             border-top: 1px solid rgba(255, 255, 255, 0.1);
         }
         
+        /* Chat messages */
         .message {
             margin-bottom: 1rem;
             padding: 0.75rem;
             border-radius: 0.5rem;
-            max-width: 80%;
+            width: 100%;
+            transition: all 0.2s ease;
+        }
+        
+        .message:hover {
+            background-color: rgba(255, 255, 255, 0.05);
+        }
+        
+        .message.selected {
+            border: 1px solid var(--bs-primary);
         }
         
         .message-user {
-            background-color: rgba(13, 110, 253, 0.2);
+            background-color: rgba(13, 110, 253, 0.1);
             align-self: flex-end;
-            margin-left: auto;
         }
         
         .message-assistant {
-            background-color: rgba(32, 32, 32, 0.5);
+            background-color: rgba(32, 32, 32, 0.3);
             align-self: flex-start;
+        }
+        
+        .message-header {
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            padding-bottom: 0.5rem;
+        }
+        
+        .message-content {
+            padding: 0.25rem 0;
+        }
+        
+        /* Observability Components */
+        .observability-section {
+            background-color: rgba(0, 0, 0, 0.1);
+            border-radius: 0.5rem;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+        
+        .section-title {
+            margin-bottom: 1rem;
+            color: var(--bs-info);
+            font-weight: 500;
+        }
+        
+        .agent-selection-flow {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+        
+        .agent-node {
+            display: flex;
+            align-items: center;
+            background-color: rgba(32, 32, 32, 0.5);
+            border-radius: 0.5rem;
+            padding: 0.5rem;
+            opacity: 0.5;
+            transition: all 0.2s ease;
+        }
+        
+        .agent-node.selected {
+            opacity: 1;
+            border: 1px solid var(--bs-success);
+        }
+        
+        .agent-icon {
+            background-color: rgba(13, 110, 253, 0.1);
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 0.75rem;
+        }
+        
+        .flow-arrow {
+            font-size: 1.5rem;
+            color: var(--bs-secondary);
+        }
+        
+        .tool-execution {
+            background-color: rgba(32, 32, 32, 0.3);
+            border-radius: 0.5rem;
+            padding: 0.75rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .tool-name {
+            font-weight: 500;
+            margin-bottom: 0.5rem;
+        }
+        
+        .tool-details {
+            padding-left: 0.5rem;
+            border-left: 2px solid var(--bs-secondary);
+        }
+        
+        .entity-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+        
+        .observability-message {
+            display: none;
+        }
+        
+        .observability-message.active {
+            display: block;
+        }
+        
+        .observability-placeholder {
+            display: block;
+        }
+        
+        .observability-placeholder.hidden {
+            display: none;
         }
         
         /* Status indicators */
@@ -403,37 +530,148 @@
             </div>
             
             <div class="tab-pane fade" id="chat-tab-pane" role="tabpanel" aria-labelledby="chat-tab" tabindex="0">
-                <div class="chat-container" style="height: 600px; border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 0.5rem; overflow: hidden;">
-                    <div class="chat-header d-flex justify-content-between align-items-center p-3 border-bottom">
-                        <div>
-                            <h5 class="mb-0">Staples Brain Chat</h5>
-                            <div class="text-muted small">AI Customer Assistant</div>
-                        </div>
-                        <div>
-                            <span class="badge bg-success" id="chat-connection-status">
-                                <span class="status-indicator status-connected"></span>
-                                Connected
-                            </span>
-                        </div>
+                <div class="d-flex align-items-center justify-content-between mb-3">
+                    <h3 class="mb-0">Interactive Chat</h3>
+                    <div class="d-flex align-items-center">
+                        <span class="badge bg-success me-2" id="chat-connection-status">
+                            <span class="status-indicator status-connected"></span>
+                            Connected
+                        </span>
+                        <button class="btn btn-sm btn-outline-secondary observability-toggle" id="toggle-observability">
+                            <i class="bi bi-layout-split"></i>
+                            <span>Toggle Observability</span>
+                        </button>
                     </div>
-                    
-                    <div class="chat-messages p-3" id="embedded-chat-messages" style="height: 480px; overflow-y: auto;">
-                        <!-- Messages will be displayed here -->
-                        <div class="message message-assistant">
-                            <div class="agent-badge">
-                                <span class="badge bg-info">System</span>
+                </div>
+                
+                <div class="chat-split-container">
+                    <!-- Chat Panel -->
+                    <div class="chat-panel" id="chat-panel">
+                        <div class="chat-container">
+                            <div class="chat-header d-flex justify-content-between align-items-center p-3 border-bottom">
+                                <div>
+                                    <h5 class="mb-0">Staples Brain Chat</h5>
+                                    <div class="text-muted small">AI Customer Assistant</div>
+                                </div>
                             </div>
-                            <div>Hello! I'm the Staples Brain assistant. How can I help you today?</div>
+                            
+                            <div class="chat-messages p-3" id="embedded-chat-messages">
+                                <!-- Messages will be displayed here -->
+                                <div class="message message-assistant" data-message-id="welcome-msg-001">
+                                    <div class="message-header d-flex justify-content-between align-items-start mb-2">
+                                        <div class="agent-badge">
+                                            <span class="badge bg-info">System</span>
+                                        </div>
+                                        <button class="btn btn-sm btn-link text-muted observability-msg-toggle" data-message-id="welcome-msg-001">
+                                            <i class="bi bi-eye-fill"></i> View Details
+                                        </button>
+                                    </div>
+                                    <div class="message-content">Hello! I'm the Staples Brain assistant. How can I help you today?</div>
+                                    <div class="text-muted small mt-1">12:00:00 PM</div>
+                                </div>
+                            </div>
+                            
+                            <div class="chat-input-container p-3 border-top">
+                                <form id="embedded-chat-form" class="d-flex">
+                                    <input type="text" id="embedded-chat-input" class="form-control me-2" placeholder="Type your message..." autocomplete="off">
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="bi bi-send"></i>
+                                    </button>
+                                </form>
+                            </div>
                         </div>
                     </div>
                     
-                    <div class="chat-input-container p-3 border-top">
-                        <form id="embedded-chat-form" class="d-flex">
-                            <input type="text" id="embedded-chat-input" class="form-control me-2" placeholder="Type your message..." autocomplete="off">
-                            <button type="submit" class="btn btn-primary">
-                                <i class="bi bi-send"></i>
-                            </button>
-                        </form>
+                    <!-- Observability Panel -->
+                    <div class="observability-panel" id="observability-panel">
+                        <div class="observability-container">
+                            <div class="observability-header d-flex justify-content-between align-items-center p-3 border-bottom">
+                                <div>
+                                    <h5 class="mb-0">Observability</h5>
+                                    <div class="text-muted small">Agent Selection & Processing</div>
+                                </div>
+                                <div>
+                                    <span class="badge bg-info" id="observability-connection-status">
+                                        <span class="status-indicator status-connected"></span>
+                                        API Connected
+                                    </span>
+                                </div>
+                            </div>
+                            
+                            <div class="observability-content p-3" id="observability-content">
+                                <div class="observability-message" id="obs-welcome-msg-001">
+                                    <div class="observability-section mb-4">
+                                        <h6 class="section-title">
+                                            <i class="bi bi-robot me-2"></i>
+                                            Agent Selection
+                                        </h6>
+                                        <div class="section-content">
+                                            <div class="agent-selection-flow">
+                                                <div class="agent-node selected">
+                                                    <div class="agent-icon">
+                                                        <i class="bi bi-shield-check"></i>
+                                                    </div>
+                                                    <div class="agent-info">
+                                                        <div class="agent-name">Guardrails Agent</div>
+                                                        <div class="agent-description small">Safety validation passed</div>
+                                                    </div>
+                                                </div>
+                                                <div class="flow-arrow">→</div>
+                                                <div class="agent-node selected">
+                                                    <div class="agent-icon">
+                                                        <i class="bi bi-chat-dots"></i>
+                                                    </div>
+                                                    <div class="agent-info">
+                                                        <div class="agent-name">General Conversation Agent</div>
+                                                        <div class="agent-description small">Greeting pattern matched</div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="observability-section mb-4">
+                                        <h6 class="section-title">
+                                            <i class="bi bi-tools me-2"></i>
+                                            Tools Executed
+                                        </h6>
+                                        <div class="section-content">
+                                            <div class="tool-execution">
+                                                <div class="tool-name">SystemGreetingTool</div>
+                                                <div class="tool-details small">
+                                                    <div class="tool-params">
+                                                        <code>{"user_name": null, "time_of_day": "afternoon"}</code>
+                                                    </div>
+                                                    <div class="tool-result text-success">
+                                                        <i class="bi bi-check-circle me-1"></i> Success
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="observability-section">
+                                        <h6 class="section-title">
+                                            <i class="bi bi-tag me-2"></i>
+                                            Entities Extracted
+                                        </h6>
+                                        <div class="section-content">
+                                            <div class="entity-extraction">
+                                                <div class="entity-list">
+                                                    <span class="badge bg-secondary">No entities detected</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="observability-placeholder text-center py-5" id="observability-placeholder">
+                                    <i class="bi bi-eye display-1 text-muted mb-3"></i>
+                                    <h5>Select a message to view details</h5>
+                                    <p class="text-muted">Click "View Details" on any chat message to see observability data</p>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -640,15 +878,22 @@
                 agentsTableBody.innerHTML += rowHtml;
             });
             
-            // Chat functionality
+            // Chat and Observability functionality
             const embeddedChatForm = document.getElementById('embedded-chat-form');
             const embeddedChatInput = document.getElementById('embedded-chat-input');
             const embeddedChatMessages = document.getElementById('embedded-chat-messages');
             const chatConnectionStatus = document.getElementById('chat-connection-status');
             const launchChatBtn = document.getElementById('launch-chat-btn');
+            const toggleObservabilityBtn = document.getElementById('toggle-observability');
+            const chatPanel = document.getElementById('chat-panel');
+            const observabilityPanel = document.getElementById('observability-panel');
+            const observabilityContent = document.getElementById('observability-content');
+            const observabilityPlaceholder = document.getElementById('observability-placeholder');
             
             // Variables
             let currentConversationId = 'conv_' + Date.now();
+            let isObservabilityVisible = true;
+            let messageCounter = 1;
             
             // Switch to chat tab when launch chat button is clicked
             launchChatBtn.addEventListener('click', () => {
@@ -657,21 +902,210 @@
                 setTimeout(() => embeddedChatInput.focus(), 300);
             });
             
+            // Toggle observability panel
+            toggleObservabilityBtn.addEventListener('click', () => {
+                isObservabilityVisible = !isObservabilityVisible;
+                if (isObservabilityVisible) {
+                    observabilityPanel.style.display = 'block';
+                    chatPanel.style.flex = '1';
+                    toggleObservabilityBtn.innerHTML = '<i class="bi bi-layout-split"></i> <span>Hide Observability</span>';
+                } else {
+                    observabilityPanel.style.display = 'none';
+                    chatPanel.style.flex = '2';
+                    toggleObservabilityBtn.innerHTML = '<i class="bi bi-layout-split"></i> <span>Show Observability</span>';
+                }
+            });
+            
+            // Initialize event delegation for observability toggles
+            document.addEventListener('click', function(e) {
+                if (e.target && e.target.closest('.observability-msg-toggle')) {
+                    const toggleBtn = e.target.closest('.observability-msg-toggle');
+                    const messageId = toggleBtn.getAttribute('data-message-id');
+                    showObservabilityDetails(messageId);
+                    
+                    // Mark the message as selected
+                    document.querySelectorAll('.message').forEach(msg => {
+                        msg.classList.remove('selected');
+                    });
+                    document.querySelector(`.message[data-message-id="${messageId}"]`).classList.add('selected');
+                }
+            });
+            
+            // Show observability details for a specific message
+            function showObservabilityDetails(messageId) {
+                // Hide placeholder and show the relevant observability data
+                observabilityPlaceholder.classList.add('hidden');
+                
+                // Hide all observability messages
+                document.querySelectorAll('.observability-message').forEach(msg => {
+                    msg.classList.remove('active');
+                });
+                
+                // Show the selected message's observability data
+                const obsMessage = document.getElementById(`obs-${messageId}`);
+                if (obsMessage) {
+                    obsMessage.classList.add('active');
+                } else {
+                    // If there's no existing observability data, fetch it from the API
+                    fetchObservabilityData(messageId);
+                }
+            }
+            
+            // Fetch observability data from API
+            function fetchObservabilityData(messageId) {
+                // In a real implementation, this would make an API call to get observability data
+                
+                // For demonstration, create simulated observability data
+                const simulatedData = createSimulatedObservabilityData(messageId);
+                
+                // Create and append observability data container
+                const obsMessageDiv = document.createElement('div');
+                obsMessageDiv.id = `obs-${messageId}`;
+                obsMessageDiv.className = 'observability-message active';
+                obsMessageDiv.innerHTML = simulatedData;
+                
+                // Add to the observability content area
+                observabilityContent.appendChild(obsMessageDiv);
+            }
+            
+            // Create simulated observability data for demo purposes
+            function createSimulatedObservabilityData(messageId) {
+                const message = document.querySelector(`[data-message-id="${messageId}"]`);
+                const isAssistant = message.classList.contains('message-assistant');
+                const messageText = message.querySelector('.message-content').textContent;
+                const agentName = isAssistant ? message.querySelector('.agent-badge .badge').textContent : 'User';
+                
+                // Analysis data for different message types
+                const possibleEntities = [
+                    'Staples Business Card (product)',
+                    'Boston, MA (location)',
+                    'Printer Ink (product_category)',
+                    'Order #ST-123456 (order)',
+                    'John Smith (customer)',
+                    'Credit Card (payment_method)',
+                    'Tomorrow (datetime)',
+                    'Customer Support (department)'
+                ];
+                
+                // Randomly decide if entities were detected
+                const hasEntities = Math.random() > 0.5;
+                const numberOfEntities = hasEntities ? Math.floor(Math.random() * 3) + 1 : 0;
+                
+                // Pick random entities
+                const entities = [];
+                if (hasEntities) {
+                    const shuffled = [...possibleEntities].sort(() => 0.5 - Math.random());
+                    for (let i = 0; i < numberOfEntities; i++) {
+                        entities.push(shuffled[i]);
+                    }
+                }
+                
+                // Create HTML for entities
+                let entitiesHtml = '';
+                if (entities.length > 0) {
+                    entitiesHtml = entities.map(entity => {
+                        const [name, type] = entity.split(' (');
+                        const cleanType = type.replace(')', '');
+                        return `<span class="badge bg-info me-1">${name} <span class="badge bg-dark ms-1">${cleanType}</span></span>`;
+                    }).join('');
+                } else {
+                    entitiesHtml = '<span class="badge bg-secondary">No entities detected</span>';
+                }
+                
+                // Determine which agents were involved based on message
+                const agentSelectionHtml = isAssistant ? `
+                    <div class="agent-selection-flow">
+                        <div class="agent-node selected">
+                            <div class="agent-icon">
+                                <i class="bi bi-shield-check"></i>
+                            </div>
+                            <div class="agent-info">
+                                <div class="agent-name">Guardrails Agent</div>
+                                <div class="agent-description small">Safety validation passed</div>
+                            </div>
+                        </div>
+                        <div class="flow-arrow">→</div>
+                        <div class="agent-node selected">
+                            <div class="agent-icon">
+                                <i class="bi bi-chat-dots"></i>
+                            </div>
+                            <div class="agent-info">
+                                <div class="agent-name">${agentName}</div>
+                                <div class="agent-description small">Primary responding agent</div>
+                            </div>
+                        </div>
+                    </div>
+                ` : `
+                    <div class="agent-selection-flow">
+                        <div class="agent-node">
+                            <div class="agent-icon">
+                                <i class="bi bi-person"></i>
+                            </div>
+                            <div class="agent-info">
+                                <div class="agent-name">User</div>
+                                <div class="agent-description small">User message</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                // Tools executed (only for assistant messages)
+                const toolsHtml = isAssistant ? `
+                    <div class="observability-section mb-4">
+                        <h6 class="section-title">
+                            <i class="bi bi-tools me-2"></i>
+                            Tools Executed
+                        </h6>
+                        <div class="section-content">
+                            <div class="tool-execution">
+                                <div class="tool-name">${agentName}ResponseGenerator</div>
+                                <div class="tool-details small">
+                                    <div class="tool-params">
+                                        <code>{"user_query": "${messageText.substring(0, 50)}${messageText.length > 50 ? '...' : ''}", "expected_response_type": "text"}</code>
+                                    </div>
+                                    <div class="tool-result text-success">
+                                        <i class="bi bi-check-circle me-1"></i> Success
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                ` : '';
+                
+                // Full observability HTML
+                return `
+                    <div class="observability-section mb-4">
+                        <h6 class="section-title">
+                            <i class="bi bi-robot me-2"></i>
+                            Agent Selection
+                        </h6>
+                        <div class="section-content">
+                            ${agentSelectionHtml}
+                        </div>
+                    </div>
+                    
+                    ${toolsHtml}
+                    
+                    <div class="observability-section">
+                        <h6 class="section-title">
+                            <i class="bi bi-tag me-2"></i>
+                            Entities Extracted
+                        </h6>
+                        <div class="section-content">
+                            <div class="entity-extraction">
+                                <div class="entity-list">
+                                    ${entitiesHtml}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+            
             // Add message to chat UI
             function addMessageToChat(role, content, metadata = {}) {
-                const messageDiv = document.createElement('div');
-                messageDiv.className = `message message-${role}`;
-                
-                let messageContent = '';
-                
-                // For assistant messages, add the agent name as a badge if available
-                if (role === 'assistant' && metadata.agent) {
-                    messageContent += `
-                        <div class="agent-badge">
-                            <span class="badge bg-info">${metadata.agent}</span>
-                        </div>
-                    `;
-                }
+                const messageId = `msg-${Date.now()}-${messageCounter++}`;
+                const time = new Date().toLocaleTimeString();
                 
                 // Format message content (simple markdown-like support)
                 let formattedContent = content;
@@ -680,17 +1114,33 @@
                 // Basic markdown support - inline code
                 formattedContent = formattedContent.replace(/`([^`]+)`/g, '<code>$1</code>');
                 
-                messageContent += `<div>${formattedContent}</div>`;
+                // Create the badge for assistant messages
+                const agentBadge = role === 'assistant' && metadata.agent ? 
+                    `<div class="agent-badge">
+                        <span class="badge bg-info">${metadata.agent}</span>
+                    </div>` : '';
                 
-                // Add timestamp
-                const time = new Date().toLocaleTimeString();
-                messageContent += `<div class="text-muted small mt-1">${time}</div>`;
+                // Create the message HTML
+                const messageHtml = `
+                    <div class="message message-${role}" data-message-id="${messageId}">
+                        <div class="message-header d-flex justify-content-between align-items-start mb-2">
+                            ${agentBadge}
+                            <button class="btn btn-sm btn-link text-muted observability-msg-toggle" data-message-id="${messageId}">
+                                <i class="bi bi-eye-fill"></i> View Details
+                            </button>
+                        </div>
+                        <div class="message-content">${formattedContent}</div>
+                        <div class="text-muted small mt-1">${time}</div>
+                    </div>
+                `;
                 
-                messageDiv.innerHTML = messageContent;
-                embeddedChatMessages.appendChild(messageDiv);
+                // Add to the chat
+                embeddedChatMessages.insertAdjacentHTML('beforeend', messageHtml);
                 
                 // Scroll to bottom
                 embeddedChatMessages.scrollTop = embeddedChatMessages.scrollHeight;
+                
+                return messageId;
             }
             
             // Handle chat form submission
@@ -700,7 +1150,7 @@
                 if (!message) return;
                 
                 // Add user message to UI
-                addMessageToChat('user', message);
+                const userMessageId = addMessageToChat('user', message);
                 embeddedChatInput.value = '';
                 
                 // Update connection status
@@ -737,7 +1187,7 @@
                     }
                     
                     // Add response to UI
-                    addMessageToChat('assistant', responseText, { agent: respondingAgent.name });
+                    const assistantMessageId = addMessageToChat('assistant', responseText, { agent: respondingAgent.name });
                     
                     // Reset connection status
                     chatConnectionStatus.innerHTML = '<span class="status-indicator status-connected"></span> Connected';
