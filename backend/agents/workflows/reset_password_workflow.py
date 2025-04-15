@@ -151,9 +151,9 @@ def create_reset_password_workflow(model_name: str = "gpt-4o", temperature: floa
             # Log the user input with better formatting
             truncated = user_input[:75] + ('...' if len(user_input) > 75 else '')
             logger.info(f"Classifying intent for message: '{truncated}'")  # Log the actual message being used
-            response = await llm.ainvoke(
-                intent_prompt.format(messages=formatted_messages)
-            )
+            # Format the prompt and then invoke the LLM
+            formatted_prompt = intent_prompt.format(messages=formatted_messages)
+            response = await llm.ainvoke(formatted_prompt)
             
             parsed_response = intent_output_parser.parse(response.content)
             intent = parsed_response.get("intent", "UNKNOWN")
@@ -238,7 +238,9 @@ def create_reset_password_workflow(model_name: str = "gpt-4o", temperature: floa
         email_output_parser = JsonOutputParser()
         
         try:
-            response = await llm.ainvoke(email_prompt)
+            # Format the prompt and then invoke the LLM
+            formatted_prompt = email_prompt.format()
+            response = await llm.ainvoke(formatted_prompt)
             parsed_response = email_output_parser.parse(response.content)
             
             email = parsed_response.get("email")

@@ -318,8 +318,21 @@ class GraphBrainService:
                 context=context
             )
             
-            # Update state with the response
-            state["response"] = response
+            # Log the response structure to help with debugging
+            logger.info(f"Agent {selected_agent.name} response keys: {response.keys() if isinstance(response, dict) else type(response)}")
+            
+            # Extract the response text from workflow agents
+            if isinstance(response, dict) and "response" in response:
+                # This is likely a workflow agent response with a text response field
+                state["response"] = {
+                    "message": response["response"],
+                    "success": True,
+                    "agent_id": selected_agent.id,
+                    "agent_name": selected_agent.name
+                }
+            else:
+                # Standard response format or other agent type
+                state["response"] = response
             state["trace"].append({
                 "step": "agent_execution",
                 "status": "success",
