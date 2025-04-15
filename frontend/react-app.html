@@ -315,11 +315,133 @@
                             detailsSection.appendChild(detailsBody);
                             cardBody.appendChild(detailsSection);
                             
+                            // Edit form section
+                            const editFormSection = createElement('div', { className: 'card mb-4' });
+                            const editFormHeader = createElement('div', { className: 'card-header d-flex justify-content-between align-items-center' }, [
+                                createElement('h5', { className: 'mb-0' }, ['Edit Agent Configuration']),
+                                createElement('button', {
+                                    className: 'btn btn-sm btn-outline-secondary',
+                                    id: 'toggle-edit-form-btn',
+                                    onClick: () => {
+                                        const formContainer = document.getElementById('agent-edit-form-container');
+                                        if (formContainer) {
+                                            if (formContainer.style.display === 'none') {
+                                                formContainer.style.display = 'block';
+                                                document.getElementById('toggle-edit-form-btn').innerHTML = '<i class="bi bi-chevron-up"></i> Hide Form';
+                                            } else {
+                                                formContainer.style.display = 'none';
+                                                document.getElementById('toggle-edit-form-btn').innerHTML = '<i class="bi bi-chevron-down"></i> Show Form';
+                                            }
+                                        }
+                                    }
+                                }, [
+                                    createElement('i', { className: 'bi bi-chevron-down' }),
+                                    ' Show Form'
+                                ])
+                            ]);
+                            
+                            const editFormBody = createElement('div', { 
+                                className: 'card-body',
+                                id: 'agent-edit-form-container',
+                                style: 'display: none;'
+                            });
+                            
+                            // Form
+                            const form = createElement('form', { 
+                                id: 'agent-edit-form',
+                                onSubmit: (e) => {
+                                    e.preventDefault();
+                                    
+                                    // Get form values
+                                    const name = document.getElementById('agent-name').value;
+                                    const description = document.getElementById('agent-description').value;
+                                    const status = document.getElementById('agent-status').value;
+                                    
+                                    // Prepare update data
+                                    const updateData = {
+                                        name,
+                                        description,
+                                        status
+                                    };
+                                    
+                                    // Call the update function
+                                    updateAgent(agent.id, updateData);
+                                }
+                            });
+                            
+                            // Name field
+                            const nameGroup = createElement('div', { className: 'mb-3' });
+                            nameGroup.appendChild(createElement('label', { for: 'agent-name', className: 'form-label' }, ['Agent Name']));
+                            nameGroup.appendChild(createElement('input', { 
+                                type: 'text', 
+                                className: 'form-control',
+                                id: 'agent-name',
+                                value: agent.name
+                            }));
+                            form.appendChild(nameGroup);
+                            
+                            // Type field
+                            const typeGroup = createElement('div', { className: 'mb-3' });
+                            typeGroup.appendChild(createElement('label', { for: 'agent-type', className: 'form-label' }, ['Agent Type']));
+                            typeGroup.appendChild(createElement('input', { 
+                                type: 'text', 
+                                className: 'form-control',
+                                id: 'agent-type',
+                                value: agent.agent_type || agent.type,
+                                disabled: true
+                            }));
+                            form.appendChild(typeGroup);
+                            
+                            // Description field
+                            const descGroup = createElement('div', { className: 'mb-3' });
+                            descGroup.appendChild(createElement('label', { for: 'agent-description', className: 'form-label' }, ['Description']));
+                            descGroup.appendChild(createElement('textarea', { 
+                                className: 'form-control',
+                                id: 'agent-description',
+                                rows: 3
+                            }, [agent.description || '']));
+                            form.appendChild(descGroup);
+                            
+                            // Status field
+                            const statusGroup = createElement('div', { className: 'mb-3' });
+                            statusGroup.appendChild(createElement('label', { for: 'agent-status', className: 'form-label' }, ['Status']));
+                            const statusSelect = createElement('select', { 
+                                className: 'form-select',
+                                id: 'agent-status'
+                            });
+                            ['active', 'inactive', 'draft', 'archived'].forEach(status => {
+                                const option = createElement('option', { 
+                                    value: status,
+                                    selected: (agent.status || 'active') === status
+                                }, [status.charAt(0).toUpperCase() + status.slice(1)]);
+                                statusSelect.appendChild(option);
+                            });
+                            statusGroup.appendChild(statusSelect);
+                            form.appendChild(statusGroup);
+                            
+                            // Submit button
+                            const submitBtn = createElement('button', { 
+                                type: 'submit', 
+                                className: 'btn btn-primary'
+                            }, ['Save Changes']);
+                            form.appendChild(submitBtn);
+                            
+                            editFormBody.appendChild(form);
+                            editFormSection.appendChild(editFormHeader);
+                            editFormSection.appendChild(editFormBody);
+                            cardBody.appendChild(editFormSection);
+                            
                             // Actions section
                             const actionsSection = createElement('div', { className: 'mb-4 d-flex gap-2' }, [
                                 createElement('button', { 
                                     className: 'btn btn-primary',
-                                    onClick: () => alert('Edit functionality will be implemented soon')
+                                    onClick: () => {
+                                        const formContainer = document.getElementById('agent-edit-form-container');
+                                        if (formContainer) {
+                                            formContainer.style.display = 'block';
+                                            document.getElementById('toggle-edit-form-btn').innerHTML = '<i class="bi bi-chevron-up"></i> Hide Form';
+                                        }
+                                    }
                                 }, [
                                     createElement('i', { className: 'bi bi-pencil' }),
                                     ' Edit Agent'
@@ -521,6 +643,61 @@
                     selectedAgentId = null;
                     renderPage();
                 });
+            }
+            
+            // Function to update an agent
+            async function updateAgent(agentId, updateData) {
+                if (!agentId) return;
+                
+                try {
+                    // Show loading state
+                    const submitBtn = document.querySelector('#agent-edit-form button[type="submit"]');
+                    if (submitBtn) {
+                        submitBtn.disabled = true;
+                        submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Saving...';
+                    }
+                    
+                    const response = await fetch(`/api/v1/agent-builder/agents/${agentId}`, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(updateData)
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        // Update the agent in local data
+                        const agentIndex = builderAgents.findIndex(a => a.id === agentId);
+                        if (agentIndex !== -1) {
+                            builderAgents[agentIndex] = { ...builderAgents[agentIndex], ...updateData };
+                        }
+                        
+                        // Show success message
+                        alert('Agent updated successfully');
+                        
+                        // Refresh data from server
+                        fetchData();
+                        
+                        // Go back to agents list
+                        activeTab = 'agent-builder';
+                        selectedAgentId = null;
+                        renderPage();
+                    } else {
+                        throw new Error(data.error || 'Failed to update agent');
+                    }
+                } catch (err) {
+                    console.error('Error updating agent:', err);
+                    alert(`Error updating agent: ${err.message}`);
+                    
+                    // Re-enable submit button
+                    const submitBtn = document.querySelector('#agent-edit-form button[type="submit"]');
+                    if (submitBtn) {
+                        submitBtn.disabled = false;
+                        submitBtn.innerHTML = 'Save Changes';
+                    }
+                }
             }
             
             // Function to delete an agent

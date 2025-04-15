@@ -408,7 +408,7 @@
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" id="builder-tab" data-bs-toggle="tab" href="#builder-tab-pane" role="tab" aria-controls="builder-tab-pane" aria-selected="false">
+                    <a class="nav-link" id="builder-tab" href="/react-app.html">
                         <i class="bi bi-gear"></i>
                         Agent Builder
                     </a>
@@ -907,8 +907,8 @@
                     // Set up event listener for the agent builder button
                     goToAgentBuilderBtn.addEventListener('click', (e) => {
                         e.preventDefault();
-                        // Switch to agents tab
-                        document.getElementById('agents-tab').click();
+                        // Load the Agent Builder interface
+                        window.location.href = '/react-app.html';
                     });
                 }
                 
