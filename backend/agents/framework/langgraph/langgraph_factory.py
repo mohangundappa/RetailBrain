@@ -15,6 +15,7 @@ from sqlalchemy import select
 
 from backend.agents.framework.langgraph.langgraph_agent import LangGraphAgent
 from backend.agents.framework.langgraph.database_agent import DatabaseAgent
+from backend.agents.framework.langgraph.agent_factory_util import create_agent_from_model
 from backend.repositories.agent_repository import AgentRepository
 from backend.database.agent_schema import (
     AgentDefinition, AgentDeployment, AgentComposition,
@@ -77,14 +78,8 @@ class LangGraphAgentFactory:
             agents = []
             for agent_def in agent_definitions:
                 try:
-                    # Load each agent in its own async context to ensure proper greenlet handling
-                    async def load_agent(agent_definition):
-                        from backend.agents.framework.langgraph.database_agent import create_database_agent_from_model
-                        # Create agent from database model
-                        return await create_database_agent_from_model(agent_definition)
-                    
-                    # Execute in proper async context
-                    agent = await load_agent(agent_def)
+                    # Create agent using the appropriate implementation based on agent type
+                    agent = await create_agent_from_model(agent_def)
                     
                     if agent:
                         # Add to registry
@@ -129,12 +124,8 @@ class LangGraphAgentFactory:
                 logger.warning(f"Agent with ID {agent_id} not found in database")
                 return None
             
-            # Load the agent in a proper async context
-            async def load_agent(agent_definition):
-                from backend.agents.framework.langgraph.database_agent import create_database_agent_from_model
-                return await create_database_agent_from_model(agent_definition)
-                
-            agent = await load_agent(agent_def)
+            # Create the agent using the appropriate implementation based on agent type
+            agent = await create_agent_from_model(agent_def)
             
             if agent:
                 # Add to registry
@@ -171,12 +162,8 @@ class LangGraphAgentFactory:
                 logger.warning(f"Agent with name {name} not found in database")
                 return None
             
-            # Load the agent in a proper async context
-            async def load_agent(agent_definition):
-                from backend.agents.framework.langgraph.database_agent import create_database_agent_from_model
-                return await create_database_agent_from_model(agent_definition)
-                
-            agent = await load_agent(agent_def)
+            # Create the agent using the appropriate implementation based on agent type
+            agent = await create_agent_from_model(agent_def)
             
             if agent:
                 # Add to registry
