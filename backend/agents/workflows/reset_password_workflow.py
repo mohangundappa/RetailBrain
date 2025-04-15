@@ -121,8 +121,14 @@ def create_reset_password_workflow(model_name: str = "gpt-4o", temperature: floa
         
         # Call the model
         try:
+            # Make sure we have valid messages
+            messages = state.get("messages", [])
+            if not messages:
+                user_input = state.get("user_input", "Need help with password")
+                messages = [{"role": "user", "content": user_input}]
+                
             response = await llm.ainvoke(
-                intent_prompt.format(messages=state["messages"])
+                intent_prompt.format(messages=messages)
             )
             
             parsed_response = intent_output_parser.parse(response.content)
@@ -164,7 +170,7 @@ def create_reset_password_workflow(model_name: str = "gpt-4o", temperature: floa
         Returns:
             Updated state with extracted email or response asking for it
         """
-        user_input = state["user_input"]
+        user_input = state.get("user_input", "Please extract any email from this text")
         
         # Define email extraction prompt
         email_prompt = ChatPromptTemplate.from_messages([
@@ -227,18 +233,9 @@ def create_reset_password_workflow(model_name: str = "gpt-4o", temperature: floa
             "Please provide your email address so I can help you with the password reset process."
         )
         
-        # Update the memory to store that we've asked for email
-        try:
-            mem0 = await get_mem0()
-            if mem0:
-                mem0.add_fact(
-                    conversation_id=state["conversation_id"],
-                    content="Asked for email address",
-                    session_id=state["session_id"],
-                    scope=MemoryScope.SHORT_TERM
-                )
-        except Exception as e:
-            logger.error(f"Error updating memory: {str(e)}")
+        # For now, we'll skip memory fact storage since it's not implemented
+        # Just log that we asked for email
+        logger.info(f"Asked for email address for conversation {state['conversation_id']}")
         
         # Return updated state
         return {
@@ -257,7 +254,10 @@ def create_reset_password_workflow(model_name: str = "gpt-4o", temperature: floa
         Returns:
             Updated state with reset instructions
         """
-        email = state["user_email"]
+        email = state.get("user_email")
+        if not email:
+            # Fallback if no email provided somehow
+            email = "your email address"
         
         # In a real implementation, this would trigger an actual password reset flow
         # For now, we're simulating the process
@@ -270,18 +270,9 @@ def create_reset_password_workflow(model_name: str = "gpt-4o", temperature: floa
             "If you still don't receive it, please let me know and I'll try sending it again."
         )
         
-        # Update memory to record that we've sent a reset link
-        try:
-            mem0 = await get_mem0()
-            if mem0:
-                mem0.add_fact(
-                    conversation_id=state["conversation_id"],
-                    content=f"Sent password reset link to {email}",
-                    session_id=state["session_id"],
-                    scope=MemoryScope.SHORT_TERM
-                )
-        except Exception as e:
-            logger.error(f"Error updating memory: {str(e)}")
+        # For now, we'll skip memory fact storage since it's not implemented
+        # Just log that we sent a reset link
+        logger.info(f"Sent password reset link to {email} for conversation {state['conversation_id']}")
         
         # Return updated state
         return {
@@ -443,7 +434,7 @@ async def execute_reset_password_workflow(
         try:
             mem0 = await get_mem0()
             if mem0:
-                mem0.add_message(
+                await mem0.add_message(
                     conversation_id=conversation_id,
                     role="user",
                     content=message,
@@ -460,7 +451,7 @@ async def execute_reset_password_workflow(
             try:
                 mem0 = await get_mem0()
                 if mem0:
-                    mem0.add_message(
+                    await mem0.add_message(
                         conversation_id=conversation_id,
                         role="assistant",
                         content=result["response"],
