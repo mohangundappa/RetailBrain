@@ -5,13 +5,22 @@ const url = require('url');
 
 const PORT = process.env.PORT || 3001;
 
-// We'll use port 5001 for the backend to avoid port conflicts
-const BACKEND_PORT = 5001;
+// Read backend port from file if possible, default to 5000
+let BACKEND_PORT = 5000;
+try {
+  const backendPortFile = path.join(__dirname, '..', 'backend_port.txt');
+  if (fs.existsSync(backendPortFile)) {
+    const portFromFile = fs.readFileSync(backendPortFile, 'utf8').trim();
+    if (portFromFile && !isNaN(parseInt(portFromFile))) {
+      BACKEND_PORT = parseInt(portFromFile);
+    }
+  }
+} catch (err) {
+  console.error('Error reading backend port file:', err);
+}
+
 process.env.BACKEND_PORT = BACKEND_PORT.toString();
 console.log(`Using backend port ${BACKEND_PORT} to connect to the API server`);
-
-// For reference, port file location
-const backendPortFile = path.join(__dirname, '..', 'backend_port.txt');
 
 // Create a simple HTTP server
 const server = http.createServer((req, res) => {
