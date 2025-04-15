@@ -210,6 +210,46 @@ class GraphBrainService:
         
         user_input_lower = user_input.lower()
         
+        # Check for "yes" responses to previous reset password agent
+        if session_id:
+            try:
+                memory_service = self.memory_service
+                if memory_service:
+                    # Get the last assistant message to see if it was a reset password offer
+                    history = await memory_service.get_conversation_history(session_id)
+                    
+                    if history and len(history) >= 2:
+                        # Find the last assistant message
+                        last_assistant_msg = None
+                        for msg in reversed(history):
+                            if msg.get("role") == "assistant":
+                                last_assistant_msg = msg.get("content", "")
+                                break
+                        
+                        # Check if the last message was about password reset help
+                        if (last_assistant_msg and 
+                            "reset your password" in last_assistant_msg and 
+                            "help" in last_assistant_msg and
+                            any(word in user_input_lower for word in ["yes", "yeah", "sure", "please", "ok", "okay"])):
+                            
+                            # This is a positive response to a reset password offer
+                            for agent_id, agent in self.agents.items():
+                                if "reset password" in agent.name.lower():
+                                    logger.info(f"Affirmative response to reset password offer, routing to {agent.name}")
+                                    state["selected_agent"] = agent
+                                    state["current_agent_id"] = agent_id
+                                    state["confidence"] = 0.95
+                                    # Explicitly mark this as a reset request
+                                    context["intent"] = "reset_request"
+                                    state["trace"].append({
+                                        "step": "direct_pattern_match",
+                                        "pattern": "affirmative_response",
+                                        "agent": agent.name
+                                    })
+                                    return state
+            except Exception as e:
+                logger.error(f"Error checking for affirmative response: {str(e)}")
+        
         # Check for direct email pattern - could be a response to a reset password request
         if "@" in user_input_lower and ("email" in user_input_lower or "mail" in user_input_lower):
             # Find the Reset Password Agent for email-like messages

@@ -123,16 +123,60 @@ def create_reset_password_workflow(model_name: str = "gpt-4o", temperature: floa
         truncated = user_input[:75] + ('...' if len(user_input) > 75 else '')
         logger.info(f"Zero-shot intent classification for message: '{truncated}'")
         
+        # Check if intent is passed in context
+        context = state.get("context", {})
+        if context.get("intent") == "reset_request":
+            logger.info("Using reset_request intent from context")
+            intent = "reset_request"
+            # Map to enum value and return early
+            try:
+                intent_enum = ResetPasswordIntent(intent.strip())
+                logger.info(f"Using intent from context: {intent_enum.value}")
+                return {
+                    **state,
+                    "reset_intent": intent_enum,
+                    "current_step": "intent_classified"
+                }
+            except ValueError:
+                logger.warning(f"Invalid intent value from context '{intent}', will use normal classification")
+                # Continue with normal classification below
+        
         # Zero-shot intent classification with pattern matching
         message_lower = user_input.lower()
         intent = "unknown"
         
         # Check for positive response to reset offer first
-        if any(word in message_lower for word in ["yes", "yeah", "sure", "okay", "help me"]) and "reset" not in message_lower:
-            # This looks like an affirmative response to our offer to help
-            intent = "reset_request"
-            logger.info("Detected affirmative response to previous reset offer, setting intent to reset_request")
-        else:
+        session_id = state.get("session_id")
+        conversation_id = state.get("conversation_id", "default")
+        
+        # Look for positive responses like "yes please" that might be responding to a reset offer
+        if any(word in message_lower for word in ["yes", "yeah", "sure", "okay", "please", "ok"]):
+            try:
+                # Try to get conversation history to check context
+                mem0 = await get_mem0()
+                if mem0 and session_id:
+                    history = await mem0.get_conversation_history(session_id)
+                    
+                    if history and len(history) >= 2:
+                        # Find the last assistant message
+                        last_assistant_msg = None
+                        for msg in reversed(history):
+                            if msg.get("role") == "assistant":
+                                last_assistant_msg = msg.get("content", "").lower()
+                                break
+                        
+                        # Check if last message was asking to help with password reset
+                        if (last_assistant_msg and 
+                            ("would you like me to help you reset" in last_assistant_msg or 
+                             "would you like me to help with" in last_assistant_msg or
+                             "password reset" in last_assistant_msg)):
+                            intent = "reset_request"
+                            logger.info("Detected affirmative response to previous reset offer, setting intent to reset_request")
+            except Exception as e:
+                logger.error(f"Error retrieving conversation history for intent classification: {str(e)}")
+        
+        # If not an affirmative response or couldn't get history, check patterns
+        if intent == "unknown":
             # Define pattern sets for each intent type
             reset_patterns = [
                 "reset password", "forgot password", "change password", 
@@ -211,6 +255,14 @@ def create_reset_password_workflow(model_name: str = "gpt-4o", temperature: floa
         """
         import re
         
+        # First, check for an existing user_email in state
+        if state.get("user_email"):
+            logger.info(f"Using existing email from state: {state['user_email']}")
+            return {
+                **state,
+                "current_step": "email_provided"
+            }
+        
         # Get the user input with more robust handling
         user_input = state.get("user_input", "")
         if not user_input:
@@ -220,7 +272,38 @@ def create_reset_password_workflow(model_name: str = "gpt-4o", temperature: floa
                     if msg.get("role") == "user" and msg.get("content"):
                         user_input = msg.get("content")
                         break
+        
+        # Try to get email from recent conversation history
+        try:
+            session_id = state.get("session_id")
+            conversation_id = state.get("conversation_id", "default")
             
+            if session_id:
+                mem0 = await get_mem0()
+                if mem0:
+                    history = await mem0.get_conversation_history(
+                        session_id=session_id
+                    )
+                    
+                    # Look through history for possible email
+                    if history:
+                        # Prioritize messages with email
+                        for msg in reversed(history):
+                            if msg.get("role") == "user" and "@" in msg.get("content", ""):
+                                # Extract from this history message
+                                email_pattern = r'[\w\.-]+@[\w\.-]+\.\w+'
+                                matches = re.findall(email_pattern, msg.get("content", ""))
+                                if matches:
+                                    email = matches[0]
+                                    logger.info(f"Extracted email from conversation history: {email}")
+                                    return {
+                                        **state,
+                                        "user_email": email,
+                                        "current_step": "email_provided"
+                                    }
+        except Exception as e:
+            logger.error(f"Error retrieving conversation history for email: {str(e)}")
+        
         if not user_input:
             logger.warning("No user input found for email extraction")
             return {
