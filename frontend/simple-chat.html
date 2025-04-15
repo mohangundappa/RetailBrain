@@ -365,14 +365,33 @@
         const chatInput = document.getElementById('chat-input');
         const chatMessages = document.getElementById('chat-messages');
         const connectionStatus = document.getElementById('connection-status');
+        const agentsList = document.getElementById('agents-list');
+        const logsContent = document.getElementById('logs-content');
+        const eventTimeline = document.getElementById('event-timeline');
+        const graphVisualization = document.getElementById('graph-visualization');
         
         // Variables
         let currentConversationId = 'conv_' + Date.now();
+        let agents = [];
+        let messageCounter = 0;
 
-        // Event Listeners
+        // Bootstrap tabs initialization
         document.addEventListener('DOMContentLoaded', () => {
+            // Load all Bootstrap tabs - requires Bootstrap JS
+            const script = document.createElement('script');
+            script.src = 'https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js';
+            script.integrity = 'sha384-geWF76RCwLtnZ8qwWowPQNguL3RmwHVBC9FhGdlKrxdiJJigb/j/68SIy3Te4Bkz';
+            script.crossOrigin = 'anonymous';
+            document.head.appendChild(script);
+            
             // Focus the input field when the page loads
             chatInput.focus();
+            
+            // Load available agents
+            fetchAgentList();
+            
+            // Add initial timeline event
+            addTimelineEvent('Conversation started', 'System');
         });
         
         chatForm.addEventListener('submit', handleChatSubmit);
@@ -383,20 +402,33 @@
             const message = chatInput.value.trim();
             if (!message) return;
             
+            // Generate a unique message ID
+            const messageId = `msg-${Date.now()}-${messageCounter++}`;
+            
             // Add user message to UI
-            addMessageToUI('user', message);
+            addMessageToUI('user', message, {
+                timestamp: new Date().toISOString(),
+                messageId: messageId
+            });
             chatInput.value = '';
             
             // Update status to sending
             updateConnectionStatus('sending');
             
+            // Add to logs and timeline
+            addLog(`User sent message: "${message.substring(0, 30)}${message.length > 30 ? '...' : ''}"`);
+            addTimelineEvent(`Message sent: "${message.substring(0, 30)}${message.length > 30 ? '...' : ''}"`, 'User');
+            
             // Send message to backend
-            sendMessageToBackend(message);
+            sendMessageToBackend(message, messageId);
         }
         
         function addMessageToUI(role, content, metadata = {}) {
             const messageDiv = document.createElement('div');
             messageDiv.className = `message message-${role}`;
+            if (metadata.messageId) {
+                messageDiv.setAttribute('data-message-id', metadata.messageId);
+            }
             
             let messageContent = '';
             
@@ -415,8 +447,27 @@
             formattedContent = formattedContent.replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>');
             // Basic markdown support - inline code
             formattedContent = formattedContent.replace(/`([^`]+)`/g, '<code>$1</code>');
+            // Basic markdown support - bold
+            formattedContent = formattedContent.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
             
-            messageContent += `<div>${formattedContent}</div>`;
+            // Add a details button for assistant messages to view in observability panel
+            let detailsButton = '';
+            if (role === 'assistant' && metadata.messageId) {
+                detailsButton = `
+                    <button type="button" class="btn btn-sm btn-outline-info float-end observability-toggle" 
+                            data-message-id="${metadata.messageId}" onclick="showMessageObservability('${metadata.messageId}')">
+                        <i class="bi bi-eye"></i> Details
+                    </button>
+                `;
+            }
+            
+            messageContent += `
+                <div class="message-header d-flex justify-content-between">
+                    ${role === 'user' ? '<strong>You</strong>' : ''}
+                    ${detailsButton}
+                </div>
+                <div class="message-content">${formattedContent}</div>
+            `;
             
             // Add timestamp if available
             if (metadata.timestamp) {
@@ -429,9 +480,15 @@
             
             // Scroll to bottom
             chatMessages.scrollTop = chatMessages.scrollHeight;
+            
+            // If this is an assistant message, create observability data
+            if (role === 'assistant' && metadata.agent) {
+                // Create agent selection visualization
+                createMessageObservability(metadata.messageId, metadata.agent, content);
+            }
         }
         
-        function sendMessageToBackend(message) {
+        function sendMessageToBackend(message, messageId) {
             // Prepare the request data
             const requestData = {
                 message: message,
@@ -440,6 +497,9 @@
             
             // Log request details
             console.log('Sending chat message to API:', requestData);
+            
+            // Add to logs
+            addLog('Sending message to API...');
             
             // Make the API call to the backend - direct to the main API router endpoint
             fetch('/api/v1/chat', {
@@ -464,13 +524,26 @@
                 updateConnectionStatus('connected');
                 
                 if (data.success) {
+                    // Add to logs
+                    addLog(`Received response from agent: ${data.agent || 'Unknown'}`);
+                    
+                    // Add to timeline
+                    addTimelineEvent(`Response received from ${data.agent || 'System'}`, data.agent || 'System');
+                    
+                    // Update agent status in observability
+                    updateAgentStatus(data.agent);
+                    
                     // Add the assistant's response to the UI
                     const responseContent = data.response || 'I apologize, but I cannot respond at the moment.';
+                    
+                    // Generate a unique message ID for the response
+                    const responseId = `resp-${Date.now()}-${messageCounter++}`;
                     
                     // Pass the metadata including agent name
                     addMessageToUI('assistant', responseContent, {
                         timestamp: new Date().toISOString(),
-                        agent: data.agent
+                        agent: data.agent,
+                        messageId: responseId
                     });
                     
                     // Store the session_id from the response if available
@@ -479,8 +552,13 @@
                     }
                 } else {
                     // Handle error response
+                    addLog(`Error from API: ${data.error || 'Unknown error'}`);
+                    addTimelineEvent('Error receiving response', 'System');
+                    
+                    // Add error message to UI
                     addMessageToUI('assistant', data.error || 'I apologize, but there was an error processing your request. Please try again.', {
-                        timestamp: new Date().toISOString()
+                        timestamp: new Date().toISOString(),
+                        messageId: `error-${Date.now()}`
                     });
                     console.error('API error:', data.error);
                 }
@@ -488,9 +566,14 @@
             .catch(error => {
                 console.error('Error sending message:', error);
                 
+                // Add to logs
+                addLog(`Network error: ${error.message}`);
+                addTimelineEvent('Network error occurred', 'System');
+                
                 // Display error message to user
                 addMessageToUI('assistant', 'I apologize, but there was a network error. Please check your connection and try again.', {
-                    timestamp: new Date().toISOString()
+                    timestamp: new Date().toISOString(),
+                    messageId: `error-${Date.now()}`
                 });
                 
                 // Update connection status to error
@@ -519,6 +602,298 @@
                     connectionStatus.innerHTML = '<span class="status-indicator"></span> Unknown';
             }
         }
+        
+        // Fetch the list of available agents from the backend
+        function fetchAgentList() {
+            addLog('Fetching available agents...');
+            
+            fetch('/api/v1/agents')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`Network response was not ok: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.success && data.agents) {
+                        agents = data.agents;
+                        addLog(`Retrieved ${agents.length} agents`);
+                        renderAgentCards();
+                        renderGraphVisualization();
+                    } else {
+                        addLog('Error fetching agents: ' + (data.error || 'Unknown error'));
+                    }
+                })
+                .catch(error => {
+                    addLog('Network error fetching agents: ' + error.message);
+                    console.error('Error fetching agents:', error);
+                });
+        }
+        
+        // Render agent cards in the observability panel
+        function renderAgentCards() {
+            if (!agents || agents.length === 0) {
+                agentsList.innerHTML = '<div class="alert alert-info">No agents available</div>';
+                return;
+            }
+            
+            let html = '';
+            
+            agents.forEach(agent => {
+                const agentType = agent.type ? agent.type.toLowerCase().replace(/_/g, ' ') : 'unknown';
+                
+                html += `
+                    <div class="card agent-card mb-2" data-agent-id="${agent.id}">
+                        <div class="card-body p-3">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <h6 class="card-title mb-1">${agent.name}</h6>
+                                <span class="badge bg-secondary">${agentType}</span>
+                            </div>
+                            <p class="card-text small text-muted mb-2">${agent.description || 'No description available'}</p>
+                            <div class="agent-stats d-flex justify-content-between text-muted">
+                                <span><i class="bi bi-lightning-charge"></i> Ready</span>
+                                <span>${agent.is_system ? 'System Agent' : 'Custom Agent'}</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            agentsList.innerHTML = html;
+        }
+        
+        // Update agent status in the UI
+        function updateAgentStatus(agentName) {
+            if (!agentName || !agents || agents.length === 0) return;
+            
+            // Find the agent
+            const agent = agents.find(a => a.name === agentName);
+            if (!agent) return;
+            
+            // Find the card
+            const card = document.querySelector(`.agent-card[data-agent-id="${agent.id}"]`);
+            if (!card) return;
+            
+            // Reset all cards
+            document.querySelectorAll('.agent-card').forEach(c => {
+                c.classList.remove('active', 'selected');
+            });
+            
+            // Mark this card as selected
+            card.classList.add('selected');
+            
+            // Update the stats
+            const stats = card.querySelector('.agent-stats');
+            if (stats) {
+                stats.innerHTML = `
+                    <span><i class="bi bi-check-circle-fill text-success"></i> Selected</span>
+                    <span>${new Date().toLocaleTimeString()}</span>
+                `;
+            }
+        }
+        
+        // Add a log entry to the logs panel
+        function addLog(message) {
+            const now = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.className = 'log-entry';
+            logEntry.innerHTML = `<span class="text-muted">[${now}]</span> ${message}`;
+            
+            if (logsContent) {
+                logsContent.appendChild(logEntry);
+                logsContent.scrollTop = logsContent.scrollHeight;
+            }
+        }
+        
+        // Add event to the timeline
+        function addTimelineEvent(content, source) {
+            const now = new Date();
+            const timeString = now.toLocaleTimeString();
+            
+            const timelineItem = document.createElement('div');
+            timelineItem.className = 'timeline-item';
+            timelineItem.innerHTML = `
+                <div class="timeline-time">${timeString}</div>
+                <div class="timeline-content">${content}</div>
+                <div class="timeline-source small text-muted">${source}</div>
+            `;
+            
+            if (eventTimeline) {
+                eventTimeline.insertBefore(timelineItem, eventTimeline.firstChild);
+            }
+        }
+        
+        // Render graph visualization
+        function renderGraphVisualization() {
+            if (!graphVisualization || !agents || agents.length === 0) return;
+            
+            // Clear existing content
+            graphVisualization.innerHTML = '';
+            
+            // Create nodes based on agents
+            agents.forEach((agent, index) => {
+                let x = 50 + (index % 3) * 120;
+                let y = 50 + Math.floor(index / 3) * 120;
+                
+                const node = document.createElement('div');
+                node.className = 'graph-node';
+                node.id = `node-${agent.id}`;
+                node.setAttribute('data-agent-id', agent.id);
+                node.style.left = `${x}px`;
+                node.style.top = `${y}px`;
+                node.innerHTML = agent.name;
+                
+                graphVisualization.appendChild(node);
+            });
+            
+            // Create edges between nodes (simplified for visualization)
+            // Connect system agents to all others
+            const systemAgents = agents.filter(a => a.is_system);
+            const otherAgents = agents.filter(a => !a.is_system);
+            
+            systemAgents.forEach(systemAgent => {
+                otherAgents.forEach(otherAgent => {
+                    createEdge(systemAgent.id, otherAgent.id);
+                });
+            });
+        }
+        
+        // Create edge between two nodes
+        function createEdge(fromId, toId) {
+            const fromNode = document.getElementById(`node-${fromId}`);
+            const toNode = document.getElementById(`node-${toId}`);
+            
+            if (!fromNode || !toNode || !graphVisualization) return;
+            
+            // Get positions
+            const fromRect = fromNode.getBoundingClientRect();
+            const toRect = toNode.getBoundingClientRect();
+            const containerRect = graphVisualization.getBoundingClientRect();
+            
+            // Calculate center points
+            const fromCenterX = fromRect.left - containerRect.left + fromRect.width / 2;
+            const fromCenterY = fromRect.top - containerRect.top + fromRect.height / 2;
+            const toCenterX = toRect.left - containerRect.left + toRect.width / 2;
+            const toCenterY = toRect.top - containerRect.top + toRect.height / 2;
+            
+            // Calculate length and angle
+            const dX = toCenterX - fromCenterX;
+            const dY = toCenterY - fromCenterY;
+            const length = Math.sqrt(dX * dX + dY * dY);
+            const angle = Math.atan2(dY, dX) * 180 / Math.PI;
+            
+            // Create edge
+            const edge = document.createElement('div');
+            edge.className = 'graph-edge';
+            edge.style.width = `${length}px`;
+            edge.style.height = '2px';
+            edge.style.left = `${fromCenterX}px`;
+            edge.style.top = `${fromCenterY}px`;
+            edge.style.transform = `rotate(${angle}deg)`;
+            
+            graphVisualization.appendChild(edge);
+        }
+        
+        // Create observability data for a message
+        function createMessageObservability(messageId, agentName, content) {
+            if (!agentName) return;
+            
+            // Find the agent
+            const agent = agents.find(a => a.name === agentName);
+            const guardrailsAgent = agents.find(a => a.name === 'Guardrails Agent');
+            
+            // Create observability container if not exists
+            const observabilityTabs = document.getElementById('observabilityTabs');
+            
+            // Show the agent selection flow
+            let agentSelectionHtml = '';
+            
+            if (guardrailsAgent && agent && guardrailsAgent.id !== agent.id) {
+                agentSelectionHtml = `
+                    <div class="agent-selection-flow">
+                        <div class="agent-node selected">
+                            <div class="agent-icon">
+                                <i class="bi bi-shield-check"></i>
+                            </div>
+                            <div class="agent-info">
+                                <div class="agent-name">Guardrails Agent</div>
+                                <div class="agent-description small">Safety validation passed</div>
+                            </div>
+                        </div>
+                        <div class="flow-arrow">→</div>
+                        <div class="agent-node selected">
+                            <div class="agent-icon">
+                                <i class="bi bi-chat-dots"></i>
+                            </div>
+                            <div class="agent-info">
+                                <div class="agent-name">${agentName}</div>
+                                <div class="agent-description small">Matched intent pattern</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } else {
+                agentSelectionHtml = `
+                    <div class="agent-selection-flow">
+                        <div class="agent-node selected">
+                            <div class="agent-icon">
+                                <i class="bi bi-chat-dots"></i>
+                            </div>
+                            <div class="agent-info">
+                                <div class="agent-name">${agentName}</div>
+                                <div class="agent-description small">Primary agent</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            // Add log
+            addLog(`Message processed by ${agentName}`);
+            
+            // Add to timeline
+            addTimelineEvent(`Agent ${agentName} selected for response`, 'System');
+        }
+        
+        // Show observability details for a specific message
+        function showMessageObservability(messageId) {
+            // Highlight the selected message
+            document.querySelectorAll('.message').forEach(msg => {
+                msg.classList.remove('selected');
+            });
+            
+            const selectedMessage = document.querySelector(`[data-message-id="${messageId}"]`);
+            if (selectedMessage) {
+                selectedMessage.classList.add('selected');
+                
+                // Get the agent name
+                const agentBadge = selectedMessage.querySelector('.agent-badge .badge');
+                if (agentBadge) {
+                    const agentName = agentBadge.textContent;
+                    
+                    // Add to log
+                    addLog(`Viewing details for message from ${agentName}`);
+                    
+                    // Switch to agents tab in observability panel
+                    const agentsTab = document.getElementById('agents-tab');
+                    if (agentsTab) {
+                        const tab = new bootstrap.Tab(agentsTab);
+                        tab.show();
+                    }
+                    
+                    // Highlight the agent card
+                    updateAgentStatus(agentName);
+                }
+            }
+        }
+        
+        // Clear logs button handler
+        document.getElementById('clear-logs')?.addEventListener('click', () => {
+            if (logsContent) {
+                logsContent.innerHTML = '';
+                addLog('Logs cleared');
+            }
+        });
     </script>
 </body>
 </html>
