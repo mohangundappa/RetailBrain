@@ -18,7 +18,7 @@ logger = logging.getLogger("brain_tester")
 
 # API endpoint
 API_BASE_URL = "http://localhost:5000/api/v1"
-CHAT_ENDPOINT = f"{API_BASE_URL}/optimized/chat"
+CHAT_ENDPOINT = f"{API_BASE_URL}/chat"
 
 # Test message for Reset Password Agent
 TEST_MESSAGE = "I need to reset my password for my Staples account. Can you help me?"
@@ -42,9 +42,14 @@ async def main():
                 if response.status == 200:
                     data = await response.json()
                     logger.info("Response received:")
-                    logger.info(f"Agent: {data.get('agent', 'unknown')}")
-                    logger.info(f"Confidence: {data.get('confidence', 0)}")
-                    logger.info(f"Response: {data.get('response', 'No response')}")
+                    logger.info(f"Success: {data.get('success', False)}")
+                    logger.info(f"Conversation ID: {data.get('conversation_id', 'unknown')}")
+                    
+                    response_data = data.get('response', {})
+                    if isinstance(response_data, dict):
+                        logger.info(f"Response message: {response_data.get('message', 'No message')}")
+                    else:
+                        logger.info(f"Response: {response_data}")
                 else:
                     text = await response.text()
                     logger.error(f"API error {response.status}: {text}")
