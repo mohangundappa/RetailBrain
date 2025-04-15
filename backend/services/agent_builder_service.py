@@ -1233,4 +1233,3 @@ class AgentBuilderService:
             result.append(template_model)
         
         return result
-"""

@@ -171,4 +171,3 @@ class AgentTestResponse(BaseModel):
     extracted_entities: Optional[Dict[str, Any]] = Field(None, description="Entities extracted from the message")
     debug_info: Optional[Dict[str, Any]] = Field(None, description="Debug information if requested")
     error: Optional[str] = Field(None, description="Error message if applicable")
-"""

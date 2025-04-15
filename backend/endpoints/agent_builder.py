@@ -16,9 +16,34 @@ from backend.endpoints.schemas.agent_schema import (
     AgentListResponse, AgentTestRequest, AgentTestResponse,
     AgentPersonaModel, AgentToolModel, EntityMappingModel
 )
-from backend.services.agent_builder_service import AgentBuilderService
-from backend.dependencies import get_agent_builder_service, get_db
 from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi import Depends
+
+from backend.services.agent_builder_service import AgentBuilderService
+from backend.database.db import get_db
+from backend.services.graph_brain_service import GraphBrainService
+from backend.config.config import get_config
+
+# Create a local dependency function since we can't import from backend.dependencies
+async def get_agent_builder_service(
+    db: AsyncSession = Depends(get_db)
+) -> AgentBuilderService:
+    """
+    Get an agent builder service instance.
+    
+    Args:
+        db: Database session
+        
+    Returns:
+        AgentBuilderService instance
+    """
+    # For simplicity, we'll create a new instance each time
+    config = get_config()
+    # Create a placeholder brain service with minimal configuration
+    brain_service = GraphBrainService(db_session=db, config=config)
+    
+    # Return a new agent builder service instance
+    return AgentBuilderService(db_session=db, brain_service=brain_service)
 
 logger = logging.getLogger(__name__)
 
@@ -644,4 +669,3 @@ async def list_agent_templates(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to retrieve agent templates: {str(e)}"
         )
-"""
