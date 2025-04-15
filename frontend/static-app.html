@@ -725,9 +725,9 @@
                     <div class="agent-builder-content mt-4">
                         <div class="d-flex justify-content-between align-items-center mb-4">
                             <h4>Agent Builder</h4>
-                            <a href="/agents" class="btn btn-primary" id="go-to-agent-builder-btn">
+                            <button class="btn btn-primary" id="go-to-agent-builder-btn">
                                 <i class="bi bi-robot me-2"></i>Go to Agent Management
-                            </a>
+                            </button>
                         </div>
                         
                         <p class="mb-4">
@@ -847,9 +847,12 @@
             // Update agent count in stats
             document.getElementById('agent-count').textContent = agents.length;
             
-            // Show connection alert since we're using static data instead of API
-            document.getElementById('agent-connection-alert').style.display = 'block';
-            document.getElementById('agents-connection-alert').style.display = 'block';
+            // Hide connection alerts since we're using live data from the API
+            const agentConnectionAlert = document.getElementById('agent-connection-alert');
+            const agentsConnectionAlert = document.getElementById('agents-connection-alert');
+            
+            if (agentConnectionAlert) agentConnectionAlert.style.display = 'none';
+            if (agentsConnectionAlert) agentsConnectionAlert.style.display = 'none';
             
             // Function to get type badge color
             function getTypeBadgeColor(type) {
