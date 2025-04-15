@@ -253,7 +253,10 @@
                         // Card body
                         const cardBody = createElement('div', { className: 'card-body' });
                         
-                        if (builderAgents.length > 0) {
+                        // Debug output to console
+                        console.log('Builder agents array length:', builderAgents.length);
+                        
+                        if (builderAgents && builderAgents.length > 0) {
                             // Table
                             const table = createElement('table', { className: 'table table-hover' });
                             
@@ -274,6 +277,8 @@
                             
                             // Agent rows
                             builderAgents.forEach(agent => {
+                                console.log('Processing builder agent:', agent.name, agent);
+                                
                                 const row = createElement('tr');
                                 
                                 // Name column
@@ -281,9 +286,10 @@
                                     createElement('td', {}, [agent.name])
                                 );
                                 
-                                // Type column
+                                // Type column - Try both agent_type and type fields
+                                const agentType = agent.agent_type || agent.type || 'N/A';
                                 row.appendChild(
-                                    createElement('td', {}, [agent.agent_type || 'N/A'])
+                                    createElement('td', {}, [agentType])
                                 );
                                 
                                 // Description column
@@ -294,19 +300,38 @@
                                 // Actions column
                                 const actionsCell = createElement('td');
                                 
-                                actionsCell.appendChild(
-                                    createElement('button', { className: 'btn btn-sm btn-outline-primary me-2' }, [
-                                        createElement('i', { className: 'bi bi-pencil' }),
-                                        ' Edit'
-                                    ])
-                                );
+                                // Edit button with agent ID
+                                const editButton = createElement('button', { 
+                                    className: 'btn btn-sm btn-outline-primary me-2',
+                                    'data-agent-id': agent.id,
+                                    onClick: (e) => {
+                                        console.log('Edit agent:', agent.id);
+                                        // Here we would handle navigation to edit page
+                                        // or open an edit modal
+                                    }
+                                }, [
+                                    createElement('i', { className: 'bi bi-pencil' }),
+                                    ' Edit'
+                                ]);
                                 
-                                actionsCell.appendChild(
-                                    createElement('button', { className: 'btn btn-sm btn-outline-danger' }, [
-                                        createElement('i', { className: 'bi bi-trash' }),
-                                        ' Delete'
-                                    ])
-                                );
+                                actionsCell.appendChild(editButton);
+                                
+                                // Delete button with agent ID
+                                const deleteButton = createElement('button', { 
+                                    className: 'btn btn-sm btn-outline-danger',
+                                    'data-agent-id': agent.id,
+                                    onClick: (e) => {
+                                        if (confirm(`Are you sure you want to delete "${agent.name}"?`)) {
+                                            console.log('Delete agent:', agent.id);
+                                            // Here we would handle deletion
+                                        }
+                                    }
+                                }, [
+                                    createElement('i', { className: 'bi bi-trash' }),
+                                    ' Delete'
+                                ]);
+                                
+                                actionsCell.appendChild(deleteButton);
                                 
                                 row.appendChild(actionsCell);
                                 tbody.appendChild(row);
@@ -382,6 +407,15 @@
                         console.log('Builder agents data:', data);
                         if (data.success && data.agents) {
                             builderAgents = data.agents;
+                            console.log(`Loaded ${builderAgents.length} agents from builder API`);
+                            
+                            // For now, reuse the regular agents list for the builder
+                            // This ensures we display something in the builder tab
+                            if (builderAgents.length === 0 && agents.length > 0) {
+                                console.log('Using regular agents for builder UI since no builder agents returned');
+                                builderAgents = agents.filter(agent => !agent.is_system);
+                            }
+                            
                             renderPage();
                         } else {
                             throw new Error(data.error || 'Failed to load builder agents');
@@ -389,6 +423,11 @@
                     })
                     .catch(err => {
                         console.error('Error fetching builder agents:', err);
+                        // Use regular agents as fallback in case of error
+                        if (agents.length > 0) {
+                            builderAgents = agents.filter(agent => !agent.is_system);
+                            renderPage();
+                        }
                     });
             }
             

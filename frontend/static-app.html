@@ -722,11 +722,47 @@
                         </div>
                     </div>
                     
-                    <div class="agent-builder-placeholder">
-                        <div class="text-center">
-                            <i class="bi bi-gear display-1 text-muted mb-3"></i>
-                            <h4>Agent Builder Coming Soon</h4>
-                            <p class="text-muted">This feature is currently under development.</p>
+                    <div class="agent-builder-content mt-4">
+                        <div class="d-flex justify-content-between align-items-center mb-4">
+                            <h4>Agent Builder</h4>
+                            <a href="/agents" class="btn btn-primary" id="go-to-agent-builder-btn">
+                                <i class="bi bi-robot me-2"></i>Go to Agent Management
+                            </a>
+                        </div>
+                        
+                        <p class="mb-4">
+                            Build custom agents with specialized capabilities for customer engagement scenarios.
+                        </p>
+                        
+                        <div class="card">
+                            <div class="card-header bg-dark">
+                                <h5 class="mb-0">How to Create an Agent</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row g-4">
+                                    <div class="col-md-4">
+                                        <div class="p-3 border rounded h-100">
+                                            <div class="fs-4 mb-2 text-primary">1</div>
+                                            <h6>Define Agent</h6>
+                                            <p class="small text-muted">Set name, type, and description for your agent.</p>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="p-3 border rounded h-100">
+                                            <div class="fs-4 mb-2 text-primary">2</div>
+                                            <h6>Configure Capabilities</h6>
+                                            <p class="small text-muted">Add tools, patterns, and response templates.</p>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="p-3 border rounded h-100">
+                                            <div class="fs-4 mb-2 text-primary">3</div>
+                                            <h6>Test and Deploy</h6>
+                                            <p class="small text-muted">Validate functionality and activate your agent.</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -830,10 +866,58 @@
             
             // Function to format agent type for display
             function formatAgentType(type) {
+                if (!type) return 'N/A';
                 return type.split('_').map(word => 
                     word.charAt(0) + word.slice(1).toLowerCase()
                 ).join(' ');
             }
+            
+            // Function to fetch agents from the agent builder API and update the UI
+            async function fetchAgentBuilderData() {
+                try {
+                    const response = await fetch('/api/v1/agent-builder/agents');
+                    
+                    if (!response.ok) {
+                        throw new Error(`API error: ${response.status}`);
+                    }
+                    
+                    const data = await response.json();
+                    
+                    if (!data.success) {
+                        throw new Error(data.error || 'Failed to load agents');
+                    }
+                    
+                    // Update UI with fetched agents
+                    console.log('Agent Builder Data:', data);
+                    return data.agents || [];
+                } catch (error) {
+                    console.error('Error fetching agent builder data:', error);
+                    return [];
+                }
+            }
+            
+            // Initialize agent builder
+            async function initAgentBuilder() {
+                const goToAgentBuilderBtn = document.getElementById('go-to-agent-builder-btn');
+                
+                if (goToAgentBuilderBtn) {
+                    // Set up event listener for the agent builder button
+                    goToAgentBuilderBtn.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        // Switch to agents tab
+                        document.getElementById('agents-tab').click();
+                    });
+                }
+                
+                // Fetch agent data
+                const builderAgents = await fetchAgentBuilderData();
+                
+                // Log agent count for debugging
+                console.log(`Loaded ${builderAgents.length} agents from builder API`);
+            }
+            
+            // Call initAgentBuilder on page load
+            initAgentBuilder();
             
             // Load agent cards for dashboard
             const agentCardsContainer = document.getElementById('agent-cards-container');
