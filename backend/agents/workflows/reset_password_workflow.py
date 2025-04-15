@@ -23,6 +23,69 @@ from backend.memory.factory import get_mem0
 logger = logging.getLogger(__name__)
 
 
+async def extract_email_with_llm(text: str) -> Optional[str]:
+    """
+    Extract an email address from text using LLM.
+    
+    Args:
+        text: The text to extract the email from
+        
+    Returns:
+        Extracted email or None
+    """
+    # Skip if no @ symbol to avoid unnecessary LLM call
+    if '@' not in text:
+        return None
+        
+    try:
+        # Initialize LLM with restrictive temperature
+        llm = ChatOpenAI(model="gpt-4o", temperature=0.1)
+        
+        # Create the prompt instructing the LLM to extract email
+        system_content = """
+        Extract any email address from the text. Follow these rules strictly:
+        1. If you find an email address, respond with ONLY the email address, nothing else
+        2. If you find multiple email addresses, return only the most likely one based on context
+        3. If no email address is found, respond with just "NONE"
+        4. Do not make up or hallucinate an email address, only extract what's explicitly present
+        5. Ensure the email address is valid (contains @ and domain)
+        
+        Return the email exactly as written, don't add comments, explanations, or any other text.
+        """
+        
+        # Create the prompt messages
+        prompt = ChatPromptTemplate.from_messages([
+            SystemMessage(content=system_content),
+            HumanMessage(content=f"Text: {text}\n\nExtract email address:")
+        ])
+        
+        # Execute the LLM call
+        start_time = time.time()
+        response = await llm.ainvoke(prompt.format_messages())
+        extraction_time = time.time() - start_time
+        
+        # Process the response
+        email = response.content.strip()
+        logger.info(f"Email extraction with LLM completed in {extraction_time:.2f}s")
+        
+        # Validate the result
+        if email == "NONE" or not '@' in email:
+            logger.info("No email found by LLM")
+            return None
+            
+        # Basic validation that this looks like an email
+        if '@' in email and '.' in email.split('@')[1]:
+            logger.info(f"Valid email extracted: {email}")
+            return email
+        else:
+            logger.warning(f"Invalid email format returned by LLM: {email}")
+            return None
+            
+    except Exception as e:
+        logger.error(f"Error in LLM email extraction: {str(e)}", exc_info=True)
+        return None
+
+
 class ResetPasswordIntent(str, Enum):
     """Possible intents in the password reset flow."""
     INFO_REQUEST = "info_request"  # User is asking about password policies or reset process
@@ -141,91 +204,86 @@ def create_reset_password_workflow(model_name: str = "gpt-4o", temperature: floa
                 logger.warning(f"Invalid intent value from context '{intent}', will use normal classification")
                 # Continue with normal classification below
         
-        # Zero-shot intent classification with pattern matching
-        message_lower = user_input.lower()
+        # Zero-shot intent classification with LLM
         intent = "unknown"
-        
-        # Check for positive response to reset offer first
         session_id = state.get("session_id")
-        conversation_id = state.get("conversation_id", "default")
+        conversation_history = []
         
-        # Look for positive responses like "yes please" that might be responding to a reset offer
-        if any(word in message_lower for word in ["yes", "yeah", "sure", "okay", "please", "ok"]):
-            try:
-                # Try to get conversation history to check context
+        # Attempt to retrieve conversation history for context-aware classification
+        try:
+            if session_id:
                 mem0 = await get_mem0()
-                if mem0 and session_id:
+                if mem0:
                     history = await mem0.get_conversation_history(session_id)
-                    
-                    if history and len(history) >= 2:
-                        # Find the last assistant message
-                        last_assistant_msg = None
-                        for msg in reversed(history):
-                            if msg.get("role") == "assistant":
-                                last_assistant_msg = msg.get("content", "").lower()
-                                break
-                        
-                        # Check if last message was asking to help with password reset
-                        if (last_assistant_msg and 
-                            ("would you like me to help you reset" in last_assistant_msg or 
-                             "would you like me to help with" in last_assistant_msg or
-                             "password reset" in last_assistant_msg)):
-                            intent = "reset_request"
-                            logger.info("Detected affirmative response to previous reset offer, setting intent to reset_request")
-            except Exception as e:
-                logger.error(f"Error retrieving conversation history for intent classification: {str(e)}")
+                    if history:
+                        conversation_history = history
+        except Exception as e:
+            logger.error(f"Error retrieving conversation history for intent classification: {str(e)}")
+            # Continue even if we can't get history
         
-        # If not an affirmative response or couldn't get history, check patterns
-        if intent == "unknown":
-            # Define pattern sets for each intent type
-            reset_patterns = [
-                "reset password", "forgot password", "change password", 
-                "can't login", "login problem", "password not working",
-                "locked out", "reset my password", "new password", 
-                "change my password", "lost password", "recover password"
-            ]
+        # Create a context-aware prompt with conversation history if available
+        system_content = """
+        You are an intent classifier for a password reset workflow. You need to determine the user's intent based on their message and conversation context.
+        
+        Classify the user's message into one of these intents:
+        1. reset_request: User wants to reset their password, is having login issues, or is responding affirmatively to an offer to help with password reset
+        2. info_request: User is asking about password policies, requirements, or how to reset their password
+        3. account_issue: User is having account-related problems beyond just password reset (security concerns, account access issues, etc.)
+        4. unknown: The message doesn't clearly fit any of the above intents
+        
+        Pay special attention to conversation context. If the assistant previously asked if the user wants to reset their password and the user responds with "yes", "please", etc., classify as reset_request.
+        
+        Respond with ONLY the intent category (reset_request, info_request, account_issue, or unknown). No explanation or other text.
+        """
+        
+        # Format history if we have it
+        conversation_context = ""
+        if conversation_history:
+            # Format the last few messages for context (up to 3 turns)
+            history_snippet = conversation_history[-6:] if len(conversation_history) > 6 else conversation_history
             
-            info_patterns = [
-                "password requirements", "password policy", "how to reset", 
-                "password rules", "secure password", "password instructions",
-                "how do i", "what are the steps", "explain how",
-                "password criteria", "password strength"
-            ]
+            for msg in history_snippet:
+                role = msg.get("role", "").capitalize()
+                content = msg.get("content", "")
+                if role and content:
+                    conversation_context += f"{role}: {content}\n"
+        
+        human_content = f"Conversation Context:\n{conversation_context}\n\nCurrent Message: {user_input}\n\nWhat is the user's intent?"
+        
+        try:
+            # Create LLM
+            llm = ChatOpenAI(model="gpt-4o", temperature=0.1)
             
-            account_patterns = [
-                "account locked", "account stolen", "hacked account",
-                "suspicious activity", "security breach", "account compromise",
-                "account access", "someone else", "account help", 
-                "verify identity", "account issues", "can't access"
-            ]
+            # Create the prompt
+            prompt = ChatPromptTemplate.from_messages([
+                SystemMessage(content=system_content),
+                HumanMessage(content=human_content)
+            ])
             
-            # Check patterns in order of priority
-            for pattern in reset_patterns:
-                if pattern in message_lower:
-                    intent = "reset_request"
-                    logger.info(f"Pattern match: Found '{pattern}' in message, classified as {intent}")
-                    break
-                    
-            # If no reset patterns matched, check info patterns
-            if intent == "unknown":
-                for pattern in info_patterns:
-                    if pattern in message_lower:
-                        intent = "info_request"
-                        logger.info(f"Pattern match: Found '{pattern}' in message, classified as {intent}")
-                        break
+            # Execute the LLM call
+            start_time = time.time()
+            response = await llm.ainvoke(prompt.format_messages())
+            classification_time = time.time() - start_time
             
-            # If still no match, check account issue patterns
-            if intent == "unknown":
-                for pattern in account_patterns:
-                    if pattern in message_lower:
-                        intent = "account_issue"
-                        logger.info(f"Pattern match: Found '{pattern}' in message, classified as {intent}")
-                        break
+            # Extract the response content
+            intent = response.content.strip().lower()
             
-            # If password is mentioned but no specific pattern matched, default to reset_request
-            if intent == "unknown" and "password" in message_lower:
+            # Normalize the intent
+            if "reset_request" in intent:
                 intent = "reset_request"
-                logger.info("Default password mention match: User mentioned 'password', defaulting to reset_request")
+            elif "info_request" in intent:
+                intent = "info_request"
+            elif "account_issue" in intent:
+                intent = "account_issue"
+            else:
+                intent = "unknown"
+                
+            logger.info(f"LLM intent classification completed in {classification_time:.2f}s: {intent}")
+            
+        except Exception as e:
+            logger.error(f"Error in LLM intent classification: {str(e)}", exc_info=True)
+            # Default to unknown in case of errors
+            intent = "unknown"
         
         # Map to enum value
         try:
@@ -245,7 +303,7 @@ def create_reset_password_workflow(model_name: str = "gpt-4o", temperature: floa
     
     async def extract_email(state: ResetPasswordState) -> Dict[str, Any]:
         """
-        Extract email address from user input using regex pattern matching.
+        Extract email address from user input using LLM.
         
         Args:
             state: Current workflow state
@@ -253,8 +311,6 @@ def create_reset_password_workflow(model_name: str = "gpt-4o", temperature: floa
         Returns:
             Updated state with extracted email or response asking for it
         """
-        import re
-        
         # First, check for an existing user_email in state
         if state.get("user_email"):
             logger.info(f"Using existing email from state: {state['user_email']}")
@@ -273,36 +329,41 @@ def create_reset_password_workflow(model_name: str = "gpt-4o", temperature: floa
                         user_input = msg.get("content")
                         break
         
-        # Try to get email from recent conversation history
-        try:
-            session_id = state.get("session_id")
-            conversation_id = state.get("conversation_id", "default")
-            
-            if session_id:
-                mem0 = await get_mem0()
-                if mem0:
-                    history = await mem0.get_conversation_history(
-                        session_id=session_id
-                    )
-                    
-                    # Look through history for possible email
-                    if history:
-                        # Prioritize messages with email
-                        for msg in reversed(history):
-                            if msg.get("role") == "user" and "@" in msg.get("content", ""):
-                                # Extract from this history message
-                                email_pattern = r'[\w\.-]+@[\w\.-]+\.\w+'
-                                matches = re.findall(email_pattern, msg.get("content", ""))
-                                if matches:
-                                    email = matches[0]
-                                    logger.info(f"Extracted email from conversation history: {email}")
-                                    return {
-                                        **state,
-                                        "user_email": email,
-                                        "current_step": "email_provided"
-                                    }
-        except Exception as e:
-            logger.error(f"Error retrieving conversation history for email: {str(e)}")
+        # First, try a quick check for @ symbol to avoid LLM call if no email is present
+        if not user_input or '@' not in user_input:
+            # Try to get conversation history to look for email in previous messages
+            try:
+                session_id = state.get("session_id")
+                if session_id:
+                    mem0 = await get_mem0()
+                    if mem0:
+                        history = await mem0.get_conversation_history(session_id)
+                        
+                        # Construct full conversation context
+                        conversation_text = ""
+                        if history:
+                            for msg in history:
+                                role = msg.get("role", "")
+                                content = msg.get("content", "")
+                                if role and content:
+                                    conversation_text += f"{role.capitalize()}: {content}\n"
+                            
+                            # Only call LLM if there might be an email (@ symbol)
+                            if '@' in conversation_text:
+                                # Use LLM to extract email from conversation history
+                                try:
+                                    email = await extract_email_with_llm(conversation_text)
+                                    if email:
+                                        logger.info(f"Extracted email from conversation history with LLM: {email}")
+                                        return {
+                                            **state,
+                                            "user_email": email,
+                                            "current_step": "email_provided"
+                                        }
+                                except Exception as e:
+                                    logger.error(f"Error extracting email from conversation history with LLM: {str(e)}")
+            except Exception as e:
+                logger.error(f"Error retrieving conversation history for email extraction: {str(e)}")
         
         if not user_input:
             logger.warning("No user input found for email extraction")
@@ -310,37 +371,26 @@ def create_reset_password_workflow(model_name: str = "gpt-4o", temperature: floa
                 **state,
                 "current_step": "need_email"
             }
-            
-        logger.info(f"Extracting email from: '{user_input[:50]}...'")
         
-        # Use regex to find email pattern
-        # This pattern matches most standard email formats
-        email_pattern = r'[\w\.-]+@[\w\.-]+\.\w+'
-        
+        # Use LLM to extract email from current message
+        logger.info(f"Attempting to extract email from current message with LLM")
         try:
-            # Search for email in the text
-            matches = re.findall(email_pattern, user_input)
-            
-            if matches:
-                email = matches[0]  # Take the first email found
-                logger.info(f"Extracted email: {email}")
-                
-                # Store the extracted email
+            email = await extract_email_with_llm(user_input)
+            if email:
+                logger.info(f"Extracted email with LLM: {email}")
                 return {
                     **state,
                     "user_email": email,
                     "current_step": "email_provided"
                 }
             else:
-                logger.info("No email found in user input")
-                # No email found, need to ask
+                logger.info("No email found with LLM extraction")
                 return {
                     **state,
                     "current_step": "need_email"
                 }
         except Exception as e:
-            logger.error(f"Error extracting email: {str(e)}", exc_info=True)
-            # Error case, need to ask for email
+            logger.error(f"Error in LLM email extraction: {str(e)}", exc_info=True)
             return {
                 **state,
                 "current_step": "need_email"
