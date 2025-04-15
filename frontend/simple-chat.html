@@ -735,34 +735,57 @@
         
         // Add event to the timeline
         function addTimelineEvent(content, source, eventType = 'info', details = null) {
+            if (!eventTimeline) return;
+            
+            // Generate a unique ID for this timeline item
+            const eventId = `event-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
+            
+            // Create the timeline item element
+            const timelineItem = document.createElement('div');
+            timelineItem.className = 'timeline-item';
+            timelineItem.setAttribute('data-event-id', eventId);
+            timelineItem.setAttribute('data-source', source);
+            timelineItem.setAttribute('data-type', eventType);
+            
+            // Get current time
             const now = new Date();
             const timeString = now.toLocaleTimeString();
-            const eventId = `event-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
             
             // Determine icon based on event type
             let iconClass = 'bi-info-circle';
             let badgeClass = 'bg-info';
+            let iconColor = 'var(--bs-info)';
             
             switch(eventType) {
                 case 'user':
                     iconClass = 'bi-person';
                     badgeClass = 'bg-primary';
+                    iconColor = 'var(--bs-primary)';
                     break;
                 case 'agent':
                     iconClass = 'bi-robot';
                     badgeClass = 'bg-success';
+                    iconColor = 'var(--bs-success)';
                     break;
                 case 'error':
                     iconClass = 'bi-exclamation-triangle';
                     badgeClass = 'bg-danger';
+                    iconColor = 'var(--bs-danger)';
                     break;
                 case 'system':
                     iconClass = 'bi-gear';
                     badgeClass = 'bg-secondary';
+                    iconColor = 'var(--bs-secondary)';
+                    break;
+                case 'processing':
+                    iconClass = 'bi-arrow-repeat';
+                    badgeClass = 'bg-warning';
+                    iconColor = 'var(--bs-warning)';
                     break;
                 default:
                     iconClass = 'bi-info-circle';
                     badgeClass = 'bg-info';
+                    iconColor = 'var(--bs-info)';
             }
             
             // Create expandable details section if details are provided
@@ -771,37 +794,61 @@
                 detailsSection = `
                     <div class="timeline-details collapse" id="${eventId}-details">
                         <div class="card card-body mt-2 bg-dark">
-                            ${details}
+                            ${typeof details === 'object' ? JSON.stringify(details, null, 2) : details}
                         </div>
                     </div>
                 `;
             }
             
-            const timelineItem = document.createElement('div');
-            timelineItem.className = 'timeline-item';
             timelineItem.innerHTML = `
-                <div class="d-flex align-items-center">
-                    <span class="timeline-icon">
+                <div class="d-flex align-items-start">
+                    <div class="timeline-icon" style="background-color: ${iconColor}20; color: ${iconColor}">
                         <i class="bi ${iconClass}"></i>
-                    </span>
-                    <div class="timeline-time small text-muted me-2">${timeString}</div>
-                    <div class="timeline-source">
-                        <span class="badge ${badgeClass} me-2">${source}</span>
                     </div>
-                    ${details ? `<button class="btn btn-sm btn-link collapse-toggle p-0" data-bs-toggle="collapse" data-bs-target="#${eventId}-details" aria-expanded="false" aria-controls="${eventId}-details">
-                        <i class="bi bi-chevron-down"></i>
-                    </button>` : ''}
+                    <div class="flex-grow-1 ms-2">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <span class="timeline-time small text-muted">${timeString}</span>
+                                <span class="badge ${badgeClass} ms-2">${source}</span>
+                            </div>
+                            ${details ? `<button class="btn btn-sm btn-link collapse-toggle p-0" 
+                                    data-bs-toggle="collapse" 
+                                    data-bs-target="#${eventId}-details" 
+                                    aria-expanded="false" 
+                                    aria-controls="${eventId}-details">
+                                <i class="bi bi-chevron-down"></i>
+                            </button>` : ''}
+                        </div>
+                        <div class="timeline-content mt-1">${content}</div>
+                        ${detailsSection}
+                    </div>
                 </div>
-                <div class="timeline-content mt-1">${content}</div>
-                ${detailsSection}
             `;
             
-            if (eventTimeline) {
-                // Append to the end instead of prepending
-                eventTimeline.appendChild(timelineItem);
-                // Scroll to the bottom
-                eventTimeline.scrollTop = eventTimeline.scrollHeight;
-            }
+            // Add click event to select this timeline item
+            timelineItem.addEventListener('click', (e) => {
+                // Don't trigger selection if clicking on the collapse toggle
+                if (e.target.closest('.collapse-toggle')) return;
+                
+                // Deselect all other timeline items
+                document.querySelectorAll('.timeline-item').forEach(item => {
+                    item.classList.remove('selected');
+                });
+                
+                // Select this item
+                timelineItem.classList.add('selected');
+                
+                // Log the selection
+                addLog(`Selected timeline event: ${content.substring(0, 30)}${content.length > 30 ? '...' : ''}`);
+            });
+            
+            // Append to the end instead of prepending (newest at bottom)
+            eventTimeline.appendChild(timelineItem);
+            
+            // Scroll to the bottom
+            eventTimeline.scrollTop = eventTimeline.scrollHeight;
+            
+            return eventId;
         }
         
         // Render graph visualization
