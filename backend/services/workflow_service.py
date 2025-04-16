@@ -376,3 +376,110 @@ class WorkflowService:
         except Exception as e:
             logger.error(f"Error getting workflows for agent {agent_id}: {str(e)}", exc_info=True)
             raise
+            
+    async def get_workflow_data_for_agent(self, agent_id: str) -> Dict[str, Any]:
+        """
+        Get the primary workflow data for an agent, including nodes, edges, and prompts.
+        Specifically designed for frontend display purposes.
+        
+        Args:
+            agent_id: ID of the agent
+            
+        Returns:
+            Workflow data with detailed node information
+        """
+        try:
+            # Get the latest workflow for this agent
+            workflows = await self.get_workflows_by_agent(agent_id)
+            
+            if not workflows:
+                logger.warning(f"No workflows found for agent {agent_id}")
+                return None
+            
+            # Use the most recent workflow (first in the list)
+            workflow = workflows[0]
+            workflow_id = workflow.get('id')
+            
+            # Get nodes data
+            nodes_result = await self.db.execute(
+                """
+                SELECT id, node_type, config, output_key
+                FROM workflow_nodes
+                WHERE workflow_id = $1
+                """,
+                workflow_id
+            )
+            
+            nodes_data = await nodes_result.fetchall()
+            
+            # Build nodes dictionary
+            nodes = {}
+            for node_id, node_type, config_json, output_key in nodes_data:
+                # Parse the config
+                config = json.loads(config_json) if config_json else {}
+                
+                # Get prompt content if this is a prompt node
+                prompt_content = None
+                if node_type == 'prompt' and config.get('prompt_id'):
+                    prompt_id = config.get('prompt_id')
+                    prompt_result = await self.db.execute(
+                        """
+                        SELECT content
+                        FROM system_prompts
+                        WHERE id = $1
+                        """,
+                        prompt_id
+                    )
+                    prompt_row = await prompt_result.fetchone()
+                    if prompt_row:
+                        prompt_content = prompt_row[0]
+                
+                # Add node to dictionary
+                nodes[node_id] = {
+                    'type': node_type,
+                    'prompt': prompt_content,
+                    'output_key': output_key,
+                    'config': config
+                }
+            
+            # Get edges data
+            edges_result = await self.db.execute(
+                """
+                SELECT source_node, target_node, condition
+                FROM workflow_edges
+                WHERE workflow_id = $1
+                """,
+                workflow_id
+            )
+            
+            edges_data = await edges_result.fetchall()
+            
+            # Build edges list
+            edges = {}
+            for source, target, condition in edges_data:
+                if source not in edges:
+                    edges[source] = []
+                
+                edge_info = {'target': target}
+                if condition:
+                    edge_info['condition'] = condition
+                
+                edges[source].append(edge_info)
+            
+            # Build complete workflow data
+            complete_workflow = {
+                'id': workflow_id,
+                'agent_id': agent_id,
+                'name': workflow.get('name', 'Unnamed Workflow'),
+                'description': workflow.get('description'),
+                'nodes': nodes,
+                'edges': edges,
+                'entry_node': workflow.get('entry_node', ''),
+                'created_at': workflow.get('created_at'),
+                'updated_at': workflow.get('updated_at')
+            }
+            
+            return complete_workflow
+        except Exception as e:
+            logger.error(f"Error getting workflow data for agent {agent_id}: {str(e)}", exc_info=True)
+            raise

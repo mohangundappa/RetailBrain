@@ -1,8 +1,8 @@
+import { fetchWithAuth } from '../utils/fetch';
+
 /**
  * WorkflowService - Service for interacting with agent workflow APIs
  */
-import { API_URL } from '../config';
-
 class WorkflowService {
   /**
    * Fetch workflow information for an agent
@@ -11,24 +11,20 @@ class WorkflowService {
    */
   async getWorkflowInfo(agentId) {
     try {
-      const response = await fetch(`${API_URL}/workflow-agents/info/${agentId}`);
-      
-      if (response.status === 404) {
-        console.log(`No workflow found for agent ${agentId}`);
-        return null;
-      }
+      const response = await fetchWithAuth(`/api/v1/agent-workflow/${agentId}`);
       
       if (!response.ok) {
-        throw new Error(`API error: ${response.status}`);
+        const errorData = await response.json();
+        throw new Error(errorData.detail || `Failed to fetch workflow: ${response.status}`);
       }
       
       return await response.json();
     } catch (error) {
-      console.error(`Error fetching workflow for agent ${agentId}:`, error);
-      return null;
+      console.error('Error fetching workflow info:', error);
+      throw error;
     }
   }
-  
+
   /**
    * Execute a workflow for a specific agent
    * @param {string} agentId - Agent ID
@@ -37,25 +33,27 @@ class WorkflowService {
    */
   async executeWorkflow(agentId, data) {
     try {
-      const response = await fetch(`${API_URL}/workflow-agents/execute/${agentId}`, {
+      const response = await fetchWithAuth(`/api/v1/workflow/${agentId}/execute`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
         },
-        body: JSON.stringify(data)
+        body: JSON.stringify(data),
       });
       
       if (!response.ok) {
-        throw new Error(`API error: ${response.status}`);
+        const errorData = await response.json();
+        throw new Error(errorData.detail || `Failed to execute workflow: ${response.status}`);
       }
       
       return await response.json();
     } catch (error) {
-      console.error(`Error executing workflow for agent ${agentId}:`, error);
+      console.error('Error executing workflow:', error);
       throw error;
     }
   }
 }
 
-// Export as singleton
-export default new WorkflowService();
+// Create and export a singleton instance
+const workflowService = new WorkflowService();
+export default workflowService;

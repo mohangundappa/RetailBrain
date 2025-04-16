@@ -5,20 +5,21 @@ This module provides API endpoints for accessing workflow information for agents
 allowing the frontend to display workflow configurations, prompts, and related data.
 """
 import logging
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List, Union
 
-from fastapi import APIRouter, HTTPException, Depends, Path, status
+from fastapi import APIRouter, Depends, Path, HTTPException, status
 from pydantic import BaseModel, Field
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.services.workflow_service import WorkflowService
 from backend.database.db import get_db
-from backend.config.config import get_config
+from backend.services.workflow_service import WorkflowService
 
 logger = logging.getLogger(__name__)
 
-# Define response models
+# Create router
+agent_workflow_router = APIRouter(prefix="/agent-workflow", tags=["agent-workflow"])
+
 class WorkflowNodeModel(BaseModel):
     """Model for a workflow node"""
     type: str = Field(..., description="Node type (prompt, tool, etc.)")
@@ -33,11 +34,11 @@ class WorkflowResponseModel(BaseModel):
     name: str = Field(..., description="Workflow name")
     description: Optional[str] = Field(None, description="Workflow description")
     nodes: Dict[str, WorkflowNodeModel] = Field(default_factory=dict, description="Workflow nodes")
+    edges: Optional[Dict[str, List[Dict[str, Any]]]] = Field(None, description="Workflow edges")
     entry_node: str = Field(..., description="Entry node ID")
     created_at: Optional[str] = Field(None, description="Creation timestamp")
     updated_at: Optional[str] = Field(None, description="Last update timestamp")
 
-# Create workflow service dependency
 async def get_workflow_service(
     db: AsyncSession = Depends(get_db)
 ) -> WorkflowService:
@@ -51,12 +52,6 @@ async def get_workflow_service(
         WorkflowService instance
     """
     return WorkflowService(db)
-
-# Create router
-agent_workflow_router = APIRouter(
-    prefix="/agent-workflows", 
-    tags=["agent-workflows"]
-)
 
 @agent_workflow_router.get("/{agent_id}", response_model=WorkflowResponseModel)
 async def get_agent_workflow(
@@ -74,7 +69,6 @@ async def get_agent_workflow(
         Workflow information
     """
     try:
-        # Get workflow data
         workflow_data = await workflow_service.get_workflow_data_for_agent(agent_id)
         
         if not workflow_data:
@@ -82,25 +76,15 @@ async def get_agent_workflow(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"No workflow found for agent {agent_id}"
             )
-        
-        # Convert nodes data to the expected format
-        nodes_dict = {}
-        if workflow_data.get('nodes'):
-            for node_id, node_data in workflow_data['nodes'].items():
-                nodes_dict[node_id] = WorkflowNodeModel(
-                    type=node_data.get('type', 'unknown'),
-                    prompt=node_data.get('prompt'),
-                    output_key=node_data.get('output_key'),
-                    config=node_data.get('config')
-                )
-        
-        # Build response
+            
+        # Convert to response model
         return WorkflowResponseModel(
-            id=workflow_data['id'],
-            agent_id=workflow_data['agent_id'],
-            name=workflow_data.get('name', 'Unnamed Workflow'),
+            id=workflow_data.get('id'),
+            agent_id=agent_id,
+            name=workflow_data.get('name'),
             description=workflow_data.get('description'),
-            nodes=nodes_dict,
+            nodes=workflow_data.get('nodes', {}),
+            edges=workflow_data.get('edges'),
             entry_node=workflow_data.get('entry_node', ''),
             created_at=workflow_data.get('created_at'),
             updated_at=workflow_data.get('updated_at')

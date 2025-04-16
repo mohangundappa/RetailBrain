@@ -14,6 +14,9 @@ const AgentsPage = () => {
   const [activeTab, setActiveTab] = useState('agents');
   const [selectedAgent, setSelectedAgent] = useState(null);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [workflowData, setWorkflowData] = useState(null);
+  const [isLoadingWorkflow, setIsLoadingWorkflow] = useState(false);
+  const [workflowError, setWorkflowError] = useState(null);
   
   // Fetch standard agents on component mount
   useEffect(() => {
@@ -94,6 +97,25 @@ const AgentsPage = () => {
   const handleEditClick = (agent) => {
     setSelectedAgent(agent);
     setShowEditModal(true);
+    
+    // Fetch workflow data for this agent
+    fetchWorkflowData(agent.id);
+  };
+  
+  // Fetch workflow data for an agent
+  const fetchWorkflowData = async (agentId) => {
+    setIsLoadingWorkflow(true);
+    setWorkflowError(null);
+    try {
+      const data = await workflowService.getWorkflowInfo(agentId);
+      console.log('Workflow data:', data);
+      setWorkflowData(data);
+    } catch (err) {
+      console.error('Error fetching workflow data:', err);
+      setWorkflowError('Failed to load workflow data');
+    } finally {
+      setIsLoadingWorkflow(false);
+    }
   };
   
   // Handle modal close
@@ -207,6 +229,111 @@ const AgentsPage = () => {
     </Row>
   );
   
+  // Render workflow content
+  const renderWorkflowContent = () => {
+    if (isLoadingWorkflow) {
+      return (
+        <div className="text-center p-4">
+          <Spinner animation="border" size="sm" className="me-2" />
+          Loading workflow data...
+        </div>
+      );
+    }
+    
+    if (workflowError) {
+      return (
+        <div className="alert alert-warning">
+          <FeatherIcon icon="alert-triangle" className="me-2" />
+          {workflowError}
+        </div>
+      );
+    }
+    
+    if (!workflowData) {
+      return (
+        <div className="alert alert-info">
+          <FeatherIcon icon="info" className="me-2" />
+          No workflow data available for this agent.
+        </div>
+      );
+    }
+    
+    return (
+      <div>
+        <h5>{workflowData.name}</h5>
+        {workflowData.description && (
+          <p className="text-muted">{workflowData.description}</p>
+        )}
+        
+        <div className="mt-3">
+          <h6>Workflow Nodes</h6>
+          {Object.keys(workflowData.nodes).length > 0 ? (
+            <ListGroup>
+              {Object.entries(workflowData.nodes).map(([nodeId, node]) => (
+                <ListGroup.Item key={nodeId} className="mb-2">
+                  <div className="d-flex justify-content-between align-items-center mb-1">
+                    <Badge bg={nodeId === workflowData.entry_node ? 'success' : 'secondary'}>
+                      {nodeId} {nodeId === workflowData.entry_node ? '(Entry)' : ''}
+                    </Badge>
+                    <Badge bg="info">{node.type}</Badge>
+                  </div>
+                  
+                  {node.type === 'prompt' && node.prompt && (
+                    <div className="mt-2">
+                      <h6>Prompt Template:</h6>
+                      <pre className="bg-dark text-light p-2 rounded small" style={{maxHeight: '200px', overflow: 'auto'}}>
+                        {node.prompt}
+                      </pre>
+                    </div>
+                  )}
+                  
+                  {node.config && Object.keys(node.config).length > 0 && (
+                    <div className="mt-2">
+                      <h6>Configuration:</h6>
+                      <pre className="bg-dark text-light p-2 rounded small">
+                        {JSON.stringify(node.config, null, 2)}
+                      </pre>
+                    </div>
+                  )}
+                </ListGroup.Item>
+              ))}
+            </ListGroup>
+          ) : (
+            <p className="text-muted">No workflow nodes defined</p>
+          )}
+        </div>
+        
+        {workflowData.edges && Object.keys(workflowData.edges).length > 0 && (
+          <div className="mt-3">
+            <h6>Workflow Edges</h6>
+            <ListGroup>
+              {Object.entries(workflowData.edges).map(([sourceId, targets]) => (
+                <ListGroup.Item key={sourceId}>
+                  <div>
+                    <strong>From:</strong> {sourceId}
+                  </div>
+                  <div>
+                    <strong>To:</strong> {targets.map(t => t.target).join(', ')}
+                  </div>
+                  {targets.some(t => t.condition) && (
+                    <div className="mt-1">
+                      <strong>Conditions:</strong>
+                      <ul className="mb-0">
+                        {targets.filter(t => t.condition).map((t, i) => (
+                          <li key={i}>{t.target}: {t.condition}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </ListGroup.Item>
+              ))}
+            </ListGroup>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   // Render modal for editing agent
   const renderEditModal = () => (
     <Modal show={showEditModal} onHide={handleCloseModal} size="lg">
@@ -215,53 +342,75 @@ const AgentsPage = () => {
       </Modal.Header>
       <Modal.Body>
         {selectedAgent && (
-          <Form>
-            <Form.Group className="mb-3">
-              <Form.Label>Name</Form.Label>
-              <Form.Control 
-                type="text" 
-                value={selectedAgent.name}
-                onChange={(e) => setSelectedAgent({...selectedAgent, name: e.target.value})}
-              />
-            </Form.Group>
+          <Tabs defaultActiveKey="details" className="mb-3">
+            <Tab eventKey="details" title="Details">
+              <Form>
+                <Form.Group className="mb-3">
+                  <Form.Label>Name</Form.Label>
+                  <Form.Control 
+                    type="text" 
+                    value={selectedAgent.name}
+                    onChange={(e) => setSelectedAgent({...selectedAgent, name: e.target.value})}
+                  />
+                </Form.Group>
+                
+                <Form.Group className="mb-3">
+                  <Form.Label>Description</Form.Label>
+                  <Form.Control 
+                    as="textarea" 
+                    rows={3}
+                    value={selectedAgent.description}
+                    onChange={(e) => setSelectedAgent({...selectedAgent, description: e.target.value})}
+                  />
+                </Form.Group>
+                
+                <Form.Group className="mb-3">
+                  <Form.Label>Type</Form.Label>
+                  <Form.Control 
+                    type="text"
+                    value={selectedAgent.type || selectedAgent.agent_type}
+                    onChange={(e) => setSelectedAgent({
+                      ...selectedAgent, 
+                      type: e.target.value,
+                      agent_type: e.target.value
+                    })}
+                  />
+                </Form.Group>
+                
+                <Form.Group className="mb-3">
+                  <Form.Label>Status</Form.Label>
+                  <Form.Select 
+                    value={selectedAgent.status}
+                    onChange={(e) => setSelectedAgent({...selectedAgent, status: e.target.value})}
+                  >
+                    <option value="active">Active</option>
+                    <option value="inactive">Inactive</option>
+                    <option value="draft">Draft</option>
+                  </Form.Select>
+                </Form.Group>
+              </Form>
+            </Tab>
             
-            <Form.Group className="mb-3">
-              <Form.Label>Description</Form.Label>
-              <Form.Control 
-                as="textarea" 
-                rows={3}
-                value={selectedAgent.description}
-                onChange={(e) => setSelectedAgent({...selectedAgent, description: e.target.value})}
-              />
-            </Form.Group>
+            <Tab eventKey="workflow" title="Workflow">
+              {renderWorkflowContent()}
+            </Tab>
             
-            <Form.Group className="mb-3">
-              <Form.Label>Type</Form.Label>
-              <Form.Control 
-                type="text"
-                value={selectedAgent.type || selectedAgent.agent_type}
-                onChange={(e) => setSelectedAgent({
-                  ...selectedAgent, 
-                  type: e.target.value,
-                  agent_type: e.target.value
-                })}
-              />
-            </Form.Group>
+            {selectedAgent.persona && (
+              <Tab eventKey="persona" title="Persona">
+                <pre className="bg-dark text-light p-3 rounded">
+                  {JSON.stringify(selectedAgent.persona, null, 2)}
+                </pre>
+              </Tab>
+            )}
             
-            <Form.Group className="mb-3">
-              <Form.Label>Status</Form.Label>
-              <Form.Select 
-                value={selectedAgent.status}
-                onChange={(e) => setSelectedAgent({...selectedAgent, status: e.target.value})}
-              >
-                <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
-                <option value="draft">Draft</option>
-              </Form.Select>
-            </Form.Group>
-            
-            {/* Additional fields can be added here based on the agent schema */}
-          </Form>
+            {selectedAgent.tools && (
+              <Tab eventKey="tools" title="Tools">
+                <pre className="bg-dark text-light p-3 rounded">
+                  {JSON.stringify(selectedAgent.tools, null, 2)}
+                </pre>
+              </Tab>
+            )}
+          </Tabs>
         )}
       </Modal.Body>
       <Modal.Footer>
