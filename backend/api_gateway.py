@@ -22,6 +22,7 @@ from backend.endpoints.routes import api_router
 from backend.endpoints.graph_chat import router as graph_chat_router  # LangGraph-based chat functionality
 from backend.endpoints.chat.routes import router as chat_router  # Standard chat functionality
 from backend.endpoints.agent_builder import agent_builder_router  # Agent Builder functionality
+from backend.endpoints.workflow_driven_agents import workflow_router  # Workflow-driven agents functionality
 from backend.database.db import get_db
 
 # Utility function to sanitize database URLs for asyncpg
