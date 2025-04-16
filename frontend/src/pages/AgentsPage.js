@@ -184,15 +184,13 @@ const AgentsPage = () => {
                     )}
                   </div>
                 </div>
-                {isEditable && (
-                  <Button 
-                    variant="outline-light" 
-                    size="sm"
-                    onClick={() => handleEditClick(agent)}
-                  >
-                    <FeatherIcon icon="edit-2" size={16} />
-                  </Button>
-                )}
+                <Button 
+                  variant="outline-light" 
+                  size="sm"
+                  onClick={() => handleEditClick(agent)}
+                >
+                  <FeatherIcon icon={isEditable ? "edit-2" : "info"} size={16} />
+                </Button>
               </div>
             </Card.Header>
             <Card.Body>

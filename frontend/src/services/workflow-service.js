@@ -1,8 +1,8 @@
-import { fetchWithAuth } from '../utils/fetch';
-
 /**
  * WorkflowService - Service for interacting with agent workflow APIs
  */
+import { API_BASE_URL } from '../config';
+
 class WorkflowService {
   /**
    * Fetch workflow information for an agent
@@ -11,17 +11,21 @@ class WorkflowService {
    */
   async getWorkflowInfo(agentId) {
     try {
-      const response = await fetchWithAuth(`/api/v1/agent-workflow/${agentId}`);
+      const response = await fetch(`${API_BASE_URL}/agent-workflow/${agentId}`);
       
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || `Failed to fetch workflow: ${response.status}`);
+        if (response.status === 404) {
+          console.log(`No workflow found for agent ${agentId}`);
+          return null;
+        }
+        throw new Error(`Error fetching workflow info: ${response.statusText}`);
       }
       
-      return await response.json();
+      const data = await response.json();
+      return data;
     } catch (error) {
       console.error('Error fetching workflow info:', error);
-      throw error;
+      return null;
     }
   }
 
@@ -33,7 +37,7 @@ class WorkflowService {
    */
   async executeWorkflow(agentId, data) {
     try {
-      const response = await fetchWithAuth(`/api/v1/workflow/${agentId}/execute`, {
+      const response = await fetch(`${API_BASE_URL}/workflow/${agentId}/execute`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -42,8 +46,7 @@ class WorkflowService {
       });
       
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || `Failed to execute workflow: ${response.status}`);
+        throw new Error(`Error executing workflow: ${response.statusText}`);
       }
       
       return await response.json();
@@ -54,6 +57,4 @@ class WorkflowService {
   }
 }
 
-// Create and export a singleton instance
-const workflowService = new WorkflowService();
-export default workflowService;
+export default new WorkflowService();
