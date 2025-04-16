@@ -280,7 +280,7 @@ class WorkflowService:
         self, 
         workflow_id: str, 
         input_message: str,
-        context: Dict[str, Any] = None,
+        context: Optional[Dict[str, Any]] = None,
         llm_provider: Optional[str] = None
     ) -> Dict[str, Any]:
         """
@@ -350,14 +350,13 @@ class WorkflowService:
         """
         try:
             # Get workflows from database
-            result = await self.db.execute(
-                text("""
-                SELECT id, name, description, entry_node, created_at, updated_at
-                FROM workflows
-                WHERE agent_id = :agent_id
-                ORDER BY created_at DESC
-                """).bindparams(agent_id=agent_id)
-            )
+            query = f"""
+            SELECT id, name, description, entry_node, created_at, updated_at
+            FROM workflows
+            WHERE agent_id = '{agent_id}'::uuid
+            ORDER BY created_at DESC
+            """
+            result = await self.db.execute(text(query))
             
             workflows = []
             rows = result.fetchall()
@@ -405,7 +404,7 @@ class WorkflowService:
                 text("""
                 SELECT id, node_type, config, output_key
                 FROM workflow_nodes
-                WHERE workflow_id = :workflow_id
+                WHERE workflow_id = :workflow_id::uuid
                 """).bindparams(workflow_id=workflow_id)
             )
             
@@ -425,9 +424,8 @@ class WorkflowService:
                         text("""
                         SELECT content
                         FROM system_prompts
-                        WHERE id = $1
-                        """),
-                        {'1': prompt_id}
+                        WHERE id = :prompt_id::uuid
+                        """).bindparams(prompt_id=prompt_id)
                     )
                     prompt_row = await prompt_result.fetchone()
                     if prompt_row:
@@ -446,9 +444,8 @@ class WorkflowService:
                 text("""
                 SELECT source_node, target_node, condition
                 FROM workflow_edges
-                WHERE workflow_id = $1
-                """),
-                {'1': workflow_id}
+                WHERE workflow_id = :workflow_id::uuid
+                """).bindparams(workflow_id=workflow_id)
             )
             
             edges_data = await edges_result.fetchall()
