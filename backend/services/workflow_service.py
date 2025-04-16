@@ -401,7 +401,7 @@ class WorkflowService:
             
             # Get nodes data
             nodes_query = f"""
-            SELECT id, node_type, config, output_key
+            SELECT id, node_type, config, name, response_template, system_prompt_id, function_name
             FROM workflow_nodes
             WHERE workflow_id = '{workflow_id}'::uuid
             """
@@ -411,35 +411,42 @@ class WorkflowService:
             
             # Build nodes dictionary
             nodes = {}
-            for node_id, node_type, config_json, output_key in nodes_data:
+            for node_id, node_type, config_json, name, response_template, system_prompt_id, function_name in nodes_data:
                 # Parse the config
                 config = json.loads(config_json) if config_json else {}
                 
                 # Get prompt content if this is a prompt node
                 prompt_content = None
-                if node_type == 'prompt' and config.get('prompt_id'):
-                    prompt_id = config.get('prompt_id')
-                    prompt_query = f"""
-                    SELECT content
-                    FROM system_prompts
-                    WHERE id = '{prompt_id}'::uuid
-                    """
-                    prompt_result = await self.db.execute(text(prompt_query))
-                    prompt_row = await prompt_result.fetchone()
-                    if prompt_row:
-                        prompt_content = prompt_row[0]
+                if node_type == 'prompt':
+                    if system_prompt_id:
+                        prompt_query = f"""
+                        SELECT content
+                        FROM system_prompts
+                        WHERE id = '{system_prompt_id}'::uuid
+                        """
+                        prompt_result = await self.db.execute(text(prompt_query))
+                        prompt_row = await prompt_result.fetchone()
+                        if prompt_row:
+                            prompt_content = prompt_row[0]
+                    elif response_template:
+                        prompt_content = response_template
                 
                 # Add node to dictionary
                 nodes[node_id] = {
                     'type': node_type,
+                    'name': name,
                     'prompt': prompt_content,
-                    'output_key': output_key,
+                    'output_key': name.lower().replace(' ', '_') if name else None,
                     'config': config
                 }
+                
+                # Add function name to config if it exists
+                if function_name:
+                    nodes[node_id]['config']['tool_name'] = function_name
             
             # Get edges data
             edges_query = f"""
-            SELECT source_node, target_node, condition
+            SELECT source_node_id, target_node_id, condition_value, condition_type
             FROM workflow_edges
             WHERE workflow_id = '{workflow_id}'::uuid
             """
@@ -449,13 +456,15 @@ class WorkflowService:
             
             # Build edges list
             edges = {}
-            for source, target, condition in edges_data:
+            for source, target, condition_value, condition_type in edges_data:
                 if source not in edges:
                     edges[source] = []
                 
                 edge_info = {'target': target}
-                if condition:
-                    edge_info['condition'] = condition
+                if condition_value:
+                    edge_info['condition'] = condition_value
+                    # Store condition type if useful for frontend
+                    edge_info['condition_type'] = condition_type
                 
                 edges[source].append(edge_info)
             
