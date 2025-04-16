@@ -407,13 +407,19 @@ class WorkflowService:
             """
             nodes_result = await self.db.execute(text(nodes_query))
             
-            nodes_data = await nodes_result.fetchall()
+            # fetchall() already returns the results, no need to await it
+            nodes_data = nodes_result.fetchall()
             
             # Build nodes dictionary
             nodes = {}
             for node_id, node_type, config_json, name, response_template, system_prompt_id, function_name in nodes_data:
-                # Parse the config
-                config = json.loads(config_json) if config_json else {}
+                # Parse the config - note that config_json might already be a dict in PostgreSQL JSONB columns
+                if isinstance(config_json, dict):
+                    config = config_json
+                elif config_json and isinstance(config_json, str):
+                    config = json.loads(config_json)
+                else:
+                    config = {}
                 
                 # Get prompt content if this is a prompt node
                 prompt_content = None
@@ -425,7 +431,7 @@ class WorkflowService:
                         WHERE id = '{system_prompt_id}'::uuid
                         """
                         prompt_result = await self.db.execute(text(prompt_query))
-                        prompt_row = await prompt_result.fetchone()
+                        prompt_row = prompt_result.fetchone()
                         if prompt_row:
                             prompt_content = prompt_row[0]
                     elif response_template:
@@ -452,7 +458,8 @@ class WorkflowService:
             """
             edges_result = await self.db.execute(text(edges_query))
             
-            edges_data = await edges_result.fetchall()
+            # fetchall() already returns the results, no need to await it
+            edges_data = edges_result.fetchall()
             
             # Build edges list
             edges = {}
@@ -468,15 +475,26 @@ class WorkflowService:
                 
                 edges[source].append(edge_info)
             
-            # Build complete workflow data
+            # Convert all UUIDs to strings to ensure compatibility with JSON
+            # Convert node dictionary keys (UUIDs) to strings
+            string_node_ids = {}
+            for node_id, node_data in nodes.items():
+                string_node_ids[str(node_id)] = node_data
+            
+            # Convert edge dictionary keys (UUIDs) to strings
+            string_edge_ids = {}
+            for edge_id, edge_data in edges.items():
+                string_edge_ids[str(edge_id)] = edge_data
+            
+            # Build complete workflow data with string IDs
             complete_workflow = {
-                'id': workflow_id,
-                'agent_id': agent_id,
+                'id': str(workflow_id),
+                'agent_id': str(agent_id),
                 'name': workflow.get('name', 'Unnamed Workflow'),
                 'description': workflow.get('description'),
-                'nodes': nodes,
-                'edges': edges,
-                'entry_node': workflow.get('entry_node', ''),
+                'nodes': string_node_ids,
+                'edges': string_edge_ids,
+                'entry_node': str(workflow.get('entry_node', '')),
                 'created_at': workflow.get('created_at'),
                 'updated_at': workflow.get('updated_at')
             }
