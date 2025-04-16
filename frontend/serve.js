@@ -265,8 +265,15 @@ const server = http.createServer((req, res) => {
     // Set clean headers needed for the proxy
     headers['host'] = `${backendHost}:${backendPort}`;
     headers['connection'] = 'keep-alive';
-    headers['content-type'] = 'application/json';
-    headers['accept'] = 'application/json';
+    
+    // Special handling for Swagger/OpenAPI routes - don't force application/json
+    const isSwaggerRequest = req.url.includes('/docs') || req.url.includes('/redoc') || req.url.includes('/openapi.json');
+    
+    if (!isSwaggerRequest) {
+      // Only set these for regular API requests, not for Swagger UI or OpenAPI schema
+      headers['content-type'] = 'application/json';
+      headers['accept'] = 'application/json';
+    }
     
     // Create proxy request to backend API server
     const options = {
@@ -293,18 +300,30 @@ const server = http.createServer((req, res) => {
       // Set response headers
       res.writeHead(proxyRes.statusCode, proxyRes.headers);
       
-      // Collect and log the response body for debugging
-      let responseBody = '';
-      proxyRes.on('data', (chunk) => {
-        responseBody += chunk;
-      });
-      
-      proxyRes.on('end', () => {
-        console.log('Backend API response body:', responseBody);
+      // Handling response appropriately based on request type
+      if (isSwaggerRequest) {
+        // For Swagger UI or OpenAPI schema, pipe the response directly without logging
+        // This avoids logging large response bodies
+        proxyRes.pipe(res);
+      } else {
+        // For regular API requests, collect and log the response body for debugging
+        let responseBody = '';
+        proxyRes.on('data', (chunk) => {
+          responseBody += chunk;
+        });
         
-        // Send the response to the client
-        res.end(responseBody);
-      });
+        proxyRes.on('end', () => {
+          // Log up to first 1000 characters to avoid huge log entries
+          const truncatedBody = responseBody.length > 1000 
+            ? responseBody.substring(0, 1000) + '...<response clipped>'
+            : responseBody;
+          
+          console.log('Backend API response body:', truncatedBody);
+          
+          // Send the response to the client
+          res.end(responseBody);
+        });
+      }
     });
     
     // Handle errors
