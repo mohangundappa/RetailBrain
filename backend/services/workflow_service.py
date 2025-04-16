@@ -400,13 +400,12 @@ class WorkflowService:
             workflow_id = workflow.get('id')
             
             # Get nodes data
-            nodes_result = await self.db.execute(
-                text("""
-                SELECT id, node_type, config, output_key
-                FROM workflow_nodes
-                WHERE workflow_id = :workflow_id::uuid
-                """).bindparams(workflow_id=workflow_id)
-            )
+            nodes_query = f"""
+            SELECT id, node_type, config, output_key
+            FROM workflow_nodes
+            WHERE workflow_id = '{workflow_id}'::uuid
+            """
+            nodes_result = await self.db.execute(text(nodes_query))
             
             nodes_data = await nodes_result.fetchall()
             
@@ -420,13 +419,12 @@ class WorkflowService:
                 prompt_content = None
                 if node_type == 'prompt' and config.get('prompt_id'):
                     prompt_id = config.get('prompt_id')
-                    prompt_result = await self.db.execute(
-                        text("""
-                        SELECT content
-                        FROM system_prompts
-                        WHERE id = :prompt_id::uuid
-                        """).bindparams(prompt_id=prompt_id)
-                    )
+                    prompt_query = f"""
+                    SELECT content
+                    FROM system_prompts
+                    WHERE id = '{prompt_id}'::uuid
+                    """
+                    prompt_result = await self.db.execute(text(prompt_query))
                     prompt_row = await prompt_result.fetchone()
                     if prompt_row:
                         prompt_content = prompt_row[0]
@@ -440,13 +438,12 @@ class WorkflowService:
                 }
             
             # Get edges data
-            edges_result = await self.db.execute(
-                text("""
-                SELECT source_node, target_node, condition
-                FROM workflow_edges
-                WHERE workflow_id = :workflow_id::uuid
-                """).bindparams(workflow_id=workflow_id)
-            )
+            edges_query = f"""
+            SELECT source_node, target_node, condition
+            FROM workflow_edges
+            WHERE workflow_id = '{workflow_id}'::uuid
+            """
+            edges_result = await self.db.execute(text(edges_query))
             
             edges_data = await edges_result.fetchall()
             
