@@ -23,6 +23,7 @@ from backend.endpoints.graph_chat import router as graph_chat_router  # LangGrap
 from backend.endpoints.chat.routes import router as chat_router  # Standard chat functionality
 from backend.endpoints.agent_builder import agent_builder_router  # Agent Builder functionality
 from backend.endpoints.workflow_driven_agents import workflow_router  # Workflow-driven agents functionality
+from backend.endpoints.agent_workflow import agent_workflow_router  # Agent workflow information functionality
 from backend.database.db import get_db
 
 # Utility function to sanitize database URLs for asyncpg
@@ -200,6 +201,7 @@ app.include_router(graph_chat_router, prefix=API_PREFIX)  # LangGraph-based chat
 app.include_router(chat_router, prefix=f"{API_PREFIX}/chat")  # Standard chat functionality
 app.include_router(agent_builder_router, prefix=API_PREFIX)  # Agent Builder functionality
 app.include_router(workflow_router, prefix=API_PREFIX)  # Workflow-driven agents functionality
+app.include_router(agent_workflow_router, prefix=API_PREFIX)  # Agent workflow information
 
 # API Documentation is available at /api/v1/docs
 # Root path now returns API information instead of redirecting to static files
