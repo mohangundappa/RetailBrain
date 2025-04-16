@@ -196,8 +196,11 @@ const server = http.createServer((req, res) => {
   }
   
   // Serve static assets for the React application (JavaScript, CSS, etc.)
-  if (pathname.startsWith('/static/') || pathname.includes('.js') || pathname.includes('.css') || 
-      pathname.includes('.png') || pathname.includes('.jpg') || pathname.includes('.svg')) {
+  // Skip API paths - they should always be proxied to the backend
+  if (!pathname.startsWith('/api/') && 
+      (pathname.startsWith('/static/') || pathname.includes('.js') || pathname.includes('.css') || 
+      pathname.includes('.png') || pathname.includes('.jpg') || pathname.includes('.svg') || 
+      pathname.includes('.json'))) {
     console.log(`Static asset request: ${pathname}`);
     
     // Try serving from the React app's src directory first
