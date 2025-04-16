@@ -1,0 +1,41 @@
+Core Design Principles for Multi-Agent Orchestration Platform
+
+1.  Dynamic Agent Configuration
+        -   Agents and tools are defined in database-driven or JSON-configurable formats
+        -   Enables dynamic provisioning, overrides, and A/B testing
+2.  LLM-Based Orchestration & Routing
+        -   Use zero-shot or few-shot prompting for task delegation and agent switching
+        -   Avoid rigid, rule-based logic in orchestration
+3.  Hierarchical Multi-Agent Collaboration
+        -   Introduce meta-agents to coordinate planner, executor, and specialist agents
+        -   Clearly define agent roles and responsibilities
+4.  LLM-First Entity Extraction & Tool Execution
+        -   Replace regex and static rules with LLM-driven extraction and decision-making
+        -   Let the LLM determine when and how to invoke tools
+5.  Scoped Memory with Mem0
+        -   Context managed using scoped memory (session, task, agent)
+        -   Support TTL (time-to-live) and memory lifecycle tagging
+6.  Conversation Guardrails at All Levels
+        -   Enforce guardrails at orchestration, agent, and tool levels
+        -   Include hallucination checks, PII filters, and fallback detection
+7.  Prompt Lifecycle Management
+        -   Prompts are version-controlled and structured with templates
+        -   Enable dynamic slot-filling and consistent prompt format
+8.  Single Unified Chat Interface
+        -   Centralized chat UI that routes across agents transparently to the user
+        -   Maintains multi-turn continuity regardless of agent switch
+9.  Support for Multi-Turn Recovery & Interruptions
+        -   Handle user clarifications, context shifts, and conversation recovery
+        -   Allow agents to pause, resume, and rewind conversations using memory
+10. Logging, Traceability & Explainability
+        -   Every agent/tool decision is logged with reasoning steps
+        -   Enable developer dashboards to debug flows visually
+11. Performance Monitoring & Retraining Signals
+        -   Track metrics like success rate, retry rate, fallback usage
+        -   Automatically flag underperforming agents for tuning
+12. Persona-Based Behavioral Control
+        -   Define agent personas (tone, formality, verbosity)
+        -   Load behavior dynamically based on user profile or team
+13. Code Quality & Cleanliness
+        -   Aggressively remove hardcoded logic or legacy code not aligned with principles
+        -   Enforce modular, testable, and clutter-free implementation
