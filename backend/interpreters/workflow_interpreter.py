@@ -1,491 +1,483 @@
 """
-Workflow Interpreter for database-stored workflows.
-This module loads and executes workflow graphs from the database.
+Workflow Interpreter for Staples Brain.
+
+This module provides a service for interpreting and executing workflows from a database.
+It builds workflow graphs from configuration and executes them with user input.
 """
 import logging
-from typing import Dict, Any, List, Optional
 import json
 import time
-from uuid import UUID
+from typing import Dict, Any, List, Optional, Union, Callable, TypeVar, Iterator
 
-from langchain.prompts import PromptTemplate
-from langchain.schema import BaseMessage, HumanMessage, SystemMessage
-from langgraph.graph import END, StateGraph
+from langchain.prompts import PromptTemplate, ChatPromptTemplate
+from langchain.schema import BaseMessage, HumanMessage, AIMessage, SystemMessage
+from langgraph.graph import StateGraph, END
+
+from sqlalchemy.ext.asyncio import AsyncSession
+from backend.interpreters.prompt_interpreter import PromptInterpreter
 
 logger = logging.getLogger(__name__)
 
+# Type definitions for state and nodes
+T = TypeVar('T')
+State = Dict[str, Any]
+NodeFn = Callable[[State], State]
+
 class WorkflowInterpreter:
     """
-    Loads and executes workflow graphs from the database.
-    Supports standard node types and conditional branching.
+    Service for interpreting and executing workflows from a database.
     """
     
-    def __init__(self, db_session):
+    def __init__(self, db_session: AsyncSession, llm_service=None):
         """
         Initialize the workflow interpreter.
         
         Args:
-            db_session: Database session for queries
+            db_session: Async database session
+            llm_service: Service for LLM interactions
         """
         self.db = db_session
-        self._workflow_cache = {}
-        self._node_functions = {
-            'prompt': self._execute_prompt_node,
-            'response': self._execute_response_node,
-            'extraction': self._execute_extraction_node,
-            'conditional': self._execute_conditional_node,
-            'tool': self._execute_tool_node,
-        }
-        
-    async def load_workflow(self, workflow_id: str) -> Dict[str, Any]:
-        """
-        Load a workflow and all its components from the database.
-        
-        Args:
-            workflow_id: UUID of the workflow to load
-            
-        Returns:
-            Dict containing complete workflow definition
-        """
-        if workflow_id in self._workflow_cache:
-            return self._workflow_cache[workflow_id]
-            
-        # Load workflow metadata
-        workflow_query = """
-            SELECT id, agent_id, name, description, version, entry_node
-            FROM workflows 
-            WHERE id = $1 AND is_active = true
-        """
-        
-        workflow = await self.db.fetchrow(workflow_query, workflow_id)
-        if not workflow:
-            raise ValueError(f"No active workflow found with ID {workflow_id}")
-            
-        workflow_data = dict(workflow)
-        
-        # Load nodes
-        nodes_query = """
-            SELECT id, name, node_type, function_name, system_prompt_id, 
-                   response_template, config
-            FROM workflow_nodes
-            WHERE workflow_id = $1
-        """
-        
-        nodes = await self.db.fetch(nodes_query, workflow_id)
-        
-        # Load edges
-        edges_query = """
-            SELECT id, source_node_id, target_node_id, condition_type, 
-                   condition_value, priority
-            FROM workflow_edges
-            WHERE workflow_id = $1
-            ORDER BY priority
-        """
-        
-        edges = await self.db.fetch(edges_query, workflow_id)
-        
-        # Build complete workflow
-        workflow_data['nodes'] = {str(node['id']): dict(node) for node in nodes}
-        
-        # Convert edges to an adjacency list
-        workflow_data['edges'] = {}
-        for edge in edges:
-            source_id = str(edge['source_node_id'])
-            target_id = str(edge['target_node_id']) if edge['target_node_id'] else 'END'
-            
-            if source_id not in workflow_data['edges']:
-                workflow_data['edges'][source_id] = []
-                
-            workflow_data['edges'][source_id].append({
-                'target': target_id,
-                'condition_type': edge['condition_type'],
-                'condition_value': edge['condition_value'],
-                'priority': edge['priority']
-            })
-            
-        self._workflow_cache[workflow_id] = workflow_data
-        return workflow_data
+        self.llm_service = llm_service
+        self.prompt_interpreter = PromptInterpreter(db_session)
+        logger.info("Initialized WorkflowInterpreter")
     
-    async def build_graph(self, workflow_data: Dict[str, Any], llm, interpreters) -> StateGraph:
+    async def build_graph(self, workflow_data: Dict[str, Any]) -> StateGraph:
         """
-        Build a StateGraph from workflow data.
+        Build a workflow graph from configuration data.
         
         Args:
-            workflow_data: Complete workflow definition
-            llm: LLM instance to use for execution
-            interpreters: Dict of interpreter instances
+            workflow_data: Workflow configuration data
             
         Returns:
-            Compiled StateGraph
+            StateGraph object
         """
-        # Define a simple state type for now
-        graph = StateGraph(Dict)
-        
-        # Add nodes to graph
-        for node_id, node in workflow_data['nodes'].items():
-            node_type = node['node_type']
-            
-            # Create node function for this node
-            async def node_func(state, node_id=node_id, node_type=node_type):
-                node_data = workflow_data['nodes'][node_id]
-                executor = self._node_functions.get(node_type)
-                if not executor:
-                    raise ValueError(f"Unknown node type: {node_type}")
-                    
-                return await executor(
-                    state=state,
-                    node=node_data,
-                    llm=llm,
-                    interpreters=interpreters,
-                    workflow=workflow_data
-                )
-                
-            graph.add_node(node_id, node_func)
-            
-        # Set entry point
-        entry_node = str(workflow_data['entry_node'])
-        graph.set_entry_point(entry_node)
-        
-        # Add edges
-        for source_id, edges in workflow_data['edges'].items():
-            for edge in edges:
-                target_id = edge['target']
-                condition_type = edge['condition_type']
-                
-                if condition_type == 'direct':
-                    # Direct edge
-                    if target_id == 'END':
-                        graph.add_edge(source_id, END)
-                    else:
-                        graph.add_edge(source_id, target_id)
-                elif condition_type == 'conditional':
-                    # Conditional edge
-                    condition_value = edge['condition_value']
-                    
-                    # Simple condition function
-                    def condition_func(state, cv=condition_value):
-                        # This is a simplistic condition - in a real implementation,
-                        # you'd want more sophisticated evaluation
-                        if 'extraction_results' in state:
-                            result = state['extraction_results'].get('result')
-                            if result == cv:
-                                return cv
-                        return None
-                    
-                    # Add conditional edge
-                    target = END if target_id == 'END' else target_id
-                    graph.add_conditional_edges(
-                        source_id,
-                        condition_func,
-                        {condition_value: target}
-                    )
-                    
-        return graph.compile()
-        
-    async def execute_workflow(self, workflow_data: Dict[str, Any], context: Dict[str, Any], 
-                              interpreters: Dict[str, Any], llm=None) -> Dict[str, Any]:
-        """
-        Execute a workflow using the provided context.
-        This is a simplified version for the implementation.
-        
-        Args:
-            workflow_data: Complete workflow definition
-            context: Execution context
-            interpreters: Dict of interpreter instances
-            llm: Optional LLM instance to use
-            
-        Returns:
-            Dict containing execution results
-        """
-        # Initialize state
-        state = {
-            'current_node': str(workflow_data['entry_node']),
-            'history': [],
-            'data': {},
-            'context': context,
-            'input': context.get('input', ''),
-            'output': '',
-            'memory': context.get('memory', {}),
-            'start_time': time.time()
-        }
-        
-        # Execute until we reach an end state or max iterations
-        max_iterations = 20
-        iterations = 0
-        
-        while state['current_node'] != 'END' and iterations < max_iterations:
-            iterations += 1
-            logger.debug(f"Executing node: {state['current_node']}")
-            
-            # Get current node
-            current_node_id = state['current_node']
-            if current_node_id not in workflow_data['nodes']:
-                raise ValueError(f"Node not found: {current_node_id}")
-                
-            node = workflow_data['nodes'][current_node_id]
-            state['history'].append(current_node_id)
-            
-            # Execute node based on type
-            node_type = node['node_type']
-            executor = self._node_functions.get(node_type)
-            
-            if not executor:
-                raise ValueError(f"Unknown node type: {node_type}")
-                
-            state = await executor(
-                state=state,
-                node=node,
-                llm=llm,
-                interpreters=interpreters,
-                workflow=workflow_data
-            )
-            
-            # Determine next node
-            if current_node_id in workflow_data['edges']:
-                # Check conditional edges first
-                conditional_transitions = [
-                    e for e in workflow_data['edges'][current_node_id] 
-                    if e['condition_type'] == 'conditional'
-                ]
-                
-                direct_transitions = [
-                    e for e in workflow_data['edges'][current_node_id] 
-                    if e['condition_type'] == 'direct'
-                ]
-                
-                next_node = None
-                
-                # Check conditional edges
-                if conditional_transitions and 'extraction_results' in state:
-                    result = state['extraction_results'].get('result')
-                    for edge in conditional_transitions:
-                        if edge['condition_value'] == result:
-                            next_node = edge['target']
-                            break
-                            
-                # If no condition matched, use direct transition
-                if next_node is None and direct_transitions:
-                    next_node = direct_transitions[0]['target']
-                    
-                if next_node:
-                    state['current_node'] = 'END' if next_node == 'END' else next_node
-                else:
-                    state['current_node'] = 'END'  # No transition, end
-            else:
-                state['current_node'] = 'END'  # No outgoing edges, end
-            
-        # Return final state
-        return {
-            'response': state.get('output', ''),
-            'data': state.get('data', {}),
-            'history': state.get('history', []),
-            'iterations': iterations,
-            'execution_time': time.time() - state['start_time']
-        }
-    
-    async def _execute_prompt_node(self, state: Dict[str, Any], node: Dict[str, Any], 
-                                 llm, interpreters: Dict[str, Any], workflow: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Execute a prompt node.
-        
-        Args:
-            state: Current workflow state
-            node: Node definition
-            llm: LLM instance
-            interpreters: Dict of interpreter instances
-            workflow: Workflow definition
-            
-        Returns:
-            Updated state
-        """
-        if not llm:
-            raise ValueError("LLM required for prompt node execution")
-            
-        prompt_id = node.get('system_prompt_id')
-        if not prompt_id:
-            raise ValueError(f"No system prompt ID specified for node {node['id']}")
-            
-        prompt_interpreter = interpreters.get('prompt')
-        if not prompt_interpreter:
-            raise ValueError("Prompt interpreter required")
-            
-        # Load prompt data
-        prompt_data = await prompt_interpreter.load_prompt(str(prompt_id))
-        
-        # Process variables
-        variables = {
-            'input': state.get('input', ''),
-            'context': state.get('context', {}),
-            'memory': state.get('memory', {})
-        }
-        
-        # Get processed prompt
-        prompt_content = prompt_interpreter.process_prompt(prompt_data, variables)
-        
-        # Call LLM with the prompt
-        messages = [
-            SystemMessage(content=prompt_content),
-            HumanMessage(content=state.get('input', ''))
-        ]
-        
-        response = await llm.agenerate_response(messages)
-        
-        # Update state
-        state['data']['prompt_response'] = response
-        state['output'] = response
-        
-        return state
-        
-    async def _execute_response_node(self, state: Dict[str, Any], node: Dict[str, Any], 
-                                   llm, interpreters: Dict[str, Any], workflow: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Execute a response node.
-        
-        Args:
-            state: Current workflow state
-            node: Node definition
-            llm: LLM instance
-            interpreters: Dict of interpreter instances
-            workflow: Workflow definition
-            
-        Returns:
-            Updated state
-        """
-        template = node.get('response_template', '')
-        
-        if not template:
-            # No template, just use previous output
-            return state
-            
-        # Simple template processing
-        variables = {
-            'input': state.get('input', ''),
-            'context': state.get('context', {}),
-            'memory': state.get('memory', {}),
-            'data': state.get('data', {})
-        }
-        
-        # Very basic template substitution
-        output = template
-        for key, value in variables.items():
-            if isinstance(value, dict):
-                for subkey, subvalue in value.items():
-                    placeholder = f"{{{key}.{subkey}}}"
-                    if placeholder in output:
-                        output = output.replace(placeholder, str(subvalue))
-            else:
-                placeholder = f"{{{key}}}"
-                if placeholder in output:
-                    output = output.replace(placeholder, str(value))
-                    
-        state['output'] = output
-        return state
-        
-    async def _execute_extraction_node(self, state: Dict[str, Any], node: Dict[str, Any], 
-                                     llm, interpreters: Dict[str, Any], workflow: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Execute an extraction node.
-        
-        Args:
-            state: Current workflow state
-            node: Node definition
-            llm: LLM instance
-            interpreters: Dict of interpreter instances
-            workflow: Workflow definition
-            
-        Returns:
-            Updated state
-        """
-        if not llm:
-            raise ValueError("LLM required for extraction node")
-            
-        prompt_id = node.get('system_prompt_id')
-        if not prompt_id:
-            raise ValueError(f"No extraction prompt ID specified for node {node['id']}")
-            
-        prompt_interpreter = interpreters.get('prompt')
-        if not prompt_interpreter:
-            raise ValueError("Prompt interpreter required")
-            
-        # Load prompt data
-        prompt_data = await prompt_interpreter.load_prompt(str(prompt_id))
-        
-        # Process variables
-        variables = {
-            'input': state.get('input', ''),
-            'context': state.get('context', {}),
-            'memory': state.get('memory', {})
-        }
-        
-        # Get processed prompt
-        prompt_content = prompt_interpreter.process_prompt(prompt_data, variables)
-        
-        # Call LLM with the prompt
-        messages = [
-            SystemMessage(content=prompt_content),
-            HumanMessage(content=state.get('input', ''))
-        ]
-        
-        extraction_result = await llm.agenerate_response(messages)
-        
-        # Parse extraction results
-        # Assume extraction returns a JSON string
         try:
-            result = json.loads(extraction_result)
-        except:
-            # If not valid JSON, use as-is
-            result = {'result': extraction_result}
+            # Extract workflow components
+            nodes = workflow_data.get('nodes', {})
+            edges = workflow_data.get('edges', {})
+            entry_node = workflow_data.get('entry_node')
             
-        # Update state
-        state['extraction_results'] = result
-        state['data']['extraction'] = result
-        
-        return state
-        
-    async def _execute_conditional_node(self, state: Dict[str, Any], node: Dict[str, Any], 
-                                       llm, interpreters: Dict[str, Any], workflow: Dict[str, Any]) -> Dict[str, Any]:
+            if not nodes or not entry_node:
+                raise ValueError("Workflow must have nodes and an entry node")
+            
+            # Create node functions
+            node_functions = {}
+            for node_id, node_config in nodes.items():
+                node_functions[node_id] = await self._create_node_function(node_id, node_config)
+            
+            # Create workflow graph
+            workflow = StateGraph(nodes=node_functions)
+            
+            # Add edges
+            for edge_id, edge_config in edges.items():
+                source = edge_config.get('source')
+                target = edge_config.get('target')
+                condition = edge_config.get('condition')
+                
+                if not source or not target:
+                    logger.warning(f"Edge {edge_id} missing source or target")
+                    continue
+                
+                if condition:
+                    # Conditional edge
+                    workflow.add_conditional_edges(
+                        source,
+                        self._create_edge_condition(condition),
+                        {
+                            True: target,
+                            False: edge_config.get('fallback', END)
+                        }
+                    )
+                else:
+                    # Direct edge
+                    workflow.add_edge(source, target)
+            
+            # Compile the graph
+            return workflow.compile()
+        except Exception as e:
+            logger.error(f"Error building workflow graph: {str(e)}", exc_info=True)
+            raise
+    
+    async def _create_node_function(self, node_id: str, node_config: Dict[str, Any]) -> NodeFn:
         """
-        Execute a conditional node.
+        Create a function for a workflow node.
         
         Args:
-            state: Current workflow state
-            node: Node definition
-            llm: LLM instance
-            interpreters: Dict of interpreter instances
-            workflow: Workflow definition
+            node_id: ID of the node
+            node_config: Node configuration
             
         Returns:
-            Updated state
+            Node function
         """
-        # This is a placeholder - in a real implementation, 
-        # you'd evaluate conditions based on the state
-        config = node.get('config', {})
-        condition_field = config.get('condition_field', '')
+        node_type = node_config.get('type', 'prompt')
         
-        # No actual execution, just passthrough
-        return state
-        
-    async def _execute_tool_node(self, state: Dict[str, Any], node: Dict[str, Any], 
-                               llm, interpreters: Dict[str, Any], workflow: Dict[str, Any]) -> Dict[str, Any]:
+        if node_type == 'prompt':
+            # Create a prompt node function
+            return await self._create_prompt_node(node_id, node_config)
+        elif node_type == 'function':
+            # Create a function node
+            return await self._create_function_node(node_id, node_config)
+        elif node_type == 'condition':
+            # Create a condition node
+            return await self._create_condition_node(node_id, node_config)
+        elif node_type == 'tool':
+            # Create a tool node
+            return await self._create_tool_node(node_id, node_config)
+        else:
+            raise ValueError(f"Unknown node type: {node_type}")
+    
+    async def _create_prompt_node(self, node_id: str, node_config: Dict[str, Any]) -> NodeFn:
         """
-        Execute a tool node.
+        Create a function for a prompt node.
         
         Args:
-            state: Current workflow state
-            node: Node definition
-            llm: LLM instance
-            interpreters: Dict of interpreter instances
-            workflow: Workflow definition
+            node_id: ID of the node
+            node_config: Node configuration
             
         Returns:
-            Updated state
+            Node function
         """
-        # This is a placeholder - in a real implementation, 
-        # you'd call registered tools from a tool registry
-        function_name = node.get('function_name', '')
-        config = node.get('config', {})
+        prompt_id = node_config.get('prompt_id')
+        inline_prompt = node_config.get('prompt')
+        output_key = node_config.get('output_key', 'response')
         
-        logger.info(f"Would execute tool: {function_name} with config: {config}")
+        async def node_function(state: State) -> State:
+            context = state.get('context', {})
+            
+            try:
+                # Get the prompt content
+                prompt_content = None
+                if prompt_id:
+                    # Use stored prompt
+                    prompt_content = await self.prompt_interpreter.interpret_prompt(prompt_id, context)
+                elif inline_prompt:
+                    # Use inline prompt
+                    prompt_content = await self.prompt_interpreter.interpret_inline_prompt(inline_prompt, context)
+                else:
+                    raise ValueError(f"Node {node_id} missing prompt_id or prompt")
+                
+                # Create a formatted prompt for the LLM
+                messages = [
+                    SystemMessage(content=prompt_content),
+                    HumanMessage(content=state.get('input_message', ''))
+                ]
+                
+                # Get LLM response
+                response = await self._get_llm_response(messages)
+                
+                # Update state with response
+                new_state = state.copy()
+                new_state[output_key] = response
+                
+                # Add to history
+                history = new_state.get('history', [])
+                history.append({
+                    'node': node_id,
+                    'prompt': prompt_content,
+                    'input': state.get('input_message', ''),
+                    'response': response,
+                    'timestamp': time.time()
+                })
+                new_state['history'] = history
+                
+                return new_state
+            except Exception as e:
+                logger.error(f"Error executing prompt node {node_id}: {str(e)}", exc_info=True)
+                # Return state with error
+                new_state = state.copy()
+                new_state['error'] = str(e)
+                return new_state
         
-        # No actual execution for now, just passthrough
+        return node_function
+    
+    async def _create_function_node(self, node_id: str, node_config: Dict[str, Any]) -> NodeFn:
+        """
+        Create a function for a function node.
+        
+        Args:
+            node_id: ID of the node
+            node_config: Node configuration
+            
+        Returns:
+            Node function
+        """
+        function_name = node_config.get('function_name')
+        output_key = node_config.get('output_key', 'function_result')
+        
+        # This is a simple placeholder for functions
+        # In a real implementation, you'd register functions and look them up by name
+        
+        async def node_function(state: State) -> State:
+            new_state = state.copy()
+            
+            # In a real implementation, you'd execute the function here
+            # For now, just add a placeholder result
+            new_state[output_key] = f"Function {function_name} executed"
+            
+            # Add to history
+            history = new_state.get('history', [])
+            history.append({
+                'node': node_id,
+                'function': function_name,
+                'result': new_state[output_key],
+                'timestamp': time.time()
+            })
+            new_state['history'] = history
+            
+            return new_state
+        
+        return node_function
+    
+    async def _create_condition_node(self, node_id: str, node_config: Dict[str, Any]) -> NodeFn:
+        """
+        Create a function for a condition node.
+        
+        Args:
+            node_id: ID of the node
+            node_config: Node configuration
+            
+        Returns:
+            Node function
+        """
+        condition = node_config.get('condition')
+        output_key = node_config.get('output_key', 'condition_result')
+        
+        async def node_function(state: State) -> State:
+            new_state = state.copy()
+            
+            # Evaluate condition
+            # This is a simple implementation that just checks for a fixed condition
+            # In a real implementation, you'd evaluate the condition expression
+            
+            result = False  # Default to false
+            try:
+                # Simple condition check based on state keys
+                if condition == 'has_error':
+                    result = 'error' in state
+                elif condition.startswith('contains:'):
+                    # Check if a value contains a substring
+                    key, value = condition.split(':', 1)[1].split('=', 1)
+                    result = value in state.get(key, '')
+                elif condition.startswith('equals:'):
+                    # Check if a value equals a string
+                    key, value = condition.split(':', 1)[1].split('=', 1)
+                    result = state.get(key, '') == value
+                else:
+                    # Unknown condition
+                    logger.warning(f"Unknown condition: {condition}")
+            except Exception as e:
+                logger.error(f"Error evaluating condition: {str(e)}")
+            
+            new_state[output_key] = result
+            
+            # Add to history
+            history = new_state.get('history', [])
+            history.append({
+                'node': node_id,
+                'condition': condition,
+                'result': result,
+                'timestamp': time.time()
+            })
+            new_state['history'] = history
+            
+            return new_state
+        
+        return node_function
+    
+    async def _create_tool_node(self, node_id: str, node_config: Dict[str, Any]) -> NodeFn:
+        """
+        Create a function for a tool node.
+        
+        Args:
+            node_id: ID of the node
+            node_config: Node configuration
+            
+        Returns:
+            Node function
+        """
+        tool_name = node_config.get('tool_name')
+        output_key = node_config.get('output_key', 'tool_result')
+        
+        # This is a simple placeholder for tools
+        # In a real implementation, you'd register tools and look them up by name
+        
+        async def node_function(state: State) -> State:
+            new_state = state.copy()
+            
+            # In a real implementation, you'd execute the tool here
+            # For now, just add a placeholder result
+            new_state[output_key] = f"Tool {tool_name} executed"
+            
+            # Add to history
+            history = new_state.get('history', [])
+            history.append({
+                'node': node_id,
+                'tool': tool_name,
+                'result': new_state[output_key],
+                'timestamp': time.time()
+            })
+            new_state['history'] = history
+            
+            return new_state
+        
+        return node_function
+    
+    def _create_edge_condition(self, condition: Dict[str, Any]) -> Callable[[State], bool]:
+        """
+        Create a condition function for an edge.
+        
+        Args:
+            condition: Condition configuration
+            
+        Returns:
+            Condition function
+        """
+        def condition_function(state: State) -> bool:
+            # Simple condition check based on state keys
+            if 'key' in condition and 'value' in condition:
+                # Check if the key has the specified value
+                key = condition['key']
+                value = condition['value']
+                return state.get(key) == value
+            elif 'key' in condition:
+                # Check if the key exists and is truthy
+                return bool(state.get(condition['key']))
+            else:
+                # Unknown condition, default to true
+                return True
+        
+        return condition_function
+    
+    async def _get_llm_response(self, messages: List[BaseMessage]) -> str:
+        """
+        Get a response from the LLM.
+        
+        Args:
+            messages: List of messages for the LLM
+            
+        Returns:
+            LLM response
+        """
+        if not self.llm_service:
+            # Mock response for testing
+            return "I'm a placeholder response. LLM service not configured."
+        
+        # Use the LLM service to get a response
+        response = await self.llm_service.generate_response(messages)
+        return response
+    
+    async def execute_workflow(
+        self, 
+        workflow_data: Dict[str, Any], 
+        input_message: str,
+        context: Dict[str, Any] = None
+    ) -> Dict[str, Any]:
+        """
+        Execute a workflow with the given input.
+        
+        Args:
+            workflow_data: Workflow configuration data
+            input_message: User input message
+            context: Additional context data
+            
+        Returns:
+            Execution result
+        """
+        try:
+            # Build the workflow graph
+            graph = await self.build_graph(workflow_data)
+            
+            # Prepare initial state
+            initial_state = {
+                'input_message': input_message,
+                'context': context or {},
+                'history': [],
+                'iterations': 0
+            }
+            
+            # Execute the graph
+            # For a real implementation, you'd use the graph's arun method
+            # For now, we'll simulate the execution
+            
+            # Simulate graph execution
+            result = await self._simulate_graph_execution(workflow_data, initial_state)
+            
+            # Return execution result
+            return {
+                'response': result.get('response', ''),
+                'history': result.get('history', []),
+                'iterations': result.get('iterations', 0),
+                'state': result
+            }
+        except Exception as e:
+            logger.error(f"Error executing workflow: {str(e)}", exc_info=True)
+            raise
+    
+    async def _simulate_graph_execution(
+        self, 
+        workflow_data: Dict[str, Any], 
+        initial_state: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """
+        Simulate the execution of a workflow graph.
+        
+        Args:
+            workflow_data: Workflow configuration data
+            initial_state: Initial state for the graph
+            
+        Returns:
+            Final state after execution
+        """
+        # Extract workflow components
+        nodes = workflow_data.get('nodes', {})
+        edges = workflow_data.get('edges', {})
+        entry_node = workflow_data.get('entry_node')
+        
+        state = initial_state.copy()
+        current_node = entry_node
+        max_iterations = 10  # Prevent infinite loops
+        
+        # Execute nodes until we reach an end state or max iterations
+        for i in range(max_iterations):
+            state['iterations'] = i + 1
+            
+            if current_node is None or current_node == 'END':
+                break
+                
+            # Execute the current node
+            node_config = nodes.get(current_node)
+            if not node_config:
+                logger.warning(f"Node {current_node} not found")
+                break
+                
+            # Create and execute the node function
+            node_fn = await self._create_node_function(current_node, node_config)
+            state = await node_fn(state)
+            
+            # Find the next node
+            next_node = None
+            for edge_id, edge_config in edges.items():
+                if edge_config.get('source') == current_node:
+                    condition = edge_config.get('condition')
+                    if condition:
+                        # Check condition
+                        condition_fn = self._create_edge_condition(condition)
+                        if condition_fn(state):
+                            next_node = edge_config.get('target')
+                        else:
+                            next_node = edge_config.get('fallback')
+                    else:
+                        # Direct edge
+                        next_node = edge_config.get('target')
+                    
+                    if next_node:
+                        break
+            
+            # Update current node
+            current_node = next_node
+            
+            # If next node is END, break
+            if current_node == 'END' or current_node is None:
+                break
+        
         return state

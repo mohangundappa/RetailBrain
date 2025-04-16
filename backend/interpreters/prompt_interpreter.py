@@ -1,130 +1,203 @@
 """
-Prompt Interpreter for database-stored system prompts.
-This module loads, caches, and processes system prompts from the database.
+Prompt Interpreter for Staples Brain.
+
+This module provides a service for interpreting and executing prompts from a database.
+It supports template variables and context substitution.
 """
 import logging
-from typing import Dict, Optional, Any, List
 import json
+import re
+from typing import Dict, Any, List, Optional, Union
+
+from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
 
 class PromptInterpreter:
     """
-    Loads and processes system prompts from the database.
-    Provides caching and variable substitution capabilities.
+    Service for interpreting and executing prompts from a database.
     """
     
-    def __init__(self, db_session):
+    def __init__(self, db_session: AsyncSession):
         """
         Initialize the prompt interpreter.
         
         Args:
-            db_session: Database session for queries
+            db_session: Async database session
         """
         self.db = db_session
-        self._prompt_cache = {}
-        
-    async def load_prompt(self, prompt_id: str) -> Dict[str, Any]:
+        logger.info("Initialized PromptInterpreter")
+    
+    async def get_prompt(self, prompt_id: str) -> Dict[str, Any]:
         """
-        Load a specific prompt by ID.
+        Get a prompt by ID.
         
         Args:
-            prompt_id: UUID of the prompt to load
+            prompt_id: ID of the prompt
             
         Returns:
-            Dict containing prompt data
+            Prompt data
         """
-        if prompt_id in self._prompt_cache:
-            return self._prompt_cache[prompt_id]
+        try:
+            # Get prompt from database
+            result = await self.db.execute(
+                """
+                SELECT id, name, content, template_variables, created_at, updated_at
+                FROM system_prompts
+                WHERE id = $1
+                """,
+                prompt_id
+            )
             
-        query = """
-            SELECT id, agent_id, prompt_type, content, description, 
-                   version, variables
-            FROM system_prompts 
-            WHERE id = $1 AND is_active = true
-        """
-        
-        result = await self.db.fetchrow(query, prompt_id)
-        if not result:
-            raise ValueError(f"No active prompt found with ID {prompt_id}")
+            row = result.fetchone()
+            if not row:
+                return None
+                
+            # Parse template variables
+            template_vars = json.loads(row[3]) if row[3] else []
             
-        prompt_data = dict(result)
-        self._prompt_cache[prompt_id] = prompt_data
-        return prompt_data
-        
-    async def load_agent_prompts(self, agent_id: str) -> Dict[str, Dict[str, Any]]:
+            # Return prompt data
+            return {
+                'id': row[0],
+                'name': row[1],
+                'content': row[2],
+                'template_variables': template_vars,
+                'created_at': row[4].isoformat() if row[4] else None,
+                'updated_at': row[5].isoformat() if row[5] else None
+            }
+        except Exception as e:
+            logger.error(f"Error getting prompt {prompt_id}: {str(e)}", exc_info=True)
+            raise
+    
+    def _substitute_variables(self, prompt_content: str, context: Dict[str, Any]) -> str:
         """
-        Load all prompts for a specific agent.
+        Substitute variables in a prompt template.
         
         Args:
-            agent_id: UUID of the agent to load prompts for
+            prompt_content: Prompt template content
+            context: Context data with variable values
             
         Returns:
-            Dict of prompt_type -> prompt_data
+            Prompt with variables substituted
         """
-        query = """
-            SELECT id, agent_id, prompt_type, content, description, 
-                   version, variables
-            FROM system_prompts 
-            WHERE agent_id = $1 AND is_active = true
+        # Simple variable substitution with {{variable_name}}
+        pattern = r'{{([^{}]+)}}'
+        
+        def replace_var(match):
+            var_name = match.group(1).strip()
+            if var_name in context:
+                return str(context[var_name])
+            else:
+                logger.warning(f"Variable {var_name} not found in context")
+                return f"{{{{MISSING:{var_name}}}}}"
+        
+        # Replace all variables in the prompt
+        return re.sub(pattern, replace_var, prompt_content)
+    
+    async def interpret_prompt(
+        self, 
+        prompt_id: str, 
+        context: Dict[str, Any]
+    ) -> str:
         """
-        
-        results = await self.db.fetch(query, agent_id)
-        
-        prompts = {}
-        for record in results:
-            prompt_data = dict(record)
-            prompt_type = prompt_data['prompt_type']
-            self._prompt_cache[prompt_data['id']] = prompt_data
-            prompts[prompt_type] = prompt_data
-            
-        return prompts
-        
-    async def get_prompt_by_type(self, agent_id: str, prompt_type: str) -> Dict[str, Any]:
-        """
-        Get a specific prompt by type for an agent.
+        Interpret a prompt with the given context.
         
         Args:
-            agent_id: UUID of the agent
-            prompt_type: Type of prompt to retrieve
+            prompt_id: ID of the prompt to interpret
+            context: Context data for variable substitution
             
         Returns:
-            Dict containing prompt data
+            Interpreted prompt content
         """
-        query = """
-            SELECT id, agent_id, prompt_type, content, description, 
-                   version, variables
-            FROM system_prompts 
-            WHERE agent_id = $1 AND prompt_type = $2 AND is_active = true
-            ORDER BY version DESC LIMIT 1
-        """
-        
-        result = await self.db.fetchrow(query, agent_id, prompt_type)
-        if not result:
-            raise ValueError(f"No active {prompt_type} prompt found for agent {agent_id}")
+        try:
+            # Get prompt data
+            prompt_data = await self.get_prompt(prompt_id)
+            if not prompt_data:
+                raise ValueError(f"Prompt with ID {prompt_id} not found")
             
-        prompt_data = dict(result)
-        self._prompt_cache[prompt_data['id']] = prompt_data
-        return prompt_data
-        
-    def process_prompt(self, prompt: Dict[str, Any], variables: Optional[Dict[str, Any]] = None) -> str:
+            # Substitute variables
+            prompt_content = self._substitute_variables(prompt_data['content'], context)
+            
+            return prompt_content
+        except Exception as e:
+            logger.error(f"Error interpreting prompt {prompt_id}: {str(e)}", exc_info=True)
+            raise
+    
+    async def interpret_inline_prompt(
+        self, 
+        prompt_content: str, 
+        context: Dict[str, Any]
+    ) -> str:
         """
-        Process a prompt by substituting variables.
+        Interpret an inline prompt with the given context.
         
         Args:
-            prompt: Prompt data dictionary
-            variables: Variables to substitute in the prompt
+            prompt_content: Prompt template content
+            context: Context data for variable substitution
             
         Returns:
-            Processed prompt string
+            Interpreted prompt content
         """
-        content = prompt['content']
+        try:
+            # Substitute variables
+            return self._substitute_variables(prompt_content, context)
+        except Exception as e:
+            logger.error(f"Error interpreting inline prompt: {str(e)}", exc_info=True)
+            raise
+            
+    async def create_prompt(
+        self, 
+        name: str, 
+        content: str, 
+        template_variables: List[str] = None
+    ) -> Dict[str, Any]:
+        """
+        Create a new prompt.
         
-        if variables:
-            # Simple variable substitution
-            for key, value in variables.items():
-                placeholder = f"{{{key}}}"
-                if placeholder in content:
-                    content = content.replace(placeholder, str(value))
-                    
-        return content
+        Args:
+            name: Name of the prompt
+            content: Prompt template content
+            template_variables: List of template variable names
+            
+        Returns:
+            Created prompt data
+        """
+        import uuid
+        from datetime import datetime
+        
+        try:
+            prompt_id = str(uuid.uuid4())
+            now = datetime.utcnow().isoformat()
+            
+            # Store prompt in database
+            await self.db.execute(
+                """
+                INSERT INTO system_prompts (id, name, content, template_variables, 
+                                          created_at, updated_at)
+                VALUES ($1, $2, $3, $4, $5, $6)
+                """,
+                prompt_id,
+                name,
+                content,
+                json.dumps(template_variables or []),
+                now,
+                now
+            )
+            
+            # Commit the transaction
+            await self.db.commit()
+            
+            # Return created prompt
+            return {
+                'id': prompt_id,
+                'name': name,
+                'content': content,
+                'template_variables': template_variables or [],
+                'created_at': now,
+                'updated_at': now
+            }
+        except Exception as e:
+            # Rollback transaction
+            await self.db.rollback()
+            logger.error(f"Error creating prompt: {str(e)}", exc_info=True)
+            raise

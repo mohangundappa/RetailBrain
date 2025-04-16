@@ -199,6 +199,7 @@ app.include_router(api_router, prefix=API_PREFIX)
 app.include_router(graph_chat_router, prefix=API_PREFIX)  # LangGraph-based chat functionality
 app.include_router(chat_router, prefix=f"{API_PREFIX}/chat")  # Standard chat functionality
 app.include_router(agent_builder_router, prefix=API_PREFIX)  # Agent Builder functionality
+app.include_router(workflow_router, prefix=API_PREFIX)  # Workflow-driven agents functionality
 
 # API Documentation is available at /api/v1/docs
 # Root path now returns API information instead of redirecting to static files
