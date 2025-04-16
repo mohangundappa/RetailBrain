@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Container, Row, Col, Card, ListGroup, Badge, Button, Spinner, Tabs, Tab, Modal, Form } from 'react-bootstrap';
 import FeatherIcon from 'feather-icons-react';
 import { agentService } from '../api/apiService';
+import workflowService from '../services/workflow-service';
 
 const AgentsPage = () => {
   const [agents, setAgents] = useState([]);
