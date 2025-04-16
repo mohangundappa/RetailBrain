@@ -11,6 +11,7 @@ from datetime import datetime
 from typing import Dict, Any, List, Optional, Union, Tuple
 
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import text
 
 logger = logging.getLogger(__name__)
 
@@ -105,7 +106,7 @@ class WorkflowService:
             logger.error(f"Error creating workflow for agent {agent_id}: {str(e)}", exc_info=True)
             raise
     
-    async def get_workflow(self, workflow_id: str) -> Dict[str, Any]:
+    async def get_workflow(self, workflow_id: str) -> Optional[Dict[str, Any]]:
         """
         Get a workflow by ID.
         
@@ -113,7 +114,7 @@ class WorkflowService:
             workflow_id: ID of the workflow
             
         Returns:
-            Workflow data
+            Workflow data or None if not found
         """
         try:
             # Get workflow from database
@@ -152,7 +153,7 @@ class WorkflowService:
             logger.error(f"Error getting workflow {workflow_id}: {str(e)}", exc_info=True)
             raise
     
-    async def update_workflow(self, workflow_id: str, updates: Dict[str, Any]) -> Dict[str, Any]:
+    async def update_workflow(self, workflow_id: str, updates: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """
         Update a workflow.
         
@@ -161,7 +162,7 @@ class WorkflowService:
             updates: Updated workflow data
             
         Returns:
-            Updated workflow data
+            Updated workflow data or None if workflow not found
         """
         try:
             now = datetime.utcnow().isoformat()
@@ -350,13 +351,12 @@ class WorkflowService:
         try:
             # Get workflows from database
             result = await self.db.execute(
-                """
+                text("""
                 SELECT id, name, description, entry_node, created_at, updated_at
                 FROM workflows
-                WHERE agent_id = $1
+                WHERE agent_id = :agent_id
                 ORDER BY created_at DESC
-                """,
-                agent_id
+                """).bindparams(agent_id=agent_id)
             )
             
             workflows = []
@@ -377,7 +377,7 @@ class WorkflowService:
             logger.error(f"Error getting workflows for agent {agent_id}: {str(e)}", exc_info=True)
             raise
             
-    async def get_workflow_data_for_agent(self, agent_id: str) -> Dict[str, Any]:
+    async def get_workflow_data_for_agent(self, agent_id: str) -> Optional[Dict[str, Any]]:
         """
         Get the primary workflow data for an agent, including nodes, edges, and prompts.
         Specifically designed for frontend display purposes.
@@ -386,7 +386,7 @@ class WorkflowService:
             agent_id: ID of the agent
             
         Returns:
-            Workflow data with detailed node information
+            Workflow data with detailed node information or None if no workflow found
         """
         try:
             # Get the latest workflow for this agent
@@ -402,12 +402,11 @@ class WorkflowService:
             
             # Get nodes data
             nodes_result = await self.db.execute(
-                """
+                text("""
                 SELECT id, node_type, config, output_key
                 FROM workflow_nodes
-                WHERE workflow_id = $1
-                """,
-                workflow_id
+                WHERE workflow_id = :workflow_id
+                """).bindparams(workflow_id=workflow_id)
             )
             
             nodes_data = await nodes_result.fetchall()
@@ -423,12 +422,12 @@ class WorkflowService:
                 if node_type == 'prompt' and config.get('prompt_id'):
                     prompt_id = config.get('prompt_id')
                     prompt_result = await self.db.execute(
-                        """
+                        text("""
                         SELECT content
                         FROM system_prompts
                         WHERE id = $1
-                        """,
-                        prompt_id
+                        """),
+                        {'1': prompt_id}
                     )
                     prompt_row = await prompt_result.fetchone()
                     if prompt_row:
@@ -444,12 +443,12 @@ class WorkflowService:
             
             # Get edges data
             edges_result = await self.db.execute(
-                """
+                text("""
                 SELECT source_node, target_node, condition
                 FROM workflow_edges
                 WHERE workflow_id = $1
-                """,
-                workflow_id
+                """),
+                {'1': workflow_id}
             )
             
             edges_data = await edges_result.fetchall()
