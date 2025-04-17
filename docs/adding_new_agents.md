@@ -13,11 +13,20 @@ Adding a new agent involves:
 ## Step 1: Define the Agent in the Database
 
 New agents can be added through:
-- The Agent Builder API
+- The Agent Builder API (`/api/v1/agent-builder/agents`)
 - Direct database insertion
 - Admin UI (if available)
 
 ### Using the Agent Builder API
+
+The agent builder API provides endpoints for managing agent definitions:
+
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `/api/v1/agent-builder/agents` | POST | Create a new agent definition |
+| `/api/v1/agent-builder/agents/{agent_id}` | GET | Retrieve agent details |
+| `/api/v1/agent-builder/agents/{agent_id}` | PATCH | Update agent definition |
+| `/api/v1/agent-builder/agents/{agent_id}/patterns` | POST | Add pattern capabilities |
 
 ```python
 import aiohttp

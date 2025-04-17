@@ -17,11 +17,49 @@ The orchestrator is the central component of the Staples Brain system responsibl
 | **AgentFactory** | Creates agent instances from database definitions |
 | **StateGraph** | LangGraph workflow defining execution flow between agents |
 
+## API Integration
+
+The orchestrator is accessible through these main endpoints:
+
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `/api/v1/graph-chat/chat` | POST | Main chat endpoint that processes user messages through orchestrator |
+| `/api/v1/graph-chat/execute-agent` | POST | Directly executes a specific agent, bypassing routing |
+
+### Chat Request Format
+
+```json
+{
+  "message": "I need to reset my password",
+  "session_id": "user-123-session",
+  "context": {
+    "customer_id": "cust-456",
+    "previous_agents": ["general_conversation"]
+  }
+}
+```
+
+### Chat Response Format
+
+```json
+{
+  "success": true,
+  "response": {
+    "message": "I can help you reset your password. First, please tell me the email address associated with your account.",
+    "type": "text"
+  },
+  "conversation_id": "conv-789",
+  "external_conversation_id": "ext-123",
+  "observability_trace_id": "trace-456"
+}
+```
+
 ## Agent Selection Flow
 
 1. **Initial Processing**
-   - User message is received via API
-   - Message is preprocessed and enriched with session context
+   - User message is received via the `/api/v1/graph-chat/chat` endpoint
+   - Message is validated and parsed by FastAPI using the `GraphChatRequest` model
+   - `GraphBrainService.process_message()` is called with the message, session_id, and context
 
 2. **Intent Detection (Intent-First Approach)**
    - System first tries to identify specific intents via keywords

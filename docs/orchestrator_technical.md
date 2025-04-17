@@ -135,14 +135,69 @@ The orchestration system manages several types of state:
    self.agent_state = {}
    ```
 
+### API Models
+
+The orchestrator uses well-defined API models for request and response handling:
+
+```python
+class GraphChatRequest(BaseModel):
+    """Request model for graph chat"""
+    message: str = Field(..., description="User message")
+    session_id: str = Field(..., description="Session ID")
+    context: Optional[Dict[str, Any]] = Field(None, description="Additional context")
+
+class ResponseContent(BaseModel):
+    """Content model for response"""
+    message: str = Field(..., description="Response message text")
+    type: str = Field("text", description="Response content type")
+
+class GraphChatResponse(BaseModel):
+    """Response model for graph chat"""
+    success: bool = Field(..., description="Whether the request was successful")
+    response: ResponseContent = Field(..., description="Response content")
+    conversation_id: Optional[str] = Field(None, description="ID of the conversation")
+    external_conversation_id: Optional[str] = Field(None, description="External ID of the conversation")
+    observability_trace_id: Optional[str] = Field(None, description="Observability trace ID")
+    error: Optional[str] = Field(None, description="Error message if applicable")
+
+class DirectAgentRequest(GraphChatRequest):
+    """Request model for direct agent execution"""
+    agent_id: str = Field(..., description="ID of the agent to execute")
+```
+
 ### Execution Flow
 
-1. Message received through API endpoint
-2. `GraphBrainService.process_message()` initializes state
+1. Message received through `/api/v1/graph-chat/chat` endpoint
+   ```python
+   @router.post("/chat", response_model=GraphChatResponse)
+   async def graph_chat(
+       request: GraphChatRequest,
+       brain_service: GraphBrainService = Depends(get_graph_brain_service)
+   ):
+       """Process a chat message using the LangGraph-based brain service."""
+       return await _process_graph_chat_request(request, brain_service)
+   ```
+
+2. `_process_graph_chat_request()` calls `GraphBrainService.process_message()` with the message, session_id, and context
+   ```python
+   async def _process_graph_chat_request(
+       request: GraphChatRequest,
+       brain_service: GraphBrainService
+   ) -> GraphChatResponse:
+       """Process a chat request using the LangGraph brain service."""
+       result = await brain_service.process_message(
+           message=request.message,
+           session_id=request.session_id,
+           context=request.context
+       )
+       # Construct response...
+   ```
+
 3. LangGraph workflow executes:
    - Router node performs intent detection
    - Executor node invokes selected agent
    - Guardrails node ensures response quality
+   
 4. Response returned to caller
 
 ### Error Handling
