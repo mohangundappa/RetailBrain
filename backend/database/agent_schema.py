@@ -15,6 +15,103 @@ from pgvector.sqlalchemy import Vector
 from backend.database.db import Base
 
 
+class SupervisorConfiguration(Base):
+    """
+    Model for LangGraph supervisor configurations.
+    Stores the configuration for LangGraph supervisors used for agent orchestration.
+    """
+    __tablename__ = "supervisor_configurations"
+    
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    name: Mapped[str] = mapped_column(sa.String(255), nullable=False)
+    description: Mapped[Optional[str]] = mapped_column(sa.Text, nullable=True)
+    version: Mapped[int] = mapped_column(sa.Integer, default=1, nullable=False)
+    status: Mapped[str] = mapped_column(
+        sa.String(50), default="active", nullable=False
+    )
+    
+    # LangGraph Supervisor configuration
+    routing_strategy: Mapped[str] = mapped_column(
+        sa.String(50), default="vector_search", nullable=False
+    )
+    model_name: Mapped[str] = mapped_column(sa.String(100), default="gpt-4o", nullable=False)
+    temperature: Mapped[float] = mapped_column(sa.Float, default=0.2, nullable=False)
+    
+    # JSON configuration details
+    routing_prompt: Mapped[Optional[str]] = mapped_column(sa.Text, nullable=True)
+    nodes: Mapped[Dict[str, Any]] = mapped_column(JSONB, default=dict, nullable=False)
+    edges: Mapped[Dict[str, Any]] = mapped_column(JSONB, default=dict, nullable=False)
+    edge_conditions: Mapped[Dict[str, Any]] = mapped_column(JSONB, default=dict, nullable=False)
+    entry_node: Mapped[str] = mapped_column(sa.String(255), nullable=False)
+    pattern_prioritization: Mapped[bool] = mapped_column(sa.Boolean, default=True, nullable=False)
+    
+    created_at: Mapped[datetime] = mapped_column(
+        sa.DateTime, server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        sa.DateTime, 
+        server_default=func.now(), 
+        onupdate=func.now(),
+        nullable=False
+    )
+    created_by: Mapped[Optional[str]] = mapped_column(sa.String(255), nullable=True)
+    
+    # Relationships
+    agent_mappings: Mapped[List["SupervisorAgentMapping"]] = relationship(
+        "SupervisorAgentMapping", back_populates="supervisor", cascade="all, delete"
+    )
+
+
+class SupervisorAgentMapping(Base):
+    """
+    Model for mapping agents to supervisor nodes.
+    Defines which agents are used by which supervisor nodes and their execution order.
+    """
+    __tablename__ = "supervisor_agent_mappings"
+    
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    supervisor_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), 
+        sa.ForeignKey("supervisor_configurations.id", ondelete="CASCADE"),
+        nullable=False
+    )
+    agent_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), 
+        sa.ForeignKey("agent_definitions.id", ondelete="CASCADE"),
+        nullable=False
+    )
+    node_id: Mapped[str] = mapped_column(sa.String(255), nullable=False)
+    execution_order: Mapped[int] = mapped_column(sa.Integer, default=0, nullable=False)
+    config: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSONB, nullable=True)
+    
+    created_at: Mapped[datetime] = mapped_column(
+        sa.DateTime, server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        sa.DateTime, 
+        server_default=func.now(), 
+        onupdate=func.now(),
+        nullable=False
+    )
+    
+    # Relationships
+    supervisor: Mapped["SupervisorConfiguration"] = relationship(
+        "SupervisorConfiguration", back_populates="agent_mappings"
+    )
+    agent: Mapped["AgentDefinition"] = relationship(
+        "AgentDefinition"
+    )
+    
+    # Unique constraint for supervisor and agent
+    __table_args__ = (
+        sa.UniqueConstraint("supervisor_id", "agent_id", "node_id"),
+    )
+
+
 class AgentDefinition(Base):
     """
     Core model for agent definitions.
@@ -349,3 +446,7 @@ class AgentResponseTemplate(Base):
     __table_args__ = (
         sa.UniqueConstraint("agent_id", "template_key", "language", "version"),
     )
+
+
+# SupervisorConfiguration and SupervisorAgentMapping classes
+# are already defined at the top of this file

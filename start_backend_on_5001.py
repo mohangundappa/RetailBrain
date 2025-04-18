@@ -5,7 +5,9 @@ This script explicitly overrides any port configuration and ensures the backend 
 """
 import os
 import sys
-import subprocess
+import importlib
+import logging
+import uvicorn
 
 # Explicitly set API port
 os.environ["API_PORT"] = "5001"
@@ -16,5 +18,10 @@ with open("backend_port.txt", "w") as f:
 
 print(f"Starting backend on port 5001...")
 
-# Run the main application
-subprocess.run([sys.executable, "run.py"])
+# Import the app directly rather than using subprocess
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from main import app
+
+# Run the main application directly with uvicorn
+if __name__ == "__main__":
+    uvicorn.run(app, host="0.0.0.0", port=5001, reload=True)

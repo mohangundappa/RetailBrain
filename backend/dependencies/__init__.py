@@ -18,5 +18,7 @@ def get_app_config() -> Config:
     """
     return get_config()
 
-# Note: We don't import get_brain_service, get_telemetry_service, and get_chat_service
-# directly to avoid circular imports. These will be imported where needed.
+# Note: We don't create separate files for every dependency to avoid circular imports.
+# Most dependency functions are defined in the backend/dependencies.py file.
+# Functions like get_brain_service, get_telemetry_service, and get_chat_service
+# should be imported directly from backend.dependencies where needed.

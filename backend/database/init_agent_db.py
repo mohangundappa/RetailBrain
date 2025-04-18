@@ -11,7 +11,8 @@ from backend.database.db import engine as default_engine
 from backend.database.agent_schema import (
     AgentDefinition, AgentDeployment, AgentComposition,
     LlmAgentConfiguration, RuleAgentConfiguration, RetrievalAgentConfiguration,
-    AgentPattern, AgentPatternEmbedding, AgentTool, AgentResponseTemplate
+    AgentPattern, AgentPatternEmbedding, AgentTool, AgentResponseTemplate,
+    SupervisorConfiguration, SupervisorAgentMapping
 )
 from backend.database.entity_schema import (
     EntityDefinition, EntityEnumValue, AgentEntityMapping,
@@ -55,6 +56,9 @@ async def create_agent_schema(engine: Optional[AsyncEngine] = None) -> None:
         AgentPatternEmbedding,
         AgentTool,
         AgentResponseTemplate,
+        # Supervisor schema
+        SupervisorConfiguration,
+        SupervisorAgentMapping,
         # Entity schema
         EntityDefinition,
         EntityEnumValue,

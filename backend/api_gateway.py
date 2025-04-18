@@ -24,6 +24,7 @@ from backend.endpoints.chat.routes import router as chat_router  # Standard chat
 from backend.endpoints.agent_builder import agent_builder_router  # Agent Builder functionality
 from backend.endpoints.workflow_driven_agents import workflow_router  # Workflow-driven agents functionality
 from backend.endpoints.agent_workflow import agent_workflow_router  # Agent workflow information functionality
+from backend.endpoints.supervisor_chat import router as supervisor_chat_router  # LangGraph Supervisor-based chat
 from backend.database.db import get_db
 
 # Utility function to sanitize database URLs for asyncpg
@@ -202,6 +203,7 @@ app.include_router(chat_router, prefix=f"{API_PREFIX}/chat")  # Standard chat fu
 app.include_router(agent_builder_router, prefix=API_PREFIX)  # Agent Builder functionality
 app.include_router(workflow_router, prefix=API_PREFIX)  # Workflow-driven agents functionality
 app.include_router(agent_workflow_router, prefix=API_PREFIX)  # Agent workflow information
+app.include_router(supervisor_chat_router, prefix=API_PREFIX)  # LangGraph Supervisor-based chat
 
 # API Documentation is available at /api/v1/docs
 # Root path now returns API information instead of redirecting to static files
@@ -306,7 +308,9 @@ async def startup_db_client():
             from backend.config.config import get_config
             from backend.memory.factory import get_mem0
             from backend.services.graph_brain_service import GraphBrainService
+            from backend.services.supervisor_brain_service import SupervisorBrainService
             from backend.agents.framework.langgraph.langgraph_factory import LangGraphAgentFactory
+            from backend.agents.framework.langgraph.langgraph_supervisor_factory import LangGraphSupervisorFactory
             
             # Get configuration
             config = get_config()
@@ -334,6 +338,25 @@ async def startup_db_client():
             # Preload agents from database 
             # (This step is already handled by the GraphBrainService.initialize() method above)
             logger.info("Agents successfully pre-loaded during brain service initialization")
+            
+            # Create supervisor factory for LangGraph
+            supervisor_factory = LangGraphSupervisorFactory(db)
+            
+            # Create and initialize the supervisor brain service
+            supervisor_brain_service = SupervisorBrainService(
+                db_session=db,
+                config=config,
+                memory_service=memory_service,
+                agent_factory=agent_factory,
+                supervisor_factory=supervisor_factory
+            )
+            
+            # Initialize the supervisor brain service
+            supervisor_success = await supervisor_brain_service.initialize()
+            if supervisor_success:
+                logger.info("Supervisor brain service initialized successfully")
+            else:
+                logger.warning("Supervisor brain service initialization returned false")
                 
         except Exception as brain_err:
             logger.warning(f"Error pre-loading brain service: {str(brain_err)}", exc_info=True)

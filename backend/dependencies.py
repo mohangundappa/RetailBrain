@@ -14,13 +14,19 @@ from backend.services.chat_service import ChatService
 from backend.services.telemetry_service import TelemetryService
 # Now using OptimizedBrainService as the primary brain service
 from backend.services.optimized_brain_service import OptimizedBrainService
+# Import SupervisorBrainService for LangGraph Supervisor-based orchestration
+from backend.services.supervisor_brain_service import SupervisorBrainService
 from backend.config.config import get_config, Config
 from backend.repositories.agent_repository import AgentRepository
+from backend.repositories.supervisor_repository import SupervisorRepository
 # Import mem0 memory system
 from backend.memory.factory import get_memory_service as create_memory_service
 from backend.memory.config import MemoryConfig
 # Import agent builder service
 from backend.services.agent_builder_service import AgentBuilderService
+# Import agent and supervisor factories
+from backend.agents.framework.langgraph.langgraph_factory import LangGraphAgentFactory
+from backend.agents.framework.langgraph.langgraph_supervisor_factory import LangGraphSupervisorFactory
 
 # Set up logging
 logger = logging.getLogger("staples_brain")
@@ -29,15 +35,21 @@ logger = logging.getLogger("staples_brain")
 _service_factory: Dict[str, Callable] = {
     "brain_service": OptimizedBrainService,  # Use the optimized brain service
     "graph_brain_service": OptimizedBrainService,  # For backward compatibility
+    "supervisor_brain_service": SupervisorBrainService,  # New supervisor-based service
     "chat_service": ChatService,
     "telemetry_service": TelemetryService,
-    "agent_builder_service": AgentBuilderService  # Initialize directly
+    "agent_builder_service": AgentBuilderService,  # Initialize directly
+    "agent_factory": LangGraphAgentFactory,  # Agent factory
+    "supervisor_factory": LangGraphSupervisorFactory  # Supervisor factory
 }
 
 # Singleton instances
 _brain_service = None
 _memory_service = None
 _agent_builder_service = None
+_supervisor_brain_service = None
+_agent_factory = None
+_supervisor_factory = None
 
 
 def set_service_factory(service_name: str, factory_func: Callable) -> None:
@@ -272,6 +284,159 @@ async def get_agent_repository(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Agent repository error"
+        )
+
+
+async def get_supervisor_repository(
+    db: AsyncSession = Depends(get_db)
+) -> AsyncGenerator[SupervisorRepository, None]:
+    """
+    Get a supervisor repository instance.
+    
+    Args:
+        db: Database session
+        
+    Yields:
+        SupervisorRepository instance
+    
+    Raises:
+        HTTPException: If the supervisor repository cannot be initialized
+    """
+    try:
+        repo = SupervisorRepository(db)
+        yield repo
+    except Exception as e:
+        logger.error(f"Error in supervisor repository: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Supervisor repository error"
+        )
+
+
+async def get_agent_factory(
+    db: AsyncSession = Depends(get_db)
+) -> LangGraphAgentFactory:
+    """
+    Get or create a LangGraph agent factory instance.
+    
+    Args:
+        db: Database session
+        
+    Returns:
+        LangGraphAgentFactory instance
+    
+    Raises:
+        HTTPException: If the agent factory cannot be initialized
+    """
+    global _agent_factory
+    
+    try:
+        if _agent_factory is None:
+            logger.info("Initializing LangGraphAgentFactory")
+            factory = _service_factory["agent_factory"]
+            
+            # Initialize agent factory with database session
+            _agent_factory = factory(db)
+            
+            logger.info("LangGraphAgentFactory initialization complete")
+        
+        return _agent_factory
+    except Exception as e:
+        logger.error(f"Failed to initialize LangGraphAgentFactory: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Agent factory initialization failed"
+        )
+
+
+async def get_supervisor_factory(
+    db: AsyncSession = Depends(get_db)
+) -> LangGraphSupervisorFactory:
+    """
+    Get or create a LangGraph supervisor factory instance.
+    
+    Args:
+        db: Database session
+        
+    Returns:
+        LangGraphSupervisorFactory instance
+    
+    Raises:
+        HTTPException: If the supervisor factory cannot be initialized
+    """
+    global _supervisor_factory
+    
+    try:
+        if _supervisor_factory is None:
+            logger.info("Initializing LangGraphSupervisorFactory")
+            factory = _service_factory["supervisor_factory"]
+            
+            # Initialize supervisor factory with database session
+            _supervisor_factory = factory(db)
+            
+            logger.info("LangGraphSupervisorFactory initialization complete")
+        
+        return _supervisor_factory
+    except Exception as e:
+        logger.error(f"Failed to initialize LangGraphSupervisorFactory: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Supervisor factory initialization failed"
+        )
+
+
+async def get_supervisor_brain_service(
+    db: AsyncSession = Depends(get_db),
+    config: Config = Depends(get_app_config),
+    memory_service: Any = Depends(get_memory_service_instance),
+    agent_factory: LangGraphAgentFactory = Depends(get_agent_factory),
+    supervisor_factory: LangGraphSupervisorFactory = Depends(get_supervisor_factory)
+) -> SupervisorBrainService:
+    """
+    Get or create a supervisor brain service instance with memory integration.
+    Uses a singleton pattern to ensure only one instance exists.
+    
+    Args:
+        db: Database session
+        config: Application configuration
+        memory_service: Memory service instance (mem0)
+        agent_factory: LangGraph agent factory
+        supervisor_factory: LangGraph supervisor factory
+        
+    Returns:
+        SupervisorBrainService instance
+    
+    Raises:
+        HTTPException: If the supervisor brain service cannot be initialized
+    """
+    global _supervisor_brain_service
+    
+    try:
+        if _supervisor_brain_service is None:
+            logger.info("Initializing SupervisorBrainService with memory integration")
+            factory = _service_factory["supervisor_brain_service"]
+            
+            # Initialize supervisor brain service
+            _supervisor_brain_service = factory(
+                db_session=db,
+                config=config,
+                memory_service=memory_service,
+                agent_factory=agent_factory,
+                supervisor_factory=supervisor_factory
+            )
+            
+            # Initialize agents and supervisor from database
+            if hasattr(_supervisor_brain_service, 'initialize') and callable(getattr(_supervisor_brain_service, 'initialize')):
+                await _supervisor_brain_service.initialize()
+            
+            logger.info("SupervisorBrainService initialization complete")
+        
+        return _supervisor_brain_service
+    except Exception as e:
+        logger.error(f"Failed to initialize SupervisorBrainService: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Supervisor brain service initialization failed"
         )
 
 
