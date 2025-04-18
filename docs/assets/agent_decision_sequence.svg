@@ -1,0 +1,159 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="800" height="800" xmlns="http://www.w3.org/2000/svg">
+  <!-- Visual styling -->
+  <defs>
+    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#4285f4" />
+    </marker>
+    <filter id="drop-shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="3" />
+      <feOffset dx="2" dy="2" result="offsetblur" />
+      <feComponentTransfer>
+        <feFuncA type="linear" slope="0.3" />
+      </feComponentTransfer>
+      <feMerge>
+        <feMergeNode />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+    <!-- Color scheme -->
+    <linearGradient id="userGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#2e7d32" />
+      <stop offset="100%" stop-color="#1b5e20" />
+    </linearGradient>
+    <linearGradient id="apiGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1565c0" />
+      <stop offset="100%" stop-color="#0d47a1" />
+    </linearGradient>
+    <linearGradient id="routerGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#795548" />
+      <stop offset="100%" stop-color="#4e342e" />
+    </linearGradient>
+    <linearGradient id="agentGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#7b1fa2" />
+      <stop offset="100%" stop-color="#4a148c" />
+    </linearGradient>
+    <linearGradient id="guardGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#e64a19" />
+      <stop offset="100%" stop-color="#bf360c" />
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="800" height="800" fill="#0f1117" />
+  <text x="400" y="30" font-family="Arial" font-size="22" text-anchor="middle" fill="#ffffff">Agent Decision Sequence</text>
+  <text x="400" y="55" font-family="Arial" font-size="14" text-anchor="middle" fill="#aaaaaa">Detailed Flow of Agent Selection and Processing</text>
+
+  <!-- Participant boxes at top -->
+  <rect x="50" y="80" width="100" height="40" rx="5" ry="5" fill="url(#userGradient)" filter="url(#drop-shadow)" />
+  <text x="100" y="105" font-family="Arial" font-size="14" text-anchor="middle" fill="#ffffff">User</text>
+  
+  <rect x="200" y="80" width="100" height="40" rx="5" ry="5" fill="url(#apiGradient)" filter="url(#drop-shadow)" />
+  <text x="250" y="105" font-family="Arial" font-size="14" text-anchor="middle" fill="#ffffff">API Gateway</text>
+  
+  <rect x="350" y="80" width="100" height="40" rx="5" ry="5" fill="url(#routerGradient)" filter="url(#drop-shadow)" />
+  <text x="400" y="105" font-family="Arial" font-size="14" text-anchor="middle" fill="#ffffff">Router</text>
+  
+  <rect x="500" y="80" width="100" height="40" rx="5" ry="5" fill="url(#agentGradient)" filter="url(#drop-shadow)" />
+  <text x="550" y="105" font-family="Arial" font-size="14" text-anchor="middle" fill="#ffffff">Agent</text>
+  
+  <rect x="650" y="80" width="100" height="40" rx="5" ry="5" fill="url(#guardGradient)" filter="url(#drop-shadow)" />
+  <text x="700" y="105" font-family="Arial" font-size="14" text-anchor="middle" fill="#ffffff">Guardrails</text>
+
+  <!-- Lifelines -->
+  <line x1="100" y1="120" x2="100" y2="770" stroke="#ffffff" stroke-width="1" stroke-dasharray="5,5" />
+  <line x1="250" y1="120" x2="250" y2="770" stroke="#ffffff" stroke-width="1" stroke-dasharray="5,5" />
+  <line x1="400" y1="120" x2="400" y2="770" stroke="#ffffff" stroke-width="1" stroke-dasharray="5,5" />
+  <line x1="550" y1="120" x2="550" y2="770" stroke="#ffffff" stroke-width="1" stroke-dasharray="5,5" />
+  <line x1="700" y1="120" x2="700" y2="770" stroke="#ffffff" stroke-width="1" stroke-dasharray="5,5" />
+
+  <!-- Sequence interactions -->
+  <!-- 1. Send Message -->
+  <line x1="100" y1="150" x2="250" y2="150" stroke="#4285f4" stroke-width="2" marker-end="url(#arrowhead)" />
+  <text x="175" y="140" font-family="Arial" font-size="12" text-anchor="middle" fill="#ffffff">1. POST /api/v1/graph-chat/chat</text>
+  
+  <!-- API Activation -->
+  <rect x="240" y="150" width="20" height="80" fill="url(#apiGradient)" filter="url(#drop-shadow)" opacity="0.8" />
+  <text x="310" y="170" font-family="Arial" font-size="10" text-anchor="middle" fill="#aaaaaa">Parse request</text>
+  <text x="310" y="185" font-family="Arial" font-size="10" text-anchor="middle" fill="#aaaaaa">Validate session_id</text>
+  <text x="310" y="200" font-family="Arial" font-size="10" text-anchor="middle" fill="#aaaaaa">Initialize context</text>
+  
+  <!-- 2. Route to Orchestrator -->
+  <line x1="260" y1="230" x2="400" y2="230" stroke="#4285f4" stroke-width="2" marker-end="url(#arrowhead)" />
+  <text x="330" y="220" font-family="Arial" font-size="12" text-anchor="middle" fill="#ffffff">2. process_message()</text>
+  
+  <!-- Router Activation -->
+  <rect x="390" y="230" width="20" height="200" fill="url(#routerGradient)" filter="url(#drop-shadow)" opacity="0.8" />
+  <text x="480" y="250" font-family="Arial" font-size="10" text-anchor="middle" fill="#aaaaaa">3. Preprocess message</text>
+  <text x="480" y="265" font-family="Arial" font-size="10" text-anchor="middle" fill="#aaaaaa">- Remove noise</text>
+  <text x="480" y="280" font-family="Arial" font-size="10" text-anchor="middle" fill="#aaaaaa">- Normalize text</text>
+  
+  <!-- Pattern matching decision -->
+  <rect x="410" y="290" width="140" height="40" rx="5" ry="5" fill="#263238" filter="url(#drop-shadow)" />
+  <text x="480" y="315" font-family="Arial" font-size="12" text-anchor="middle" fill="#ffffff">4. Pattern Matching</text>
+  
+  <rect x="410" y="340" width="140" height="40" rx="5" ry="5" fill="#263238" filter="url(#drop-shadow)" />
+  <text x="480" y="365" font-family="Arial" font-size="12" text-anchor="middle" fill="#ffffff">5. Select Agent</text>
+  
+  <!-- Decision explanation -->
+  <rect x="560" y="290" width="130" height="90" rx="5" ry="5" fill="#1a1f25" filter="url(#drop-shadow)" opacity="0.9" />
+  <text x="625" y="310" font-family="Arial" font-size="10" text-anchor="middle" fill="#ffffff">Agent Selection Logic:</text>
+  <text x="625" y="330" font-family="Arial" font-size="9" text-anchor="middle" fill="#aaaaaa">1. Check keyword matches</text>
+  <text x="625" y="345" font-family="Arial" font-size="9" text-anchor="middle" fill="#aaaaaa">2. If confidence > 0.7, use</text>
+  <text x="625" y="360" font-family="Arial" font-size="9" text-anchor="middle" fill="#aaaaaa">3. Else check semantic</text>
+  <text x="625" y="375" font-family="Arial" font-size="9" text-anchor="middle" fill="#aaaaaa">4. Fallback to general</text>
+  
+  <!-- 6. Execute agent -->
+  <line x1="410" y1="430" x2="550" y2="430" stroke="#4285f4" stroke-width="2" marker-end="url(#arrowhead)" />
+  <text x="480" y="420" font-family="Arial" font-size="12" text-anchor="middle" fill="#ffffff">6. execute_agent()</text>
+  
+  <!-- Agent Activation -->
+  <rect x="540" y="430" width="20" height="150" fill="url(#agentGradient)" filter="url(#drop-shadow)" opacity="0.8" />
+  
+  <text x="610" y="450" font-family="Arial" font-size="10" text-anchor="middle" fill="#aaaaaa">7. Extract entities</text>
+  <text x="610" y="465" font-family="Arial" font-size="10" text-anchor="middle" fill="#aaaaaa">- Identify key information</text>
+  <text x="610" y="480" font-family="Arial" font-size="10" text-anchor="middle" fill="#aaaaaa">- Store in context</text>
+  
+  <text x="610" y="505" font-family="Arial" font-size="10" text-anchor="middle" fill="#aaaaaa">8. Execute tools</text>
+  <text x="610" y="520" font-family="Arial" font-size="10" text-anchor="middle" fill="#aaaaaa">- Use available tools</text>
+  <text x="610" y="535" font-family="Arial" font-size="10" text-anchor="middle" fill="#aaaaaa">- Process results</text>
+  
+  <text x="610" y="560" font-family="Arial" font-size="10" text-anchor="middle" fill="#aaaaaa">9. Generate response</text>
+  <text x="610" y="575" font-family="Arial" font-size="10" text-anchor="middle" fill="#aaaaaa">- Using agent prompt</text>
+  
+  <!-- 10. Apply guardrails -->
+  <line x1="560" y1="580" x2="700" y2="580" stroke="#4285f4" stroke-width="2" marker-end="url(#arrowhead)" />
+  <text x="630" y="600" font-family="Arial" font-size="12" text-anchor="middle" fill="#ffffff">10. apply_guardrails()</text>
+  
+  <!-- Guardrails Activation -->
+  <rect x="690" y="580" width="20" height="80" fill="url(#guardGradient)" filter="url(#drop-shadow)" opacity="0.8" />
+  <text x="760" y="600" font-family="Arial" font-size="10" text-anchor="middle" fill="#aaaaaa">11. Check policies</text>
+  <text x="760" y="615" font-family="Arial" font-size="10" text-anchor="middle" fill="#aaaaaa">- Content safety</text>
+  <text x="760" y="630" font-family="Arial" font-size="10" text-anchor="middle" fill="#aaaaaa">- Response format</text>
+  <text x="760" y="645" font-family="Arial" font-size="10" text-anchor="middle" fill="#aaaaaa">- Brand voice</text>
+  
+  <!-- Return safe response -->
+  <line x1="690" y1="660" x2="560" y2="660" stroke="#4285f4" stroke-width="2" marker-end="url(#arrowhead)" />
+  <text x="625" y="675" font-family="Arial" font-size="12" text-anchor="middle" fill="#ffffff">12. return safe_response</text>
+  
+  <!-- 13. Return response to API Gateway -->
+  <line x1="540" y1="690" x2="260" y2="690" stroke="#4285f4" stroke-width="2" marker-end="url(#arrowhead)" />
+  <text x="400" y="705" font-family="Arial" font-size="12" text-anchor="middle" fill="#ffffff">13. agent_response</text>
+  
+  <!-- API Gateway Activation (again) -->
+  <rect x="240" y="690" width="20" height="40" fill="url(#apiGradient)" filter="url(#drop-shadow)" opacity="0.8" />
+  <text x="320" y="710" font-family="Arial" font-size="10" text-anchor="middle" fill="#aaaaaa">14. Format response</text>
+  
+  <!-- 15. Return to user -->
+  <line x1="240" y1="730" x2="100" y2="730" stroke="#4285f4" stroke-width="2" marker-end="url(#arrowhead)" />
+  <text x="170" y="745" font-family="Arial" font-size="12" text-anchor="middle" fill="#ffffff">15. GraphChatResponse</text>
+  
+  <!-- Code box showing API response format -->
+  <rect x="60" y="750" width="180" height="100" rx="5" ry="5" fill="#1a1f25" filter="url(#drop-shadow)" opacity="0.9" />
+  <text x="150" y="765" font-family="Arial" font-size="10" text-anchor="middle" fill="#4285f4">API Response Format:</text>
+  <text x="150" y="785" font-family="Arial" font-size="9" text-anchor="middle" fill="#aaaaaa">{</text>
+  <text x="150" y="800" font-family="Arial" font-size="9" text-anchor="middle" fill="#aaaaaa">  "success": true,</text>
+  <text x="150" y="815" font-family="Arial" font-size="9" text-anchor="middle" fill="#aaaaaa">  "response": { ... },</text>
+  <text x="150" y="830" font-family="Arial" font-size="9" text-anchor="middle" fill="#aaaaaa">  "conversation_id": "conv-123"</text>
+  <text x="150" y="845" font-family="Arial" font-size="9" text-anchor="middle" fill="#aaaaaa">}</text>
+</svg>
