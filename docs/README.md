@@ -8,8 +8,11 @@ Welcome to the Staples Brain documentation! This comprehensive guide provides de
 
 ### 1. System Architecture
 
-* **[Orchestrator Overview](orchestrator.md)** - Introduction to the agent orchestration system
-* **[Orchestrator Technical Details](orchestrator_technical.md)** - Deep dive into orchestrator implementation
+* **[Supervisor-Based Architecture](supervisor_based_architecture.md)** - Latest architecture using database-driven supervisors
+* **[Supervisor Database Schema](supervisor_database_schema.md)** - Schema for supervisor configurations
+* **[Supervisor API Endpoints](supervisor_endpoints.md)** - API endpoints for the supervisor-based system
+* **[Orchestrator Overview](orchestrator.md)** - Introduction to the original agent orchestration system
+* **[Orchestrator Technical Details](orchestrator_technical.md)** - Deep dive into original orchestrator implementation
 * **[Agent Selection Process](agent_selection_process.md)** - Visual guide to agent routing decision logic
 
 ### 2. API Reference
@@ -78,8 +81,10 @@ The system supports multiple types of agents:
 
 | Endpoint | Method | Purpose | Documentation |
 |----------|--------|---------|---------------|
-| `/api/v1/graph-chat/chat` | POST | Process chat messages | [API Reference](api_reference.md#graph-chat-api) |
-| `/api/v1/graph-chat/execute-agent` | POST | Direct agent execution | [API Reference](api_reference.md#graph-chat-api) |
+| `/api/v1/supervisor-chat/chat` | POST | Process messages via supervisor | [Supervisor Endpoints](supervisor_endpoints.md) |
+| `/api/v1/supervisor-chat/execute-agent` | POST | Direct agent execution via supervisor | [Supervisor Endpoints](supervisor_endpoints.md) |
+| `/api/v1/graph-chat/chat` | POST | Process chat messages (legacy) | [API Reference](api_reference.md#graph-chat-api) |
+| `/api/v1/graph-chat/execute-agent` | POST | Direct agent execution (legacy) | [API Reference](api_reference.md#graph-chat-api) |
 | `/api/v1/agent-builder/agents` | GET/POST | Manage agent configurations | [API Reference](api_reference.md#agent-builder-api) |
 | `/api/v1/workflow-agents/execute` | POST | Execute workflow agents | [API Reference](api_reference.md#workflow-api) |
 | `/api/v1/agent-workflow/{agent_id}` | GET | Get workflow configuration | [Workflow API](workflow_api.md#workflow-configuration) |
@@ -170,10 +175,11 @@ For more details, see the [Adding New Agents](adding_new_agents.md) guide.
 
 ## Getting Started
 
-1. Review the [API Reference](api_reference.md) for available endpoints
-2. Understand the [Orchestrator](orchestrator.md) to learn about agent selection
-3. Follow the [Adding New Agents](adding_new_agents.md) guide to create custom agents
-4. Explore the [Workflow Creation](workflow_creation.md) guide for multi-step agents
+1. Review the [Supervisor-Based Architecture](supervisor_based_architecture.md) to understand the latest design
+2. Study the [Supervisor Database Schema](supervisor_database_schema.md) for configuring supervisors
+3. Review the [Supervisor API Endpoints](supervisor_endpoints.md) for available endpoints
+4. Follow the [Adding New Agents](adding_new_agents.md) guide to create custom agents
+5. Explore the [Workflow Creation](workflow_creation.md) guide for multi-step agents
 
 ## Best Practices
 

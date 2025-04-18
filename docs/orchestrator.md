@@ -1,5 +1,7 @@
 # Staples Brain Orchestrator
 
+> **Note**: This document describes the original orchestrator implementation. The system has been upgraded to use a supervisor-based architecture. See [Supervisor-Based Architecture](supervisor_based_architecture.md) for the latest implementation details.
+
 ## Overview
 
 The orchestrator is the central component of the Staples Brain system responsible for intelligently routing user queries to specialized agents. It implements an intent-first approach to agent selection, prioritizing pattern matching before considering conversational handling.

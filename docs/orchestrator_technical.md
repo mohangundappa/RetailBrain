@@ -1,5 +1,7 @@
 # Orchestrator Technical Documentation
 
+> **Note**: This document describes the original orchestrator implementation. The system has been upgraded to use a supervisor-based architecture. See [Supervisor-Based Architecture](supervisor_based_architecture.md) for the latest implementation details.
+
 ## Implementation Details
 
 The Staples Brain orchestrator is built on LangGraph and LangChain technologies, with a focus on database-driven agent configurations for maximum flexibility.
