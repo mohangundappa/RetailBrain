@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg width="800" height="600" xmlns="http://www.w3.org/2000/svg">
+    <style>
+        .box { fill: #2D3748; stroke: #4A5568; stroke-width: 2; }
+        .highlight-box { fill: #3182CE; stroke: #2C5282; stroke-width: 2; }
+        .storage-box { fill: #38A169; stroke: #2F855A; stroke-width: 2; }
+        .text { fill: white; font-family: Arial, sans-serif; font-size: 14px; }
+        .title { fill: white; font-family: Arial, sans-serif; font-size: 18px; font-weight: bold; }
+        .subtitle { fill: white; font-family: Arial, sans-serif; font-size: 12px; font-style: italic; }
+        .arrow { stroke: white; stroke-width: 2; fill: none; marker-end: url(#arrowhead); }
+        .dashed-arrow { stroke: white; stroke-width: 2; fill: none; marker-end: url(#arrowhead); stroke-dasharray: 5,5; }
+        .label { fill: white; font-family: Arial, sans-serif; font-size: 12px; }
+    </style>
+    
+    <defs>
+        <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" fill="white" />
+        </marker>
+    </defs>
+    
+    <rect width="800" height="600" fill="#1A202C" />
+    
+    <text x="400" y="40" class="title" text-anchor="middle">Staples Brain Memory Integration Architecture</text>
+    
+    <!-- User Request Flow -->
+    <rect x="50" y="100" width="120" height="60" rx="5" class="box" />
+    <text x="110" y="135" class="text" text-anchor="middle">API Gateway</text>
+    
+    <rect x="250" y="100" width="120" height="60" rx="5" class="highlight-box" />
+    <text x="310" y="135" class="text" text-anchor="middle">Orchestrator</text>
+    
+    <rect x="450" y="100" width="120" height="60" rx="5" class="box" />
+    <text x="510" y="135" class="text" text-anchor="middle">Agent</text>
+    <text x="510" y="155" class="subtitle" text-anchor="middle">(LLM/Tool Execution)</text>
+    
+    <rect x="650" y="100" width="120" height="60" rx="5" class="box" />
+    <text x="710" y="135" class="text" text-anchor="middle">Guardrails</text>
+    
+    <path d="M 170 130 L 240 130" class="arrow" />
+    <path d="M 370 130 L 440 130" class="arrow" />
+    <path d="M 570 130 L 640 130" class="arrow" />
+    
+    <!-- Memory System -->
+    <rect x="250" y="250" width="120" height="120" rx="5" class="highlight-box" />
+    <text x="310" y="290" class="text" text-anchor="middle">Memory Service</text>
+    <text x="310" y="310" class="subtitle" text-anchor="middle">(Context Management)</text>
+    <text x="310" y="330" class="subtitle" text-anchor="middle">Tiered Storage</text>
+    <text x="310" y="350" class="subtitle" text-anchor="middle">Transaction Support</text>
+    
+    <!-- Memory Types -->
+    <rect x="50" y="350" width="120" height="40" rx="5" class="box" />
+    <text x="110" y="375" class="text" text-anchor="middle">Message Memory</text>
+    
+    <rect x="50" y="400" width="120" height="40" rx="5" class="box" />
+    <text x="110" y="425" class="text" text-anchor="middle">Entity Memory</text>
+    
+    <rect x="50" y="450" width="120" height="40" rx="5" class="box" />
+    <text x="110" y="475" class="text" text-anchor="middle">State Memory</text>
+    
+    <path d="M 180 370 L 240 310" class="arrow" />
+    <path d="M 180 420 L 240 320" class="arrow" />
+    <path d="M 180 470 L 240 330" class="arrow" />
+    
+    <!-- Storage System -->
+    <rect x="450" y="400" width="120" height="60" rx="5" class="storage-box" />
+    <text x="510" y="430" class="text" text-anchor="middle">In-Memory Cache</text>
+    <text x="510" y="450" class="subtitle" text-anchor="middle">(Working Memory)</text>
+    
+    <rect x="450" y="320" width="120" height="60" rx="5" class="storage-box" />
+    <text x="510" y="350" class="text" text-anchor="middle">Redis</text>
+    <text x="510" y="370" class="subtitle" text-anchor="middle">(Short-Term)</text>
+    
+    <rect x="450" y="240" width="120" height="60" rx="5" class="storage-box" />
+    <text x="510" y="270" class="text" text-anchor="middle">PostgreSQL</text>
+    <text x="510" y="290" class="subtitle" text-anchor="middle">(Long-Term)</text>
+    
+    <path d="M 380 310 L 440 270" class="arrow" />
+    <path d="M 380 320 L 440 350" class="arrow" />
+    <path d="M 380 330 L 440 430" class="arrow" />
+    
+    <!-- Context Processing -->
+    <rect x="650" y="240" width="120" height="80" rx="5" class="box" />
+    <text x="710" y="270" class="text" text-anchor="middle">Entity</text>
+    <text x="710" y="290" class="text" text-anchor="middle">Extraction</text>
+    <text x="710" y="310" class="subtitle" text-anchor="middle">(Pattern-Based)</text>
+    
+    <rect x="650" y="340" width="120" height="80" rx="5" class="box" />
+    <text x="710" y="370" class="text" text-anchor="middle">Context</text>
+    <text x="710" y="390" class="text" text-anchor="middle">Enrichment</text>
+    <text x="710" y="410" class="subtitle" text-anchor="middle">(Profile + Entities)</text>
+    
+    <!-- Memory Access Paths -->
+    <path d="M 310 230 L 310 190" class="dashed-arrow" />
+    <text x="320" y="210" class="label">Retrieve context</text>
+    
+    <path d="M 510 180 L 510 230" class="dashed-arrow" />
+    <text x="520" y="210" class="label">Store results</text>
+    
+    <path d="M 650 380 L 580 380 L 580 340 L 380 340" class="dashed-arrow" />
+    <text x="550" y="360" class="label">Enrich context</text>
+    
+    <path d="M 650 280 L 580 280 L 580 320 L 380 320" class="dashed-arrow" />
+    <text x="550" y="300" class="label">Store entities</text>
+    
+    <!-- LangGraph Integration -->
+    <rect x="350" y="500" width="300" height="60" rx="5" class="highlight-box" />
+    <text x="500" y="530" class="text" text-anchor="middle">LangGraph Supervisor with Memory Integration</text>
+    
+    <path d="M 310 380 L 310 440 L 400 440 L 400 490" class="arrow" />
+    <path d="M 500 490 L 500 440 L 590 440 L 590 380" class="arrow" />
+</svg>

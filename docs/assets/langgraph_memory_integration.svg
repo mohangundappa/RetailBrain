@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg width="800" height="600" xmlns="http://www.w3.org/2000/svg">
+    <style>
+        .box { fill: #2D3748; stroke: #4A5568; stroke-width: 2; }
+        .node-box { fill: #3182CE; stroke: #2C5282; stroke-width: 2; }
+        .agent-box { fill: #805AD5; stroke: #6B46C1; stroke-width: 2; }
+        .supervisor-box { fill: #ED8936; stroke: #DD6B20; stroke-width: 2; }
+        .memory-box { fill: #38A169; stroke: #2F855A; stroke-width: 2; }
+        .text { fill: white; font-family: Arial, sans-serif; font-size: 14px; }
+        .title { fill: white; font-family: Arial, sans-serif; font-size: 18px; font-weight: bold; }
+        .subtitle { fill: white; font-family: Arial, sans-serif; font-size: 12px; font-style: italic; }
+        .small-text { fill: white; font-family: Arial, sans-serif; font-size: 10px; }
+        .arrow { stroke: white; stroke-width: 2; fill: none; marker-end: url(#arrowhead); }
+        .dashed-arrow { stroke: white; stroke-width: 2; fill: none; marker-end: url(#arrowhead); stroke-dasharray: 5,5; }
+        .label { fill: white; font-family: Arial, sans-serif; font-size: 12px; }
+        .code { fill: white; font-family: monospace; font-size: 12px; }
+    </style>
+    
+    <defs>
+        <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" fill="white" />
+        </marker>
+    </defs>
+    
+    <rect width="800" height="600" fill="#1A202C" />
+    
+    <text x="400" y="40" class="title" text-anchor="middle">LangGraph Supervisor with Memory Integration</text>
+    
+    <!-- LangGraph Structure -->
+    <rect x="350" y="80" width="200" height="80" rx="5" class="supervisor-box" />
+    <text x="450" y="115" class="text" text-anchor="middle">Supervisor Node</text>
+    <text x="450" y="135" class="subtitle" text-anchor="middle">(Pattern-First Selection)</text>
+    <text x="450" y="155" class="subtitle" text-anchor="middle">(Intent Classification)</text>
+    
+    <!-- Agent Nodes -->
+    <rect x="150" y="210" width="150" height="60" rx="5" class="agent-box" />
+    <text x="225" y="240" class="text" text-anchor="middle">Reset Password</text>
+    <text x="225" y="260" class="subtitle" text-anchor="middle">(Workflow Agent)</text>
+    
+    <rect x="325" y="210" width="150" height="60" rx="5" class="agent-box" />
+    <text x="400" y="240" class="text" text-anchor="middle">Store Locator</text>
+    <text x="400" y="260" class="subtitle" text-anchor="middle">(Tool Agent)</text>
+    
+    <rect x="500" y="210" width="150" height="60" rx="5" class="agent-box" />
+    <text x="575" y="240" class="text" text-anchor="middle">Product Info</text>
+    <text x="575" y="260" class="subtitle" text-anchor="middle">(Knowledge Agent)</text>
+    
+    <rect x="300" y="310" width="200" height="60" rx="5" class="agent-box" />
+    <text x="400" y="340" class="text" text-anchor="middle">General Conversation</text>
+    <text x="400" y="360" class="subtitle" text-anchor="middle">(Fallback Agent)</text>
+    
+    <!-- Memory Integration -->
+    <rect x="100" y="400" width="600" height="80" rx="5" class="memory-box" />
+    <text x="400" y="425" class="text" text-anchor="middle">Memory Integration Layer</text>
+    <text x="400" y="445" class="subtitle" text-anchor="middle">(Context Persistence, Entity Memory, State Management)</text>
+    <text x="400" y="465" class="subtitle" text-anchor="middle">(Transactional Memory Operations)</text>
+    
+    <!-- Selection Logic -->
+    <rect x="50" y="80" width="250" height="140" rx="5" class="box" />
+    <text x="175" y="105" class="text" text-anchor="middle">Selection Logic</text>
+    <text x="175" y="125" class="small-text" text-anchor="middle">1. Direct Routing (if specified)</text>
+    <text x="175" y="145" class="small-text" text-anchor="middle">2. Pattern Matching (regex)</text>
+    <text x="175" y="165" class="small-text" text-anchor="middle">3. Semantic Search (vector)</text>
+    <text x="175" y="185" class="small-text" text-anchor="middle">4. LLM Classification (if needed)</text>
+    <text x="175" y="205" class="small-text" text-anchor="middle">5. Default to General Conversation</text>
+    
+    <!-- State Format -->
+    <rect x="600" y="80" width="150" height="140" rx="5" class="box" />
+    <text x="675" y="105" class="text" text-anchor="middle">State Format</text>
+    <text x="675" y="130" class="code" text-anchor="middle">{ </text>
+    <text x="675" y="150" class="code" text-anchor="middle">  "messages": [...],</text>
+    <text x="675" y="170" class="code" text-anchor="middle">  "context": {...},</text>
+    <text x="675" y="190" class="code" text-anchor="middle">  "agent_id": "...",</text>
+    <text x="675" y="210" class="code" text-anchor="middle">  "next": "..."</text>
+    <text x="675" y="230" class="code" text-anchor="middle">}</text>
+    
+    <!-- Flow Connections -->
+    <path d="M 310 150 L 340 120" class="arrow" />
+    <path d="M 450 170 L 450 200" class="dashed-arrow" />
+    <path d="M 425 170 L 225 200" class="dashed-arrow" />
+    <path d="M 475 170 L 575 200" class="dashed-arrow" />
+    
+    <path d="M 225 280 L 225 390 L 300 390" class="arrow" />
+    <path d="M 400 280 L 400 300" class="arrow" />
+    <path d="M 575 280 L 575 390 L 500 390" class="arrow" />
+    <path d="M 400 380 L 400 390" class="arrow" />
+    
+    <!-- Memory Connections -->
+    <path d="M 300 430 L 260 430 L 260 240" class="dashed-arrow" />
+    <path d="M 350 430 L 350 360" class="dashed-arrow" />
+    <path d="M 450 430 L 450 360" class="dashed-arrow" />
+    <path d="M 500 430 L 540 430 L 540 240" class="dashed-arrow" />
+    <path d="M 400 500 L 400 520 L 175 520 L 175 230" class="dashed-arrow" />
+    <path d="M 400 500 L 400 520 L 625 520 L 625 230" class="dashed-arrow" />
+    
+    <!-- State Flow -->
+    <path d="M 560 150 L 590 150" class="arrow" />
+    
+    <rect x="250" y="520" width="300" height="60" rx="5" class="box" />
+    <text x="400" y="550" class="text" text-anchor="middle">Database-Driven Agent Configurations</text>
+    <text x="400" y="570" class="subtitle" text-anchor="middle">(Patterns, Prompts, Tools, Workflows)</text>
+</svg>

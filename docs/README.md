@@ -27,6 +27,8 @@ Welcome to the Staples Brain documentation! This comprehensive guide provides de
 ### 4. Context & Memory Management  
 
 * **[Session Context Management](session_context.md)** - Context across conversation turns
+* **[Advanced Context Management](advanced_context_management.md)** - Advanced memory integration and optimization
+* **[Document Context Management](document_context_management.md)** - Document integration and knowledge retrieval
 * **[Memory Types](session_context.md#memory-types)** - Types of memory in the system
 * **[State Management](session_context.md#session-state-management)** - Persisting workflow state
 
@@ -35,6 +37,10 @@ Welcome to the Staples Brain documentation! This comprehensive guide provides de
 * **[Agent Selection Flow](assets/agent_selection_flow.svg)** - Visual diagram of selection process
 * **[Agent Decision Sequence](assets/agent_decision_sequence.svg)** - Sequence diagram of agent selection
 * **[Agent Routing Architecture](assets/agent_routing_architecture.svg)** - Component architecture diagram
+* **[Memory Integration Architecture](assets/memory_integration_architecture.svg)** - Memory system organization
+* **[Context Enrichment Process](assets/context_enrichment_process.svg)** - Context building workflow
+* **[Document Context Flow](assets/document_context_flow.svg)** - Document integration pipeline
+* **[LangGraph Memory Integration](assets/langgraph_memory_integration.svg)** - Supervisor with memory
 
 ### 6. Advanced Topics
 
@@ -133,7 +139,13 @@ The system maintains context across conversation turns using the mem0 memory ser
 
 This context is passed with each API request to maintain conversation continuity.
 
-For more details, see the [Session Context Management](session_context.md) documentation.
+For basic context management, see the [Session Context Management](session_context.md) documentation.
+
+The system also supports advanced memory features:
+
+1. **Advanced Context Management** - Memory integration with LangGraph, transactional memory operations, and tiered storage strategies. See [Advanced Context Management](advanced_context_management.md).
+
+2. **Document Context Management** - Integration with knowledge bases, document processing, and relevant context retrieval. See [Document Context Management](document_context_management.md).
 
 ## Implementation Details
 

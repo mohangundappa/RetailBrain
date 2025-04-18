@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg width="800" height="600" xmlns="http://www.w3.org/2000/svg">
+    <style>
+        .box { fill: #2D3748; stroke: #4A5568; stroke-width: 2; }
+        .document-box { fill: #9F7AEA; stroke: #805AD5; stroke-width: 2; }
+        .process-box { fill: #ED8936; stroke: #DD6B20; stroke-width: 2; }
+        .storage-box { fill: #38A169; stroke: #2F855A; stroke-width: 2; }
+        .retrieval-box { fill: #E53E3E; stroke: #C53030; stroke-width: 2; }
+        .text { fill: white; font-family: Arial, sans-serif; font-size: 14px; }
+        .title { fill: white; font-family: Arial, sans-serif; font-size: 18px; font-weight: bold; }
+        .subtitle { fill: white; font-family: Arial, sans-serif; font-size: 12px; font-style: italic; }
+        .arrow { stroke: white; stroke-width: 2; fill: none; marker-end: url(#arrowhead); }
+        .dashed-arrow { stroke: white; stroke-width: 2; fill: none; marker-end: url(#arrowhead); stroke-dasharray: 5,5; }
+        .label { fill: white; font-family: Arial, sans-serif; font-size: 12px; }
+    </style>
+    
+    <defs>
+        <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" fill="white" />
+        </marker>
+    </defs>
+    
+    <rect width="800" height="600" fill="#1A202C" />
+    
+    <text x="400" y="40" class="title" text-anchor="middle">Document Context Management Flow</text>
+    
+    <!-- Document Sources -->
+    <rect x="50" y="100" width="120" height="60" rx="5" class="document-box" />
+    <text x="110" y="130" class="text" text-anchor="middle">Knowledge Base</text>
+    <text x="110" y="150" class="subtitle" text-anchor="middle">(Internal Docs)</text>
+    
+    <rect x="50" y="180" width="120" height="60" rx="5" class="document-box" />
+    <text x="110" y="210" class="text" text-anchor="middle">Product Catalog</text>
+    <text x="110" y="230" class="subtitle" text-anchor="middle">(Specifications)</text>
+    
+    <rect x="50" y="260" width="120" height="60" rx="5" class="document-box" />
+    <text x="110" y="290" class="text" text-anchor="middle">Support Articles</text>
+    <text x="110" y="310" class="subtitle" text-anchor="middle">(Troubleshooting)</text>
+    
+    <!-- Document Processing Pipeline -->
+    <rect x="250" y="100" width="140" height="60" rx="5" class="process-box" />
+    <text x="320" y="130" class="text" text-anchor="middle">Document Crawler</text>
+    <text x="320" y="150" class="subtitle" text-anchor="middle">(Collection)</text>
+    
+    <rect x="250" y="180" width="140" height="60" rx="5" class="process-box" />
+    <text x="320" y="210" class="text" text-anchor="middle">Text Extraction</text>
+    <text x="320" y="230" class="subtitle" text-anchor="middle">(Preprocessing)</text>
+    
+    <rect x="250" y="260" width="140" height="60" rx="5" class="process-box" />
+    <text x="320" y="290" class="text" text-anchor="middle">Document Chunking</text>
+    <text x="320" y="310" class="subtitle" text-anchor="middle">(Semantic Units)</text>
+    
+    <rect x="250" y="340" width="140" height="60" rx="5" class="process-box" />
+    <text x="320" y="370" class="text" text-anchor="middle">Embedding Generation</text>
+    <text x="320" y="390" class="subtitle" text-anchor="middle">(Vector Creation)</text>
+    
+    <!-- Storage Layer -->
+    <rect x="450" y="140" width="140" height="100" rx="5" class="storage-box" />
+    <text x="520" y="170" class="text" text-anchor="middle">Vector Database</text>
+    <text x="520" y="190" class="subtitle" text-anchor="middle">(pgvector)</text>
+    <text x="520" y="210" class="subtitle" text-anchor="middle">Document Chunks</text>
+    <text x="520" y="230" class="subtitle" text-anchor="middle">Embeddings</text>
+    
+    <rect x="450" y="260" width="140" height="80" rx="5" class="storage-box" />
+    <text x="520" y="290" class="text" text-anchor="middle">Metadata Store</text>
+    <text x="520" y="310" class="subtitle" text-anchor="middle">(Document Info)</text>
+    <text x="520" y="330" class="subtitle" text-anchor="middle">(Access Controls)</text>
+    
+    <!-- Retrieval Process -->
+    <rect x="650" y="100" width="120" height="60" rx="5" class="retrieval-box" />
+    <text x="710" y="130" class="text" text-anchor="middle">Query Processing</text>
+    <text x="710" y="150" class="subtitle" text-anchor="middle">(Embedding)</text>
+    
+    <rect x="650" y="180" width="120" height="60" rx="5" class="retrieval-box" />
+    <text x="710" y="210" class="text" text-anchor="middle">Vector Search</text>
+    <text x="710" y="230" class="subtitle" text-anchor="middle">(Similarity)</text>
+    
+    <rect x="650" y="260" width="120" height="60" rx="5" class="retrieval-box" />
+    <text x="710" y="290" class="text" text-anchor="middle">Context Assembly</text>
+    <text x="710" y="310" class="subtitle" text-anchor="middle">(Relevance)</text>
+    
+    <rect x="650" y="340" width="120" height="60" rx="5" class="retrieval-box" />
+    <text x="710" y="370" class="text" text-anchor="middle">Source Citation</text>
+    <text x="710" y="390" class="subtitle" text-anchor="middle">(Attribution)</text>
+    
+    <!-- Agent Integration -->
+    <rect x="350" y="460" width="300" height="80" rx="5" class="box" />
+    <text x="500" y="490" class="text" text-anchor="middle">Agent with Document Context</text>
+    <text x="500" y="510" class="subtitle" text-anchor="middle">(Enhanced Responses with Citations)</text>
+    <text x="500" y="530" class="subtitle" text-anchor="middle">(Knowledge-Grounded Answers)</text>
+    
+    <!-- Connections -->
+    <path d="M 180 130 L 240 130" class="arrow" />
+    <path d="M 180 210 L 240 210" class="arrow" />
+    <path d="M 180 290 L 240 290" class="arrow" />
+    
+    <path d="M 320 160 L 320 170" class="arrow" />
+    <path d="M 320 240 L 320 250" class="arrow" />
+    <path d="M 320 320 L 320 330" class="arrow" />
+    
+    <path d="M 400 130 L 440 170" class="arrow" />
+    <path d="M 400 290 L 440 290" class="arrow" />
+    <path d="M 400 370 L 440 200" class="arrow" />
+    
+    <path d="M 600 190 L 640 210" class="arrow" />
+    <path d="M 600 290 L 640 290" class="arrow" />
+    
+    <path d="M 710 160 L 710 170" class="arrow" />
+    <path d="M 710 240 L 710 250" class="arrow" />
+    <path d="M 710 320 L 710 330" class="arrow" />
+    
+    <path d="M 710 400 L 710 420 L 500 420 L 500 450" class="arrow" />
+    
+    <!-- Query Flow -->
+    <path d="M 500 550 L 500 570 L 100 570 L 100 350" class="dashed-arrow" />
+    <text x="300" y="590" class="label">User Query Initiates Document Retrieval</text>
+</svg>
