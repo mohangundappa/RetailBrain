@@ -2,67 +2,41 @@
 
 ## Introduction
 
-Welcome to the Staples Brain documentation! This comprehensive guide provides detailed information about the Staples Brain multi-agent orchestration platform designed for intelligent customer engagement. The platform integrates specialized agents through a central orchestration system, with database-driven agent configurations, powerful workflow capabilities, and robust memory management.
+Welcome to the Staples Brain documentation! This comprehensive guide provides detailed information about the Staples Brain multi-agent orchestration platform designed for intelligent customer engagement. The platform integrates specialized agents through a central orchestration system, with database-driven supervisor configurations, powerful workflow capabilities, and robust memory management.
 
 ## Documentation Map
 
 ### 1. System Architecture
 
-* **[Supervisor-Based Architecture](supervisor_based_architecture.md)** - Latest architecture using database-driven supervisors
+* **[Supervisor-Based Architecture](supervisor_based_architecture.md)** - Database-driven supervisors for agent orchestration
 * **[Supervisor Database Schema](supervisor_database_schema.md)** - Schema for supervisor configurations
 * **[Supervisor API Endpoints](supervisor_endpoints.md)** - API endpoints for the supervisor-based system
-* **[Orchestrator Overview](orchestrator.md)** - Introduction to the original agent orchestration system
-* **[Orchestrator Technical Details](orchestrator_technical.md)** - Deep dive into original orchestrator implementation
-* **[Agent Selection Process](agent_selection_process.md)** - Visual guide to agent routing decision logic
 
-### 2. API Reference
-
-* **[API Reference](api_reference.md)** - Complete API endpoint documentation
-* **[Graph Chat API](orchestrator.md#api-integration)** - Chat API documentation
-* **[Workflow API](workflow_api.md)** - Workflow-driven agent API
-
-### 3. Agent Framework
+### 2. Agent Framework
 
 * **[Adding New Agents](adding_new_agents.md)** - Guide to creating specialized agents
 * **[Workflow Creation](workflow_creation.md)** - Building multi-step workflow agents
-* **[Agent Selection Flow](agent_selection_process.md#agent-selection-flow)** - How agents are selected for user queries
 
-### 4. Context & Memory Management  
+### 3. Context & Memory Management  
 
 * **[Session Context Management](session_context.md)** - Context across conversation turns
 * **[Advanced Context Management](advanced_context_management.md)** - Advanced memory integration and optimization
 * **[Document Context Management](document_context_management.md)** - Document integration and knowledge retrieval
-* **[Memory Types](session_context.md#memory-types)** - Types of memory in the system
-* **[State Management](session_context.md#session-state-management)** - Persisting workflow state
 
-### 5. Visual Diagrams
-
-* **[Agent Selection Flow](assets/agent_selection_flow.svg)** - Visual diagram of selection process
-* **[Agent Decision Sequence](assets/agent_decision_sequence.svg)** - Sequence diagram of agent selection
-* **[Agent Routing Architecture](assets/agent_routing_architecture.svg)** - Component architecture diagram
-* **[Memory Integration Architecture](assets/memory_integration_architecture.svg)** - Memory system organization
-* **[Context Enrichment Process](assets/context_enrichment_process.svg)** - Context building workflow
-* **[Document Context Flow](assets/document_context_flow.svg)** - Document integration pipeline
-* **[LangGraph Memory Integration](assets/langgraph_memory_integration.svg)** - Supervisor with memory
-
-### 6. Advanced Topics
+### 4. Advanced Topics
 
 * **[Advanced Usage Guide](advanced_usage.md)** - Performance optimization, scaling, and security
-* **[Agent Validation Framework](advanced_usage.md#agent-validation-framework)** - Comprehensive testing framework
-* **[Scaling Guidelines](advanced_usage.md#scaling-guidelines)** - Architecture for high-volume deployments
 
 ## System Overview
 
 The Staples Brain platform is a LangGraph-based multi-agent orchestration system with these key components:
-
-![Agent Routing Architecture](assets/agent_routing_architecture.svg)
 
 ### Key Components
 
 | Component | Purpose | Technical Details |
 |-----------|---------|-------------------|
 | **API Gateway** | Entry point for chat requests | FastAPI-based REST API |
-| **Orchestrator** | Agent selection and routing | LangGraph-based orchestration |
+| **SupervisorBrainService** | Agent selection and orchestration | LangGraph-based supervisor |
 | **Agent Framework** | Base implementation for agents | Database-driven configurations |
 | **Memory Service** | Context management | mem0 implementation with PostgreSQL |
 | **Workflow Engine** | Execute multi-step workflows | LangGraph workflow execution |
@@ -83,28 +57,55 @@ The system supports multiple types of agents:
 |----------|--------|---------|---------------|
 | `/api/v1/supervisor-chat/chat` | POST | Process messages via supervisor | [Supervisor Endpoints](supervisor_endpoints.md) |
 | `/api/v1/supervisor-chat/execute-agent` | POST | Direct agent execution via supervisor | [Supervisor Endpoints](supervisor_endpoints.md) |
-| `/api/v1/graph-chat/chat` | POST | Process chat messages (legacy) | [API Reference](api_reference.md#graph-chat-api) |
-| `/api/v1/graph-chat/execute-agent` | POST | Direct agent execution (legacy) | [API Reference](api_reference.md#graph-chat-api) |
-| `/api/v1/agent-builder/agents` | GET/POST | Manage agent configurations | [API Reference](api_reference.md#agent-builder-api) |
-| `/api/v1/workflow-agents/execute` | POST | Execute workflow agents | [API Reference](api_reference.md#workflow-api) |
-| `/api/v1/agent-workflow/{agent_id}` | GET | Get workflow configuration | [Workflow API](workflow_api.md#workflow-configuration) |
+| `/api/v1/agent-builder/agents` | GET/POST | Manage agent configurations | [Supervisor Endpoints](supervisor_endpoints.md) |
+| `/api/v1/workflow-agents/execute` | POST | Execute workflow agents | [Supervisor Endpoints](supervisor_endpoints.md) |
+| `/api/v1/agent-workflow/{agent_id}` | GET | Get workflow configuration | [Supervisor Endpoints](supervisor_endpoints.md) |
 
-## Agent Selection Process
+## Supervisor-Based Architecture
 
-The agent selection process is a critical component that determines which specialized agent should handle a user's query:
+The Staples Brain system uses a database-driven supervisor architecture for agent orchestration. This approach provides greater flexibility, configurability, and extensibility by storing the orchestration logic in the database rather than hardcoding it.
 
-![Agent Selection Flow](assets/agent_selection_flow.svg)
+```
+┌─────────────────────────────────────┐
+│         SupervisorBrainService      │
+├─────────────────────────────────────┤
+│  ┌─────────────┐    ┌─────────────┐ │
+│  │  Supervisor │    │    Agents   │ │
+│  │  Database   │───>│   Database  │ │
+│  └─────────────┘    └─────────────┘ │
+│          │                 │        │
+│          ▼                 ▼        │
+│  ┌─────────────┐    ┌─────────────┐ │
+│  │ Supervisor  │    │    Agent    │ │
+│  │   Factory   │    │   Factory   │ │
+│  └─────────────┘    └─────────────┘ │
+│          │                 │        │
+│          ▼                 ▼        │
+│  ┌─────────────┐    ┌─────────────┐ │
+│  │ LangGraph   │◄───┤  LangGraph  │ │
+│  │ Supervisor  │    │   Agents    │ │
+│  └─────────────┘    └─────────────┘ │
+└─────────────────────────────────────┘
+```
 
-The process follows these steps:
+Key features of the supervisor architecture:
 
-1. **User Message Intake** - Message received via API
-2. **Preprocessing** - Text normalization and cleaning
-3. **Pattern Matching** - Regex patterns for direct routing
-4. **Semantic Matching** - Vector similarity for less explicit intents
-5. **Conversational Check** - Fallback detection for small talk
-6. **Agent Execution** - Selected agent processes the message
+1. **Database-Driven Configuration**: Supervisor configurations stored in database tables
+2. **Dynamic Agent Mapping**: Agents can be mapped to specific nodes in the supervisor graph
+3. **Flexible Routing Strategies**: Support for pattern matching, vector search, and hybrid approaches
+4. **Customizable Graph Structure**: Nodes and edges define the execution flow and can be modified without code changes
 
-For more details, see the [Agent Selection Process](agent_selection_process.md) documentation.
+For detailed information, see the [Supervisor-Based Architecture](supervisor_based_architecture.md) documentation.
+
+## Message Processing Flow
+
+1. **API Request**: User message received via the `/api/v1/supervisor-chat/chat` endpoint
+2. **Supervisor Processing**: Message processed through the LangGraph supervisor workflow
+3. **Agent Selection**: Appropriate agent selected based on routing strategy
+4. **Agent Execution**: Selected agent processes the message
+5. **Guardrails Application**: Guardrails agent ensures policy compliance
+6. **Memory Management**: Conversation state persisted for future turns
+7. **Response Generation**: Final response returned to the user
 
 ## Workflow-Driven Agents
 
@@ -146,12 +147,6 @@ This context is passed with each API request to maintain conversation continuity
 
 For basic context management, see the [Session Context Management](session_context.md) documentation.
 
-The system also supports advanced memory features:
-
-1. **Advanced Context Management** - Memory integration with LangGraph, transactional memory operations, and tiered storage strategies. See [Advanced Context Management](advanced_context_management.md).
-
-2. **Document Context Management** - Integration with knowledge bases, document processing, and relevant context retrieval. See [Document Context Management](document_context_management.md).
-
 ## Implementation Details
 
 ### Technical Stack
@@ -183,17 +178,17 @@ For more details, see the [Adding New Agents](adding_new_agents.md) guide.
 
 ## Best Practices
 
-1. **Agent Design**
+1. **Supervisor Configuration**
+   - Define a clear graph structure with appropriate nodes
+   - Map agents to the correct nodes based on their purpose
+   - Use meaningful node types (router, agent, guardrails, etc.)
+   - Implement appropriate routing strategies for your use case
+
+2. **Agent Design**
    - Focus on a single specific capability per agent
    - Define clear boundaries between agents
    - Design patterns for accurate intent detection
    - Test with a variety of user queries
-
-2. **Workflow Design**
-   - Keep workflows focused on single tasks
-   - Include proper error handling and fallbacks
-   - Design clear user interaction patterns
-   - Persist state for conversation continuity
 
 3. **Context Management**
    - Extract and store entities from user messages
