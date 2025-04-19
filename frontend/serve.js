@@ -31,19 +31,10 @@ function getContentType(filePath) {
   }
 }
 
-// Read backend port from file if possible, default to 5000
+// Explicitly set backend port to 5000 for consistency
 let BACKEND_PORT = 5000;
-try {
-  const backendPortFile = path.join(__dirname, '..', 'backend_port.txt');
-  if (fs.existsSync(backendPortFile)) {
-    const portFromFile = fs.readFileSync(backendPortFile, 'utf8').trim();
-    if (portFromFile && !isNaN(parseInt(portFromFile))) {
-      BACKEND_PORT = parseInt(portFromFile);
-    }
-  }
-} catch (err) {
-  console.error('Error reading backend port file:', err);
-}
+// Hardcoding port 5000 as requested by the user for consistency
+console.log('Using hardcoded backend port 5000 for API server (ignoring backend_port.txt)');
 
 process.env.BACKEND_PORT = BACKEND_PORT.toString();
 console.log(`Using backend port ${BACKEND_PORT} to connect to the API server`);
