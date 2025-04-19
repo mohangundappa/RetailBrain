@@ -9,7 +9,7 @@ gradual migration from backend.agents.framework to backend.agents.models.
 """
 
 # Re-export all components from framework module for backward compatibility
-from backend.agents.framework.base import *
+from backend.agents.framework import *
 
 # Re-export langgraph framework components
 try:
