@@ -87,15 +87,15 @@ def run_api(app_instance=None, reload=None):
     # Get host and port from environment or use defaults
     host = os.environ.get("API_HOST", "0.0.0.0")
     
-    # User requested to use only port 5000 for the backend
-    port = 5000
+    # Get port from environment or use default
+    port = int(os.environ.get("API_PORT", 5001))
     
     # Check if the port is available
     is_available = check_port_available(port)
     
     if not is_available:
         logger.warning(f"Port {port} is already in use")
-        logger.error("Please stop any services using port 5000 and try again")
+        logger.error(f"Please stop any services using port {port} and try again")
         
     # Save the port to an environment variable for other components to use
     os.environ["BACKEND_PORT"] = str(port)
