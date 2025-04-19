@@ -1,10 +1,10 @@
-# Staples Brain
+# Retail Brain
 
 An advanced multi-agent AI orchestration platform featuring intelligent computational interactions with a focus on user-centric design and seamless AI communication.
 
 ## Overview
 
-Staples Brain is an AI super-brain agent system specifically designed for Staples Customer Engagement. It focuses on Sales and Services, serving as an integration hub for specialized agents (Order Tracking, Reset Password, Store Locator, and others). 
+Retail Brain is an AI super-brain agent system specifically designed for Retail Customer Engagement. It focuses on Sales and Services, serving as an integration hub for specialized agents (Order Tracking, Reset Password, Store Locator, and others). 
 
 ## Architecture
 
@@ -60,7 +60,7 @@ The React frontend is built with modern best practices:
 ## Project Structure
 
 ```
-staples-brain/
+Retail-brain/
 ├── backend/               # Backend services and components
 │   ├── agents/            # Agent implementations
 │   │   ├── framework/     # Base agent framework implementations
